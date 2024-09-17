@@ -1,6 +1,8 @@
 import geopandas
 import shapely
 
+import include.functions
+
 def print_hi(name):
     print(f'Hi, {name}')
 
