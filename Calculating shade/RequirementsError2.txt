@@ -1,0 +1,149 @@
+Building wheels for collected packages docopt, GDAL
+  Building wheel for docopt (setup.py) ... done
+  Created wheel for docopt filename=docopt-0.6.2-py2.py3-none-any.whl size=13775 sha256=8ddfd24ce95bcfb54cf3f460f287d62c84d0dc4c54e09aeed6bf23cbffa23f97
+  Stored in directory cusersjessiappdatalocalpipcachewheels1ab08c4b75c4116c31f83c8f9f047231251e13cc74481cca4a78a9ce
+  Building wheel for GDAL (setup.py) ... error
+  error subprocess-exited-with-error
+
+  × python setup.py bdist_wheel did not run successfully.
+  │ exit code 1
+  ╰─ [131 lines of output]
+      WARNING numpy not available!  Array support will not be enabled
+      running bdist_wheel
+      running build
+      running build_py
+      creating buildlib.win-amd64-cpython-311osgeo
+      copying osgeogdal.py - buildlib.win-amd64-cpython-311osgeo
+      copying osgeogdalconst.py - buildlib.win-amd64-cpython-311osgeo
+      copying osgeogdalnumeric.py - buildlib.win-amd64-cpython-311osgeo
+      copying osgeogdal_array.py - buildlib.win-amd64-cpython-311osgeo
+      copying osgeognm.py - buildlib.win-amd64-cpython-311osgeo
+      copying osgeoogr.py - buildlib.win-amd64-cpython-311osgeo
+      copying osgeoosr.py - buildlib.win-amd64-cpython-311osgeo
+      copying osgeo__init__.py - buildlib.win-amd64-cpython-311osgeo
+      creating buildlib.win-amd64-cpython-311osgeo_utils
+      copying gdal-utilsosgeo_utilsgdal2tiles.py - buildlib.win-amd64-cpython-311osgeo_utils
+      copying gdal-utilsosgeo_utilsgdal2xyz.py - buildlib.win-amd64-cpython-311osgeo_utils
+      copying gdal-utilsosgeo_utilsgdalattachpct.py - buildlib.win-amd64-cpython-311osgeo_utils
+      copying gdal-utilsosgeo_utilsgdalcompare.py - buildlib.win-amd64-cpython-311osgeo_utils
+      copying gdal-utilsosgeo_utilsgdalmove.py - buildlib.win-amd64-cpython-311osgeo_utils
+      copying gdal-utilsosgeo_utilsgdal_calc.py - buildlib.win-amd64-cpython-311osgeo_utils
+      copying gdal-utilsosgeo_utilsgdal_edit.py - buildlib.win-amd64-cpython-311osgeo_utils
+      copying gdal-utilsosgeo_utilsgdal_fillnodata.py - buildlib.win-amd64-cpython-311osgeo_utils
+      copying gdal-utilsosgeo_utilsgdal_merge.py - buildlib.win-amd64-cpython-311osgeo_utils
+      copying gdal-utilsosgeo_utilsgdal_pansharpen.py - buildlib.win-amd64-cpython-311osgeo_utils
+      copying gdal-utilsosgeo_utilsgdal_polygonize.py - buildlib.win-amd64-cpython-311osgeo_utils
+      copying gdal-utilsosgeo_utilsgdal_proximity.py - buildlib.win-amd64-cpython-311osgeo_utils
+      copying gdal-utilsosgeo_utilsgdal_retile.py - buildlib.win-amd64-cpython-311osgeo_utils
+      copying gdal-utilsosgeo_utilsgdal_sieve.py - buildlib.win-amd64-cpython-311osgeo_utils
+      copying gdal-utilsosgeo_utilsogrmerge.py - buildlib.win-amd64-cpython-311osgeo_utils
+      copying gdal-utilsosgeo_utilsogr_layer_algebra.py - buildlib.win-amd64-cpython-311osgeo_utils
+      copying gdal-utilsosgeo_utilspct2rgb.py - buildlib.win-amd64-cpython-311osgeo_utils
+      copying gdal-utilsosgeo_utilsrgb2pct.py - buildlib.win-amd64-cpython-311osgeo_utils
+      copying gdal-utilsosgeo_utils__init__.py - buildlib.win-amd64-cpython-311osgeo_utils
+      creating buildlib.win-amd64-cpython-311osgeo_utilsauxiliary
+      copying gdal-utilsosgeo_utilsauxiliaryarray_util.py - buildlib.win-amd64-cpython-311osgeo_utilsauxiliary
+      copying gdal-utilsosgeo_utilsauxiliarybase.py - buildlib.win-amd64-cpython-311osgeo_utilsauxiliary
+      copying gdal-utilsosgeo_utilsauxiliarybatch_creator.py - buildlib.win-amd64-cpython-311osgeo_utilsauxiliary
+      copying gdal-utilsosgeo_utilsauxiliarycolor_palette.py - buildlib.win-amd64-cpython-311osgeo_utilsauxiliary
+      copying gdal-utilsosgeo_utilsauxiliarycolor_table.py - buildlib.win-amd64-cpython-311osgeo_utilsauxiliary
+      copying gdal-utilsosgeo_utilsauxiliaryextent_util.py - buildlib.win-amd64-cpython-311osgeo_utilsauxiliary
+      copying gdal-utilsosgeo_utilsauxiliarygdal_argparse.py - buildlib.win-amd64-cpython-311osgeo_utilsauxiliary
+      copying gdal-utilsosgeo_utilsauxiliarynumpy_util.py - buildlib.win-amd64-cpython-311osgeo_utilsauxiliary
+      copying gdal-utilsosgeo_utilsauxiliaryosr_util.py - buildlib.win-amd64-cpython-311osgeo_utilsauxiliary
+      copying gdal-utilsosgeo_utilsauxiliaryprogress.py - buildlib.win-amd64-cpython-311osgeo_utilsauxiliary
+      copying gdal-utilsosgeo_utilsauxiliaryraster_creation.py - buildlib.win-amd64-cpython-311osgeo_utilsauxiliary
+      copying gdal-utilsosgeo_utilsauxiliaryrectangle.py - buildlib.win-amd64-cpython-311osgeo_utilsauxiliary
+      copying gdal-utilsosgeo_utilsauxiliaryutil.py - buildlib.win-amd64-cpython-311osgeo_utilsauxiliary
+      copying gdal-utilsosgeo_utilsauxiliary__init__.py - buildlib.win-amd64-cpython-311osgeo_utilsauxiliary
+      creating buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesassemblepoly.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesbuild_jp2_from_xml.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesclassify.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplescrs2crs2grid.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesdensify.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesdump_jp2.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesepsg_tr.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesesri2wkt.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesfft.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesfix_gpkg.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesgcps2ogr.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesgcps2vec.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesgcps2wld.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesgdal2grd.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesgdalchksum.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesgdalcopyproj.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesgdalfilter.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesgdalident.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesgdalimport.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesgdalinfo.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesgdallocationinfo.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesgdal_auth.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesgdal_cp.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesgdal_create_pdf.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesgdal_ls.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesgdal_lut.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesgdal_mkdir.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesgdal_remove_towgs84.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesgdal_rm.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesgdal_rmdir.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesgdal_vrtmerge.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesgdal_zip.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesget_soundg.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssampleshistrep.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssampleshsv_merge.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesjpeg_in_tiff_extract.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesload2odbc.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesloslas2ntv2.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesmagphase.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesmake_fuzzer_friendly_archive.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesmkgraticule.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesogr2ogr.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesogr2vrt.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesogrinfo.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesogrupdate.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesogr_build_junction_table.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesogr_dispatch.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesrel.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplestigerpoly.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplestile_extent_from_raster.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplestolatlong.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesvalidate_cloud_optimized_geotiff.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesvalidate_gpkg.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesvalidate_jp2.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesval_repl.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesvec_tr.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamplesvec_tr_spat.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssampleswcs_virtds_params.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      copying gdal-utilsosgeo_utilssamples__init__.py - buildlib.win-amd64-cpython-311osgeo_utilssamples
+      running build_ext
+      building 'osgeo._gdal' extension
+      building 'osgeo._gdalconst' extension
+      building 'osgeo._osr' extension
+      building 'osgeo._gnm' extension
+      building 'osgeo._ogr' extension
+      CProgram FilesMicrosoft Visual Studio2022CommunityVCToolsMSVC14.41.34120binHostX86x64cl.exe c nologo O2 W3 GL DNDEBUG MD -ICenvironmentssynthesisinclude -ICUsersjessiAppDataLocalProgramsPythonPython311include -ICUsersjessiAppDataLocalProgramsPythonPython311Include -ICProgram FilesMicrosoft Visual Studio2022CommunityVCToolsMSVC14.41.34120include -ICProgram FilesMicrosoft Visual Studio2022CommunityVCToolsMSVC14.41.34120ATLMFCinclude -ICProgram FilesMicrosoft Visual Studio2022CommunityVCAuxiliaryVSinclude -ICProgram Files (x86)Windows Kits10include10.0.22621.0ucrt -ICProgram Files (x86)Windows Kits10include10.0.22621.0um -ICProgram Files (x86)Windows Kits10include10.0.22621.0shared -ICProgram Files (x86)Windows Kits10include10.0.22621.0winrt -ICProgram Files (x86)Windows Kits10include10.0.22621.0cppwinrt EHsc Tpextensionsogr_wrap.cpp Fobuildtemp.win-amd64-cpython-311Releaseextensionsogr_wrap.obj
+      creating buildtemp.win-amd64-cpython-311Releaseextensions
+      CProgram FilesMicrosoft Visual Studio2022CommunityVCToolsMSVC14.41.34120binHostX86x64cl.exe c nologo O2 W3 GL DNDEBUG MD -ICenvironmentssynthesisinclude -ICUsersjessiAppDataLocalProgramsPythonPython311include -ICUsersjessiAppDataLocalProgramsPythonPython311Include -ICProgram FilesMicrosoft Visual Studio2022CommunityVCToolsMSVC14.41.34120include -ICProgram FilesMicrosoft Visual Studio2022CommunityVCToolsMSVC14.41.34120ATLMFCinclude -ICProgram FilesMicrosoft Visual Studio2022CommunityVCAuxiliaryVSinclude -ICProgram Files (x86)Windows Kits10include10.0.22621.0ucrt -ICProgram Files (x86)Windows Kits10include10.0.22621.0um -ICProgram Files (x86)Windows Kits10include10.0.22621.0shared -ICProgram Files (x86)Windows Kits10include10.0.22621.0winrt -ICProgram Files (x86)Windows Kits10include10.0.22621.0cppwinrt Tcextensionsgdalconst_wrap.c Fobuildtemp.win-amd64-cpython-311Releaseextensionsgdalconst_wrap.obj
+      CProgram FilesMicrosoft Visual Studio2022CommunityVCToolsMSVC14.41.34120binHostX86x64cl.exe c nologo O2 W3 GL DNDEBUG MD -ICenvironmentssynthesisinclude -ICUsersjessiAppDataLocalProgramsPythonPython311include -ICUsersjessiAppDataLocalProgramsPythonPython311Include -ICProgram FilesMicrosoft Visual Studio2022CommunityVCToolsMSVC14.41.34120include -ICProgram FilesMicrosoft Visual Studio2022CommunityVCToolsMSVC14.41.34120ATLMFCinclude -ICProgram FilesMicrosoft Visual Studio2022CommunityVCAuxiliaryVSinclude -ICProgram Files (x86)Windows Kits10include10.0.22621.0ucrt -ICProgram Files (x86)Windows Kits10include10.0.22621.0um -ICProgram Files (x86)Windows Kits10include10.0.22621.0shared -ICProgram Files (x86)Windows Kits10include10.0.22621.0winrt -ICProgram Files (x86)Windows Kits10include10.0.22621.0cppwinrt EHsc Tpextensionsosr_wrap.cpp Fobuildtemp.win-amd64-cpython-311Releaseextensionsosr_wrap.obj
+      CProgram FilesMicrosoft Visual Studio2022CommunityVCToolsMSVC14.41.34120binHostX86x64cl.exe c nologo O2 W3 GL DNDEBUG MD -ICenvironmentssynthesisinclude -ICUsersjessiAppDataLocalProgramsPythonPython311include -ICUsersjessiAppDataLocalProgramsPythonPython311Include -ICProgram FilesMicrosoft Visual Studio2022CommunityVCToolsMSVC14.41.34120include -ICProgram FilesMicrosoft Visual Studio2022CommunityVCToolsMSVC14.41.34120ATLMFCinclude -ICProgram FilesMicrosoft Visual Studio2022CommunityVCAuxiliaryVSinclude -ICProgram Files (x86)Windows Kits10include10.0.22621.0ucrt -ICProgram Files (x86)Windows Kits10include10.0.22621.0um -ICProgram Files (x86)Windows Kits10include10.0.22621.0shared -ICProgram Files (x86)Windows Kits10include10.0.22621.0winrt -ICProgram Files (x86)Windows Kits10include10.0.22621.0cppwinrt EHsc Tpextensionsgdal_wrap.cpp Fobuildtemp.win-amd64-cpython-311Releaseextensionsgdal_wrap.obj
+      gdalconst_wrap.c
+      osr_wrap.cpp
+      ogr_wrap.cpp
+      gdal_wrap.cpp
+      extensionsgdalconst_wrap.c(2703) fatal error C1083 Cannot open include file 'gdal.h' No such file or directory
+      extensionsogr_wrap.cpp(2846) fatal error C1083 Cannot open include file 'gdal.h' No such file or directory
+      extensionsosr_wrap.cpp(2879) fatal error C1083 Cannot open include file 'cpl_string.h' No such file or directory
+      extensionsgdal_wrap.cpp(2885) fatal error C1083 Cannot open include file 'cpl_port.h' No such file or directory
+      CProgram FilesMicrosoft Visual Studio2022CommunityVCToolsMSVC14.41.34120binHostX86x64cl.exe c nologo O2 W3 GL DNDEBUG MD -ICenvironmentssynthesisinclude -ICUsersjessiAppDataLocalProgramsPythonPython311include -ICUsersjessiAppDataLocalProgramsPythonPython311Include -ICProgram FilesMicrosoft Visual Studio2022CommunityVCToolsMSVC14.41.34120include -ICProgram FilesMicrosoft Visual Studio2022CommunityVCToolsMSVC14.41.34120ATLMFCinclude -ICProgram FilesMicrosoft Visual Studio2022CommunityVCAuxiliaryVSinclude -ICProgram Files (x86)Windows Kits10include10.0.22621.0ucrt -ICProgram Files (x86)Windows Kits10include10.0.22621.0um -ICProgram Files (x86)Windows Kits10include10.0.22621.0shared -ICProgram Files (x86)Windows Kits10include10.0.22621.0winrt -ICProgram Files (x86)Windows Kits10include10.0.22621.0cppwinrt EHsc Tpextensionsgnm_wrap.cpp Fobuildtemp.win-amd64-cpython-311Releaseextensionsgnm_wrap.obj
+      gnm_wrap.cpp
+      extensionsgnm_wrap.cpp(2820) fatal error C1083 Cannot open include file 'gdal.h' No such file or directory
+      error command 'CProgram FilesMicrosoft Visual Studio2022CommunityVCToolsMSVC14.41.34120binHostX86x64cl.exe' failed with exit code 2
+      [end of output]
+
+  note This error originates from a subprocess, and is likely not a problem with pip.
+  ERROR Failed building wheel for GDAL
+  Running setup.py clean for GDAL
+Successfully built docopt
+Failed to build GDAL
+ERROR ERROR Failed to build installable wheels for some pyproject.toml based projects (GDAL)
