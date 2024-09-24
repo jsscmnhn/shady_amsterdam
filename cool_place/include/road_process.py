@@ -2,10 +2,10 @@ import geopandas as gpd
 
 
 class Road:
-    def __init__(self, data: gpd.geodataframe):
+    def __init__(self, data: gpd.geodataframe) -> None:
         self.data = data
 
-    def assign_buffer_hardSurface(self, roadtype: str):
+    def assign_buffer_hardSurface(self, roadtype: str) -> int:
         if roadtype is None:
             return 0
         elif "> 7 meter" in roadtype:
@@ -15,7 +15,7 @@ class Road:
         elif "2 - 4 meter" in roadtype:
             return 4
 
-    def assign_buffer_roadtype(self, roadtype: str):
+    def assign_buffer_roadtype(self, roadtype: str) -> int:
         if roadtype is None:
             return 0
         elif "autosnelweg" in roadtype:
@@ -41,10 +41,13 @@ class Road:
 
 
 if __name__ == '__main__':
-    directory = "/Volumes/T7 Shield/TUD/Synthesis/cool_place/"
+    directory_mac = "/Volumes/T7 Shield/TUD/Synthesis/cool_place/"
+    directory_win = "G:\\TUD\\Synthesis\\cool_place\\"
     filename = "ams_roads_top10NL.shp"
-    filepath = directory + filename
-    road = Road(gpd.read_file(filepath))
+    filepath_mac = directory_mac + filename
+    filepath_win = directory_win + filename
+
+    road = Road(gpd.read_file(filepath_mac))
     road.create_attribute('verharding', 'buffer')
-    #road.data.to_file(directory + "ams_roads_top10NL_buffered.shp")
+    # road.data.to_file(directory_mac + "ams_roads_top10NL_buffered.shp")
     print(road.data.head(5))
