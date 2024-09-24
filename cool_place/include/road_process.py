@@ -4,6 +4,7 @@ import geopandas as gpd
 class Road:
     def __init__(self, data: gpd.geodataframe) -> None:
         self.data = data
+        self.buffered = None
 
     def assign_buffer_hardSurface(self, roadtype: str) -> int:
         if roadtype is None:
@@ -38,6 +39,14 @@ class Road:
             self.data[new_attri] = self.data[attri_in].apply(self.assign_buffer_hardSurface)
         if attri_in == 'typeweg':
             self.data[new_attri] = self.data[attri_in].apply(self.assign_buffer_roadtype)
+
+    def create_buffer(self, buffer_attri: str):
+
+        if buffer_attri not in self.data.columns:
+            raise ValueError(f"Column {buffer_attri} does not exist in the data.")
+        self.buffered = None
+        self.data['buffered_geom'] = self.data.apply(lambda row: row.geometry.buffer(row[buffer_attri]), axis=1)
+        self.buffered = gpd.GeoDataFrame(self.data, geometry='buffered_geom', crs=self.data.crs)
 
 
 if __name__ == '__main__':
