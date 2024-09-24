@@ -67,8 +67,10 @@ class CoolSpace:
         return True  # If all areas pass the 50% test, return True
 
     def is_qualified(self, index: int, ratio: float) -> bool:
-        # check whether shadeAreas has been calculated
-        if index >= len(self.shadeAreas) or index < 0:
+        # check whether shadeAreas has been calculated or the index is legit
+        if len(self.shadeAreas) == 0:
+            raise IndexError(f"Haven't calculate shade areas yet.")
+        elif index >= len(self.shadeAreas) or index < 0:
             raise IndexError(f"Invalid index: {index}. Must be between 0 and {len(self.shadeAreas) - 1}.")
 
         # get current geom's area and its shaded area
