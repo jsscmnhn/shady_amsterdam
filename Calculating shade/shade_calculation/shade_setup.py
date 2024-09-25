@@ -12,7 +12,8 @@ import pandas as pd
 
 ### Shade calculation setup
 
-def shadecalculation_setup(filepath_dsm='None', filepath_veg='None', tile_no='/', date=dt.datetime.now(),
+def shadecalculation_setup(filepath_dsm='None', filepath_veg='None',
+                           date=dt.datetime.now(),
                            intervalTime=30, onetime=1, filepath_save='None', UTC=0, dst=1, useveg=0, trunkheight=25,
                            transmissivity=20):
     '''Calculates spot, hourly and or daily shading for a DSM
@@ -82,7 +83,7 @@ def shadecalculation_setup(filepath_dsm='None', filepath_veg='None', tile_no='/'
     # print('lat:' + str(lat))
 
     ## Import vegetation dsm
-
+    trans = transmissivity / 100.0
     if useveg == 1:
         usevegdem = 1
 
@@ -148,8 +149,8 @@ def shadecalculation_setup(filepath_dsm='None', filepath_veg='None', tile_no='/'
         # self.timeInterval = intervalTime.minute() + (intervalTime.hour() * 60) + (intervalTime.second()/60)
 
         shadowresult = dailyshading(dsm, vegdsm, vegdsm2, scale, lon, lat, sizex, sizey, tv, UTC, usevegdem,
-                                    intervalTime, onetime, filepath_save, gdal_dsm, transmissivity,
-                                    dst, wallsh, wheight, waspect, tile_no)
+                                    intervalTime, onetime, filepath_save, gdal_dsm, trans,
+                                    dst, wallsh, wheight, waspect)
 
         shfinal = shadowresult["shfinal"]
         time_vector = shadowresult["time_vector"]
@@ -158,13 +159,14 @@ def shadecalculation_setup(filepath_dsm='None', filepath_veg='None', tile_no='/'
             timestr = time_vector.strftime("%Y%m%d")
             # Changed filepath to include the tile_id in the filename.
             # savestr = '/shadow_fraction_on_'
-            savestr = '_shadow_fraction_on_'
+            # savestr = '/shadow_fraction_on_'
+            savestr = 'shadow_'
         else:
             timestr = time_vector.strftime("%Y%m%d_%H%M")
             # savestr = '/Shadow_at_'
-            savestr = 'Shadow_at_'
+            savestr = 'shadow_'
 
-    filename = filepath_save + tile_no + savestr + timestr + '.tif'
+    filename = filepath_save + savestr + timestr + '.tif'
 
     ## TODO: change to saverasternd or other function
     saveraster(gdal_dsm, filename, shfinal)
@@ -173,7 +175,7 @@ def shadecalculation_setup(filepath_dsm='None', filepath_veg='None', tile_no='/'
 ############## DAILYSHADING ################
 
 def dailyshading(dsm, vegdsm, vegdsm2, scale, lon, lat, sizex, sizey, tv, UTC, usevegdem, timeInterval, onetime, folder,
-                 gdal_data, trans, dst, wallshadow, wheight, waspect, tile_no):
+                 gdal_data, trans, dst, wallshadow, wheight, waspect):
     # lon = lonlat[0]
     # lat = lonlat[1]
     year = tv[0]
@@ -278,7 +280,7 @@ def dailyshading(dsm, vegdsm, vegdsm2, scale, lon, lat, sizex, sizey, tv, UTC, u
                 sh = sh - (1 - vegsh) * (1 - psi)
 
             if onetime == 0:
-                filename = folder + tile_no + '_Shadow_' + timestr + '_LST.tif'
+                filename = folder + '_Shadow_' + timestr + '_LST.tif'
                 ## EDITED
                 saveraster(gdal_data, filename, sh)
 
@@ -332,20 +334,66 @@ def dectime_to_timevec(dectime):
     return (HOURS, MINS, SECS)
 
 
+# def saveraster(gdal_data, filename, raster):
+#     rows = gdal_data.RasterYSize
+#     cols = gdal_data.RasterXSize
+#
+#     outDs = gdal.GetDriverByName("GTiff").Create(filename, cols, rows, int(1), GDT_Float32)
+#     outBand = outDs.GetRasterBand(1)
+#
+#     # write the data
+#     outBand.WriteArray(raster, 0, 0)
+#     # flush data to disk, set the NoData value and calculate stats
+#     outBand.FlushCache()
+#     outBand.SetNoDataValue(-9999)
+#
+#     # georeference the image and set the projection
+#     outDs.SetGeoTransform(gdal_data.GetGeoTransform())
+#     outDs.SetProjection(gdal_data.GetProjection())
+
 def saveraster(gdal_data, filename, raster):
     rows = gdal_data.RasterYSize
     cols = gdal_data.RasterXSize
 
-    outDs = gdal.GetDriverByName("GTiff").Create(filename, cols, rows, int(1), GDT_Float32)
-    outBand = outDs.GetRasterBand(1)
+    # Check if rows and cols are valid
+    if rows <= 0 or cols <= 0:
+        print(f"Invalid raster dimensions: rows={rows}, cols={cols}")
+        return
 
-    # write the data
-    outBand.WriteArray(raster, 0, 0)
-    # flush data to disk, set the NoData value and calculate stats
+    # Create the output dataset
+    driver = gdal.GetDriverByName("GTiff")
+    if driver is None:
+        print("GTiff driver is not available.")
+        return
+
+    outDs = driver.Create(filename, cols, rows, 1, gdal.GDT_Float32)  # 1 = single band
+
+    # Check if outDs was created successfully
+    if outDs is None:
+        print(f"Failed to create raster dataset for file: {filename}")
+        return
+
+    outBand = outDs.GetRasterBand(1)
+    if outBand is None:
+        print(f"Failed to get raster band for file: {filename}")
+        return
+
+    # Write the data
+    try:
+        outBand.WriteArray(raster)
+    except Exception as e:
+        print(f"Error writing raster data: {e}")
+        return
+
+    # Flush cache and set NoData value
     outBand.FlushCache()
     outBand.SetNoDataValue(-9999)
 
-    # georeference the image and set the projection
+    # Georeference the image and set projection
     outDs.SetGeoTransform(gdal_data.GetGeoTransform())
     outDs.SetProjection(gdal_data.GetProjection())
+
+    # Close the dataset properly to ensure the data is written to disk
+    outDs = None
+    print(f"Raster saved successfully to {filename}")
 

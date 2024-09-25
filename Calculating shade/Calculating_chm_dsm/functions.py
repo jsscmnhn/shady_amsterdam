@@ -112,6 +112,7 @@ def interpolation_idw_kdtree(points_list, grid, grid_center_xy, search_radius=1,
                     raise ValueError("weights == 0, cannot perform division.")
     return grid
 
+
 def create_affine_transform(top_left_x, top_left_y, res):
     """
     Create Affine transform for the write_output function.
@@ -119,7 +120,7 @@ def create_affine_transform(top_left_x, top_left_y, res):
     transform = Affine.translation(top_left_x, top_left_y) * Affine.scale(res, -res)
     return transform
 
-def write_output(dataset, output, transform, name='output.tiff'):
+def write_output(dataset, output, transform, name):
     """
     Write grid to .tiff file.
 
@@ -127,21 +128,31 @@ def write_output(dataset, output, transform, name='output.tiff'):
 
     Parameters:
 
-    - dataset: The point cloud read from laspy, we need its CRS --> dataset.header.parse_crs()
+    - dataset: Can be either a rasterio dataset (for rasters) or laspy dataset (for point clouds)
     - output: the output grid, a numpy grid.
-    - name: the name of output file, default is 'output.tiff'.
+    - name: the name of the output file.
     - transform:
       a user defined rasterio Affine object, used for the transforming the pixel coordinates
       to spatial coordinates.
     """
     output_file = name
+
+    # Check if dataset is laspy pc
+    if hasattr(dataset, 'header') and hasattr(dataset.header, 'parse_crs'):
+        crs = dataset.header.parse_crs()
+    else:
+        crs = dataset.crs
+
+    output = np.squeeze(output)
+
     with rasterio.open(output_file, 'w',
                        driver='GTiff',
-                       height=output.shape[0],
+                       height=output.shape[0],  # Assuming output is (rows, cols)
                        width=output.shape[1],
                        count=1,
                        dtype=output.dtype,
-                       crs=dataset.header.parse_crs(),
+                       crs=crs,
                        transform=transform) as dst:
         dst.write(output, 1)
     print("File written to '%s'" % output_file)
+
