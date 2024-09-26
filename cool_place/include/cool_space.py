@@ -12,13 +12,13 @@ class CoolSpace:
         self.shade_avg = None
         self.shadeAreas = []
 
-    def clip(self, clipper: gpd.geodataframe, how='difference') -> None:
+    def clip(self, to_clip: gpd.geodataframe, clipper: gpd.geodataframe, how='difference') -> None:
         if how not in ['difference', 'intersection', 'union', 'symmetric_difference']:
             raise ValueError(
                 f"Invalid 'how' parameter: {how}. Choose from "
                 f"'difference', 'intersection', 'union', 'symmetric_difference'.")
 
-        self.clipped = gpd.overlay(self.data, clipper, how=how)
+        self.clipped = gpd.overlay(to_clip, clipper, how=how)
 
     def calculate_shade(self, raster: rasterio.io.DatasetReader, area_thres=200, use_clip=False) -> None:
 
