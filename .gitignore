@@ -1,3 +1,4 @@
 /.idea
 *.pyc
 /cool_place/test.py
+/cool_place/test.ipynb
