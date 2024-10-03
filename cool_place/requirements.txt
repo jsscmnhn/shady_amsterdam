@@ -2,3 +2,4 @@ geopandas
 shapely
 rasterio
 matplotlib
+jupyter
