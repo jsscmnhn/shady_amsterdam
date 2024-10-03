@@ -4,7 +4,7 @@ import geopandas as gpd
 class Road:
     def __init__(self, data: gpd.geodataframe) -> None:
         self.data = data
-        self.buffered = None
+        self.data["buffered"] = None
 
     def assign_buffer_hardSurface(self, roadtype: str) -> int:
         if roadtype is None:
@@ -44,11 +44,12 @@ class Road:
 
         if buffer_attri not in self.data.columns:
             raise ValueError(f"Column {buffer_attri} does not exist in the data.")
-        self.buffered = None
-        self.data['buffered_geom'] = self.data.apply(lambda row: row.geometry.buffer(row[buffer_attri]), axis=1)
-        self.buffered = gpd.GeoDataFrame(self.data, geometry='buffered_geom', crs=self.data.crs)
-        self.data.drop(columns=['buffered_geom'], inplace=True)
-        self.buffered.drop(columns=['geometry'], inplace=True)
+        self.data["buffered"] = None
+        self.data["buffered"] = self.data.apply(lambda row: row.geometry.buffer(row[buffer_attri]), axis=1)
+        if 'buffered' in self.data.columns:
+            print("Buffered geometry column created.")
+        else:
+            print("Buffered geometry column failed to be created.")
 
 
 if __name__ == '__main__':
@@ -58,7 +59,7 @@ if __name__ == '__main__':
     filepath_mac = directory_mac + filename
     filepath_win = directory_win + filename
 
-    road = Road(gpd.read_file(filepath_mac))
+    road = Road(gpd.read_file(filepath_win))
     road.create_attribute('typeweg', 'buffer')
     road.create_buffer('buffer')
-    road.buffered.to_file(directory_mac + "ams_roads_top10NL_buffered.shp")
+    road.data['buffered'].to_file(directory_win + "test.shp")

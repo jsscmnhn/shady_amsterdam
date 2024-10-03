@@ -1,15 +1,29 @@
 import geopandas as gpd
+import matplotlib.pyplot as plt
 
 
 class Building:
     def __init__(self, data: gpd.geodataframe) -> None:
         self.data = data
-        self.buffered = None
+        self.data["buffered"] = None
 
     def create_buffer(self, buffer_size: int) -> None:
-        self.buffered = None
-        self.data['buffered_geom'] = self.data['geometry'].buffer(buffer_size)
-        self.buffered = gpd.GeoDataFrame(self.data, geometry='buffered_geom', crs=self.data.crs)
-        self.data.drop(columns=['buffered_geom'], inplace=True)
-        self.buffered.drop(columns=['geometry'], inplace=True)
+        self.data["buffered"] = None
+        self.data["buffered"] = self.data['geometry'].buffer(buffer_size)
+        if 'buffered' in self.data.columns:
+            print("Buffered geometry column created.")
+        else:
+            print("Buffered geometry column failed to be created.")
+
+
+if __name__ == '__main__':
+    directory_mac = "/Volumes/T7 Shield/TUD/Synthesis/cool_place/"
+    directory_win = "G:\\TUD\\Synthesis\\cool_place\\"
+
+    building_file = directory_win + "ams_buildings_bagplus.shp"
+
+    building = Building(gpd.read_file(building_file))
+    building.create_buffer(4)
+    building.data['buffered'].plot()
+    plt.show()
 
