@@ -5,6 +5,7 @@ from scipy.ndimage import label
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 class CoolSpace:
     def __init__(self, data: gpd.geodataframe) -> None:
         self.data = data
@@ -12,6 +13,8 @@ class CoolSpace:
         self.data["shadeAvg"] = None
         self.data["shadeAreas"] = None
         self.data["shadeGeoms"] = None
+        self.data["shade_qualified"] = None
+        self.data["shape_qualified"] = None
         self.data["qualiGeoms"] = None
 
     def clip(self, to_clip: gpd.geodataframe, clipper: gpd.geodataframe, how='difference') -> None:
@@ -28,7 +31,11 @@ class CoolSpace:
         self.data["shadeAvg"] = None
         self.data["shadeAreas"] = None
 
-        geometries = self.data['clipped'] if use_clip and 'clipped' in self.data else self.data.geometry
+        if use_clip and 'clipped' in self.data:
+            geometries = self.data['clipped']
+        else:
+            print("No clipped geometry, default geometry will be used.")
+            geometries = self.data.geometry
 
         for idx, geom in geometries.items():
             geom_geojson = [geom.__geo_interface__]  # Convert single geometry to geojson format
@@ -55,31 +62,47 @@ class CoolSpace:
 
     def get_qualified_shaded_geometries(self, min_shade_area=200) -> None:
         """
-        get geometries that have shaded areas larger than 200m2
+        get geometries that have continuous shaded areas larger than 200m2
         """
-        self.data["qualiGeoms"]: bool = self.data["shadeAreas"].apply(
+        self.data["shade_qualified"]: bool = self.data["shadeAreas"].apply(
             lambda x: any(area >= min_shade_area for area in x) if x else False
         )
 
-        if self.data["qualiGeoms"].any():
-            print(f"There are {self.data['qualiGeoms'].sum()}/{self.data.shape[0]} qualified geometries.")
+        if self.data["shade_qualified"].any():
+            print(f"There are {self.data['shade_qualified'].sum()}/{self.data.shape[0]} shade-qualified geometries.")
         else:
-            print("No qualified geometries found.")
+            print("No shade-qualified geometries found.")
 
     def get_qualified_shape_geometries(self, ratio_thres=0.35, use_clip=False) -> None:
         """
         get geometries that have the ratio of area to perimeter > 0.35
         """
-        geometries = self.data['clipped'] if use_clip and 'clipped' in self.data else self.data.geometry
+        geometries = None
+        if use_clip and 'clipped' in self.data:
+            geometries = self.data['clipped']
+        else:
+            print("No clipped geometry, default geometry will be used.")
+            geometries = self.data.geometry
+
         self.data["clipped_perimeter"] = geometries.length
         self.data["clipped_area"] = geometries.area
         self.data["clipped_perimeter_area_ratio"] = self.data["clipped_area"] / self.data["clipped_perimeter"]
-        self.data["qualiGeoms"]: bool = self.data["clipped_perimeter_area_ratio"] > ratio_thres
+        self.data["shape_qualified"]: bool = self.data["clipped_perimeter_area_ratio"] > ratio_thres
 
-        if self.data["qualiGeoms"].any():
-            print(f"There are {self.data['qualiGeoms'].sum()}/{self.data.shape[0]} qualified geometries.")
+        if self.data["shape_qualified"].any():
+            print(f"There are {self.data['shape_qualified'].sum()}/{self.data.shape[0]} shape-qualified geometries.")
         else:
-            print("No qualified geometries found.")
+            print("No shape-qualified geometries found.")
+
+    def get_qualified_geometries(self) -> None:
+        """
+        get geometries that fulfill all the qualification checks.
+        """
+        if not self.data["shade_qualified"].any() or not self.data["shape_qualified"].any():
+            raise ValueError("Please check shade and shape qualification first.")
+
+        self.data["qualiGeoms"] = None
+        self.data["qualiGeoms"] = self.data[self.data["shade_qualified"] and self.data["shape_qualified"]]
 
 
 if __name__ == '__main__':
