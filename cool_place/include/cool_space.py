@@ -1,9 +1,11 @@
 import geopandas as gpd
+import pandas as pd
 import rasterio
 from rasterio.mask import mask
 from rasterio.features import shapes
 from scipy.ndimage import label
-from shapely.geometry import shape
+from shapely.geometry import shape, box
+from shapely.ops import unary_union
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -35,11 +37,11 @@ class CoolSpace:
         :param use_clip: use clipped geometry or not, if there is no clipped geometry, original will be used.
         """
 
-        if use_clip and 'clipped' in self.data:
+        if use_clip and self.data['clipped']:
             geometries = self.data['clipped']
         else:
             print("No clipped geometry, default geometry will be used.")
-            geometries = self.data.geometry
+            geometries = self.data['geometry']
 
         # same calculation for each raster
         for raster_idx, raster in enumerate(rasters):
@@ -50,8 +52,27 @@ class CoolSpace:
             self.data[f"shadeArea{raster_idx}"] = None
             self.data[f"shadeGeom{raster_idx}"] = None
 
-            for idx, geom in geometries.items():
-                geom_geojson = [geom.__geo_interface__]  # transform geom to GeoJSON
+            minx, miny, maxx, maxy = raster.bounds
+            raster_bounds = box(minx, miny, maxx, maxy)
+            print(raster_bounds)
+
+            # create GeoSeries to store all the shadeGeom (polygon transformed from pixels)
+            all_shade_geoms = gpd.GeoSeries()
+
+            for idx, geom in enumerate(geometries):
+                # check if geometry intersects the ratser or not
+                if geom.intersects(raster_bounds):
+                    clipped_geom = geom.intersection(raster_bounds)
+                    print(f"Clipped geometry {idx}, area: {clipped_geom.area}")
+
+                    # if intersection fail (empty) or the clipped result is too small, skip it
+                    if clipped_geom.is_empty or clipped_geom.area < 1e-6:
+                        print(f"Geometry {idx} is too small ({clipped_geom.area}) or empty after intersection, skipping.")
+                        continue
+                else:
+                    continue # if geometry not intersects with ratser, skip it
+
+                geom_geojson = [clipped_geom.__geo_interface__]  # transform geom to GeoJSON
                 out_image, out_transform = mask(raster, geom_geojson, crop=True)
                 out_image = out_image[0]  # assume shade value is stored in band 1
 
@@ -79,10 +100,21 @@ class CoolSpace:
                             if value == 1:  # reserve the "true" part
                                 shade_polygons.append(shape(geom))
 
-                # 将结果存储到 GeoDataFrame 的相应列中
+                # merge all pixel polygons into one
+                if shade_polygons:
+                    merged_polygon = unary_union(shade_polygons)
+                else:
+                    merged_polygon = None
+
+                if shade_polygons:
+                    merged_polygon = unary_union(shade_polygons)
+                    all_shade_geoms = pd.concat([all_shade_geoms, gpd.GeoSeries([merged_polygon])], ignore_index=True)
+                else:
+                    all_shade_geoms = pd.concat([all_shade_geoms, gpd.GeoSeries([None])], ignore_index=True)
+
                 self.data.at[idx, f"shadeAvg{raster_idx}"] = avg
                 self.data.at[idx, f"shadeArea{raster_idx}"] = pixel_areas
-                self.data.at[idx, f"shadeGeom{raster_idx}"] = shade_polygons
+            self.data[f"shadeGeom{raster_idx}"] = all_shade_geoms
 
     def get_qualified_shaded_geometries(self, min_shade_area=200) -> None:
         """
