@@ -24,8 +24,8 @@ class CoolSpace:
                 f"Invalid 'how' parameter: {how}. Choose from "
                 f"'difference', 'intersection', 'union', 'symmetric_difference'."
             )
-
-        clipped = gpd.overlay(to_clip, clipper, how=how)
+        clipper.to_crs(to_clip)
+        clipped = gpd.overlay(to_clip, clipper, how=how, keep_geom_type=False)
         self.data['clipped'] = clipped.geometry
 
     def calculate_shade(self, rasters: list[rasterio.io.DatasetReader], area_thres=200, use_clip=False) -> None:
@@ -37,7 +37,7 @@ class CoolSpace:
         :param use_clip: use clipped geometry or not, if there is no clipped geometry, original will be used.
         """
 
-        if use_clip and self.data['clipped']:
+        if use_clip and self.data['clipped'].any():
             geometries = self.data['clipped']
         else:
             print("No clipped geometry, default geometry will be used.")
@@ -60,6 +60,10 @@ class CoolSpace:
             all_shade_geoms = gpd.GeoSeries()
 
             for idx, geom in enumerate(geometries):
+                if geom is None:
+                    print(f"Geometry {idx} is None, skipping.")
+                    continue
+
                 # check if geometry intersects the ratser or not
                 if geom.intersects(raster_bounds):
                     clipped_geom = geom.intersection(raster_bounds)
