@@ -1,4 +1,5 @@
 geopandas
+pandas
 shapely
 rasterio
 matplotlib
