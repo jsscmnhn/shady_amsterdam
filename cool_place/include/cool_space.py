@@ -86,7 +86,7 @@ class CoolSpace:
 
                 # calculate average shade value
                 valid_data = out_image[out_image >= 0]
-                avg = valid_data.mean() if valid_data.size > 0 else 0
+                avg = valid_data.mean() if valid_data.size > 0 else 0.0
 
                 # for all the pixels have shade value <= 0.5 (0 means maximum shade, 1 means sun),
                 # calculate the continuous area
@@ -121,8 +121,8 @@ class CoolSpace:
                 else:
                     all_shade_geoms = pd.concat([all_shade_geoms, gpd.GeoSeries([None])], ignore_index=True)
 
-                self.data.at[idx, f"shadeAvg{raster_idx}"] = avg
-                self.data.at[idx, f"shadeArea{raster_idx}"] = pixel_areas
+                self.data.at[idx, f"shadeAvg{raster_idx}"] = np.float64(avg)
+                self.data.at[idx, f"shadeArea{raster_idx}"] = str(pixel_areas)
             self.data[f"shadeGeom{raster_idx}"] = all_shade_geoms
 
     def get_qualified_shaded_geometries(self, min_shade_area=200) -> None:
