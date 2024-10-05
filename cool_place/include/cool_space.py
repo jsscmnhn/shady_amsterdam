@@ -24,7 +24,11 @@ class CoolSpace:
                 f"Invalid 'how' parameter: {how}. Choose from "
                 f"'difference', 'intersection', 'union', 'symmetric_difference'."
             )
-        clipper.to_crs(to_clip)
+        if clipper.crs is None:
+            clipper = clipper.set_crs(to_clip.crs)
+        if to_clip.crs != clipper.crs:
+            clipper = clipper.to_crs(to_clip.crs)
+
         clipped = gpd.overlay(to_clip, clipper, how=how, keep_geom_type=False)
         self.data['clipped'] = clipped.geometry
 
@@ -84,8 +88,9 @@ class CoolSpace:
                 valid_data = out_image[out_image >= 0]
                 avg = valid_data.mean() if valid_data.size > 0 else 0
 
-                # for all the pixels have shade value >= 0.5, calculate the continuous area
-                labeled_array, num_features = label(out_image >= 0.5)
+                # for all the pixels have shade value <= 0.5 (0 means maximum shade, 1 means sun),
+                # calculate the continuous area
+                labeled_array, num_features = label((out_image >= 0) & (out_image <= 0.5))
                 pixel_size = out_transform[0] * (-out_transform[4])  # area of a pixel
                 pixel_areas = []
                 shade_polygons = []
