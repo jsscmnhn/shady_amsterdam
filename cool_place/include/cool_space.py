@@ -18,19 +18,32 @@ class CoolSpace:
         self.data["shape_qualified"] = None
         self.data["geoms_qualified"] = None
 
-    def clip(self, to_clip: gpd.geodataframe, clipper: gpd.geodataframe, how='difference') -> None:
+    def clip(self, clipper: gpd.geodataframe, how='difference', use_clip=False) -> None:
         if how not in ['difference', 'intersection', 'union', 'symmetric_difference']:
             raise ValueError(
                 f"Invalid 'how' parameter: {how}. Choose from "
                 f"'difference', 'intersection', 'union', 'symmetric_difference'."
             )
         if clipper.crs is None:
-            clipper = clipper.set_crs(to_clip.crs)
-        if to_clip.crs != clipper.crs:
-            clipper = clipper.to_crs(to_clip.crs)
+            clipper = clipper.set_crs(self.data.crs)
+        if self.data.crs != clipper.crs:
+            clipper = clipper.to_crs(self.data.crs)
+        if use_clip and 'clipped' in self.data.columns:
+            self.data.set_geometry('clipped', inplace=True)
+        else:
+            self.data.set_geometry('geometry', inplace=True)
 
-        clipped = gpd.overlay(to_clip, clipper, how=how, keep_geom_type=False)
-        self.data['clipped'] = clipped.geometry
+        self.data['orig_id'] = self.data.index
+
+        clipped = gpd.overlay(self.data, clipper, how=how, keep_geom_type=True)
+
+        # map clipped geometry back to origin index
+        clipped['orig_id'] = clipped['orig_id'].astype(int)
+        clipped.set_index('orig_id', inplace=True)
+
+        # match geometry and attributes to self.data using index
+        self.data['clipped'] = clipped.geometry.reindex(self.data.index)
+        self.data.drop(columns='orig_id', inplace=True)
 
     def calculate_shade(self, rasters: list[rasterio.io.DatasetReader], area_thres=200, use_clip=False) -> None:
         """
@@ -42,10 +55,10 @@ class CoolSpace:
         """
 
         if use_clip and self.data['clipped'].any():
-            geometries = self.data['clipped']
+            self.data.set_geometry('clipped', inplace=True)
         else:
             print("No clipped geometry, default geometry will be used.")
-            geometries = self.data['geometry']
+            self.data.set_geometry('geometry', inplace=True)
 
         # same calculation for each raster
         for raster_idx, raster in enumerate(rasters):
@@ -61,11 +74,13 @@ class CoolSpace:
             print(raster_bounds)
 
             # create GeoSeries to store all the shadeGeom (polygon transformed from pixels)
-            all_shade_geoms = gpd.GeoSeries()
+            all_shade_geoms = gpd.GeoSeries(index=self.data.index)
 
-            for idx, geom in enumerate(geometries):
+            for idx, row in self.data.iterrows():
+                geom = row[self.data.geometry.name]
                 if geom is None:
                     print(f"Geometry {idx} is None, skipping.")
+                    all_shade_geoms.at[idx] = None
                     continue
 
                 # check if geometry intersects the ratser or not
@@ -76,9 +91,10 @@ class CoolSpace:
                     # if intersection fail (empty) or the clipped result is too small, skip it
                     if clipped_geom.is_empty or clipped_geom.area < 1e-6:
                         print(f"Geometry {idx} is too small ({clipped_geom.area}) or empty after intersection, skipping.")
+                        all_shade_geoms.at[idx] = None
                         continue
                 else:
-                    continue # if geometry not intersects with ratser, skip it
+                    continue  # if geometry not intersects with ratser, skip it
 
                 geom_geojson = [clipped_geom.__geo_interface__]  # transform geom to GeoJSON
                 out_image, out_transform = mask(raster, geom_geojson, crop=True)
@@ -109,19 +125,13 @@ class CoolSpace:
                             if value == 1:  # reserve the "true" part
                                 shade_polygons.append(shape(geom))
 
-                # merge all pixel polygons into one
                 if shade_polygons:
                     merged_polygon = unary_union(shade_polygons)
+                    all_shade_geoms.at[idx] = merged_polygon
                 else:
-                    merged_polygon = None
+                    all_shade_geoms.at[idx] = None
 
-                if shade_polygons:
-                    merged_polygon = unary_union(shade_polygons)
-                    all_shade_geoms = pd.concat([all_shade_geoms, gpd.GeoSeries([merged_polygon])], ignore_index=True)
-                else:
-                    all_shade_geoms = pd.concat([all_shade_geoms, gpd.GeoSeries([None])], ignore_index=True)
-
-                self.data.at[idx, f"shadeAvg{raster_idx}"] = np.float64(avg)
+                self.data.at[idx, f"shadeAvg{raster_idx}"] = np.float64(round(avg, 4))
                 self.data.at[idx, f"shadeArea{raster_idx}"] = str(pixel_areas)
             self.data[f"shadeGeom{raster_idx}"] = all_shade_geoms
 
