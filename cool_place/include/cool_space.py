@@ -45,13 +45,14 @@ class CoolSpace:
         self.data['clipped'] = clipped.geometry.reindex(self.data.index)
         self.data.drop(columns='orig_id', inplace=True)
 
-    def calculate_shade(self, rasters: list[rasterio.io.DatasetReader], area_thres=200, use_clip=False) -> None:
+    def calculate_shade(self, rasters: list[rasterio.io.DatasetReader], area_thres=200, shade_thres=0.5, use_clip=False) -> None:
         """
         input a series of rasters, calculate each raster's average shade, areas of shade, and store corresponding
         shade pixels.
         :param rasters: input list of rasters
         :param area_thres: minimum threshold of shade area, by default is 200m2
-        :param use_clip: use clipped geometry or not, if there is no clipped geometry, original will be used.
+        :param shade_thres: maximum threshold of shade value, by default is 0.5
+        :param use_clip: use clipped geometry or not, if there is no clipped geometry, original will be used
         """
 
         if use_clip and self.data['clipped'].any():
@@ -83,7 +84,7 @@ class CoolSpace:
                     all_shade_geoms.at[idx] = None
                     continue
 
-                # check if geometry intersects the ratser or not
+                # check if geometry intersects the raster or not
                 if geom.intersects(raster_bounds):
                     clipped_geom = geom.intersection(raster_bounds)
                     print(f"Clipped geometry {idx}, area: {clipped_geom.area}")
@@ -94,7 +95,7 @@ class CoolSpace:
                         all_shade_geoms.at[idx] = None
                         continue
                 else:
-                    continue  # if geometry not intersects with ratser, skip it
+                    continue  # if geometry not intersects with raster, skip it
 
                 geom_geojson = [clipped_geom.__geo_interface__]  # transform geom to GeoJSON
                 out_image, out_transform = mask(raster, geom_geojson, crop=True)
@@ -106,7 +107,7 @@ class CoolSpace:
 
                 # for all the pixels have shade value <= 0.5 (0 means maximum shade, 1 means sun),
                 # calculate the continuous area
-                labeled_array, num_features = label((out_image >= 0) & (out_image <= 0.5))
+                labeled_array, num_features = label((out_image >= 0) & (out_image <= shade_thres))
                 pixel_size = out_transform[0] * (-out_transform[4])  # area of a pixel
                 pixel_areas = []
                 shade_polygons = []
@@ -140,7 +141,7 @@ class CoolSpace:
         get geometries that have continuous shaded areas larger than 200m2
         """
         self.data["shade_qualified"] = None
-        self.data["shade_qualified"]: bool = self.data["shadeAreas"].apply(
+        self.data["shade_qualified"] = self.data["shadeAreas"].apply(
             lambda x: any(area >= min_shade_area for area in x) if x else False
         )
 
@@ -163,7 +164,7 @@ class CoolSpace:
         self.data["clipped_perimeter"] = geometries.length
         self.data["clipped_area"] = geometries.area
         self.data["clipped_perimeter_area_ratio"] = self.data["clipped_area"] / self.data["clipped_perimeter"]
-        self.data["shape_qualified"]: bool = self.data["clipped_perimeter_area_ratio"] > ratio_thres
+        self.data["shape_qualified"] = self.data["clipped_perimeter_area_ratio"] > ratio_thres
 
         if self.data["shape_qualified"].any():
             print(f"There are {self.data['shape_qualified'].sum()}/{self.data.shape[0]} shape-qualified geometries.")

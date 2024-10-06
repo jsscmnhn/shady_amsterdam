@@ -1,3 +1,5 @@
 /.idea
 *.pyc
 /cool_place/test.py
+.vscode
+**/.DS_Store
