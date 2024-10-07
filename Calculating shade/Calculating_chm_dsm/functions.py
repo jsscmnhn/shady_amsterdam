@@ -120,7 +120,7 @@ def create_affine_transform(top_left_x, top_left_y, res):
     transform = Affine.translation(top_left_x, top_left_y) * Affine.scale(res, -res)
     return transform
 
-def write_output(dataset, output, transform, name):
+def write_output(dataset, output, transform, name, nodata_value=False):
     """
     Write grid to .tiff file.
 
@@ -145,6 +145,10 @@ def write_output(dataset, output, transform, name):
 
     output = np.squeeze(output)
 
+    if nodata_value == True:
+        nodata_value = -9999
+    else: nodata_value = dataset.nodata
+
     with rasterio.open(output_file, 'w',
                        driver='GTiff',
                        height=output.shape[0],  # Assuming output is (rows, cols)
@@ -152,6 +156,7 @@ def write_output(dataset, output, transform, name):
                        count=1,
                        dtype=output.dtype,
                        crs=crs,
+                       nodata=nodata_value,
                        transform=transform) as dst:
         dst.write(output, 1)
     print("File written to '%s'" % output_file)

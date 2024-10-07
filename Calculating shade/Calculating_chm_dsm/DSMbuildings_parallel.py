@@ -12,6 +12,7 @@ import tqdm
 import startinpy
 import time
 from rasterio import Affine
+from concurrent.futures import ProcessPoolExecutor
 
 
 def get_bbox(raster_paths):
@@ -164,84 +165,93 @@ def extract_tilename(filename):
     return None
 
 
+def process_single_file(chm_path, dtm_path, dsm_path, building_geometries, output_base_folder, nodata_value=-9999):
+    chm_filename = os.path.basename(chm_path)
+    file_number = re.search(r'_(\d+)\.TIF', chm_filename).group(1)
+    tile = extract_tilename(chm_filename)
+
+    if not tile:
+        print(f"Skipping {chm_filename}, couldn't extract common part.")
+        return
+
+    # Output folder for tile
+    output_folder = os.path.join(output_base_folder, tile)
+    os.makedirs(output_folder, exist_ok=True)
+
+    # Overlap BBOX dtm, dsm & chm
+    raster_paths = [dtm_path, chm_path, dsm_path]
+    overlapping_bbox = get_bbox(raster_paths)
+
+    # Cropping rasters to bbox
+    dtm_cropped, dtm_transform, dtm_crs = crop_raster(dtm_path, overlapping_bbox, no_data=nodata_value, tile=tile,
+                                                      file_number=file_number)
+    dsm_cropped, dsm_transform, dsm_crs = crop_raster(dsm_path, overlapping_bbox, no_data=nodata_value, tile=tile,
+                                                      file_number=file_number)
+    chm_cropped, chm_transform, _ = crop_raster(chm_path, overlapping_bbox, no_data=nodata_value, tile=tile,
+                                                file_number=file_number)
+
+    # Fill raster with DTM and DSM data
+    filled_dtm, _ = fill_raster(dtm_cropped, nodata_value, dtm_transform)
+    filled_dsm, new_dsm_transform = fill_raster(dsm_cropped, nodata_value, dsm_transform)
+
+    # Norm CHM calculation
+    chm_result, new_chm_transform = chm_finish(chm_cropped, filled_dtm, chm_transform)
+
+    # Insert buildings from DSM in DTM
+    final_dsm_with_buildings = replace_buildings(filled_dtm, filled_dsm, building_geometries, new_dsm_transform,
+                                                 nodata_value)
+
+    # Output file names
+    output_dtm_filename = f"DSM_{tile}_{file_number}.tif"
+    output_chm_filename = f"CHM_{tile}_{file_number}.tif"
+
+    # Saving final DTM + buildings
+    output_dtm_path = os.path.join(output_folder, output_dtm_filename)
+    write_output(rasterio.open(dtm_path), final_dsm_with_buildings, new_dsm_transform, output_dtm_path, True)
+
+    # Saving CHM result
+    output_chm_path = os.path.join(output_folder, output_chm_filename)
+    write_output(rasterio.open(chm_path), chm_result, new_chm_transform, output_chm_path, True)
+
+    print(f"Processed {chm_filename} and saved output to {output_dtm_filename}")
+
+
 def process_files(chm_files, dtm_path, dsm_path, buildings_path, output_base_folder, nodata_value=-9999):
+    total_start_time = time.time()
+
+    # Load building geometries once
     first_chm_filename = os.path.basename(chm_files[0])
     tile = extract_tilename(first_chm_filename)
 
     if not tile:
-        print(f"Skipping {first_chm_filename}, couldn't extract common part.")
+        print(f"Skipping {first_chm_filename}, couldn't extract tile information.")
         return
 
-    # building geom loaded in once
+    # Load building geometries once for the tile
     building_geometries = load_buildings(buildings_path, layer=tile)
 
-    # output folder for tile
-    output_folder = os.path.join(output_base_folder, tile)
-    os.makedirs(output_folder, exist_ok=True)
-    total_start_time = time.time()
-
-    # Use tqdm to wrap the file list for progress tracking
-    for chm_path in tqdm.tqdm(chm_files, desc="Processing Files", unit="file"):
-        chm_filename = os.path.basename(chm_path)
-        file_number = re.search(r'_(\d+)\.TIF', chm_filename).group(1)
-        print(file_number)
-
-        # overlap BBOX dtm, dsm & chm
-        raster_paths = [dtm_path, chm_path, dsm_path]
-        overlapping_bbox = get_bbox(raster_paths)
-        print(f"\nProcessing tile {chm_filename}")
-        start_time = time.time()
-
-        # Cropping rasters to bbox
-        dtm_cropped, dtm_transform, dtm_crs = crop_raster(dtm_path, overlapping_bbox, no_data=nodata_value, tile=tile,
-                                                          file_number=file_number)
-        dsm_cropped, dsm_transform, dsm_crs = crop_raster(dsm_path, overlapping_bbox, no_data=nodata_value, tile=tile,
-                                                          file_number=file_number)
-        chm_cropped, chm_transform, _ = crop_raster(chm_path, overlapping_bbox, no_data=nodata_value, tile=tile,
-                                                    file_number=file_number)
-
-        print(f"cropped at {(time.time() - start_time):.2f}")
-        # no data values fill
-
-        # fill
-        filled_dtm, _ = fill_raster(dtm_cropped, nodata_value, dtm_transform)
-        print(f"filled dtm at {(time.time() - start_time):.2f}")
-
-        filled_dsm, new_dsm_transform = fill_raster(dsm_cropped, nodata_value, dsm_transform)
-        print(f"filled dsm at {(time.time() - start_time):.2f}")
-        # # norm CHM calculation
-        chm_result, new_chm_transform = chm_finish(chm_cropped, filled_dtm, chm_transform)
-        #
-        # Insert buildings from DSM in DTM
-        final_dsm_with_buildings = replace_buildings(filled_dtm, filled_dsm, building_geometries, new_dsm_transform,
-                                                     nodata_value)
-        print(f"filled buildings at {(time.time() - start_time):.2f}")
-
-        # output file names
-        output_dtm_filename = f"DSM_{tile}_{file_number}.tif"
-        output_chm_filename = f"CHM_{tile}_{file_number}.tif"
-
-        # Saving final DTM + buildings
-        output_dtm_path = os.path.join(output_folder, output_dtm_filename)
-        write_output(rasterio.open(dtm_path), final_dsm_with_buildings, new_dsm_transform, output_dtm_path, True)
-
-        # FOR NOW SAVING TO NEW PATH FOR TESTING -> CHANGE THIS WHEN IT WORKS
-        output_chm_path = os.path.join(output_folder, output_chm_filename)
-        write_output(rasterio.open(chm_path), chm_result, new_chm_transform, output_chm_path, True)
-
-        elapsed_time = time.time() - start_time
-        print(f"Processed {chm_filename} in {elapsed_time:.2f} seconds and saved output to {output_dtm_filename}")
+    # Set up a ProcessPoolExecutor to parallelize the file processing
+    with ProcessPoolExecutor() as executor:
+        # Use tqdm for progress tracking and parallel submission of tasks
+        list(tqdm.tqdm(executor.map(
+            process_single_file,
+            chm_files,  # CHM files are iterated over
+            [dtm_path] * len(chm_files),  # All share the same DTM path
+            [dsm_path] * len(chm_files),  # All share the same DSM path
+            [building_geometries] * len(chm_files),  # Pass the building geometries loaded once
+            [output_base_folder] * len(chm_files),  # All share the same output base folder
+            [nodata_value] * len(chm_files)  # All use the same nodata value
+        ), total=len(chm_files), desc="Processing Files", unit="file"))
 
     total_elapsed_time = time.time() - total_start_time
     print(f"\nAll files processed in {total_elapsed_time:.2f} seconds.")
 
-
-#%% Run the processing function
 geotiff_dtm = "data/DTM_ams.tif"
 geotiff_dsm = "data/DSM_ams.tif"
 buildings = "data/ams_buildings.gpkg"
-chm_folder = "output/25DN2_TEST"
-output_base_folder = "final"
+
+chm_folder = "D:/Geomatics/CHM/25DN2"
+output_base_folder = "D:/Geomatics/final"
 
 chm_files = glob.glob(os.path.join(chm_folder, "*.TIF"))
-process_files(chm_files, geotiff_dtm, geotiff_dsm, buildings, output_base_folder)
+process_files(chm_files, geotiff_dtm, geotiff_dsm, buildings, output_base_folder, nodata_value=-9999)
