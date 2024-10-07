@@ -45,13 +45,14 @@ class CoolSpace:
         self.data['clipped'] = clipped.geometry.reindex(self.data.index)
         self.data.drop(columns='orig_id', inplace=True)
 
-    def calculate_shade(self, rasters: list[rasterio.io.DatasetReader], area_thres=200, shade_thres=0.5, use_clip=False) -> None:
+    def calculate_shade(self, rasters: list[rasterio.io.DatasetReader], area_thres=200, shade_thres=0.5, ratio_thres=0.35, use_clip=False) -> None:
         """
         input a series of rasters, calculate each raster's average shade, areas of shade, and store corresponding
         shade pixels.
         :param rasters: input list of rasters
         :param area_thres: minimum threshold of shade area, by default is 200m2
         :param shade_thres: maximum threshold of shade value, by default is 0.5
+        :param ratio_thres: minimum threshold of area-to-perimeter ratio, by default is 0.35
         :param use_clip: use clipped geometry or not, if there is no clipped geometry, original will be used
         """
 
@@ -124,7 +125,8 @@ class CoolSpace:
                         # use rasterio.features.shapes to transform the mask to geometry
                         for geom, value in shapes(region_mask, transform=out_transform):
                             if value == 1:  # reserve the "true" part
-                                shade_polygons.append(shape(geom))
+                                if shape(geom).area / shape(geom).length >= ratio_thres:  # check the ratio of area to perimeter
+                                    shade_polygons.append(shape(geom))
 
                 if shade_polygons:
                     merged_polygon = unary_union(shade_polygons)
@@ -136,50 +138,6 @@ class CoolSpace:
                 self.data.at[idx, f"shadeArea{raster_idx}"] = str(pixel_areas)
             self.data[f"shadeGeom{raster_idx}"] = all_shade_geoms
 
-    def get_qualified_shaded_geometries(self, min_shade_area=200) -> None:
-        """
-        get geometries that have continuous shaded areas larger than 200m2
-        """
-        self.data["shade_qualified"] = None
-        self.data["shade_qualified"] = self.data["shadeAreas"].apply(
-            lambda x: any(area >= min_shade_area for area in x) if x else False
-        )
-
-        if self.data["shade_qualified"].any():
-            print(f"There are {self.data['shade_qualified'].sum()}/{self.data.shape[0]} shade-qualified geometries.")
-        else:
-            print("No shade-qualified geometries found.")
-
-    def get_qualified_shape_geometries(self, ratio_thres=0.35, use_clip=False) -> None:
-        """
-        get geometries that have the ratio of area to perimeter > 0.35
-        """
-        geometries = None
-        if use_clip and 'clipped' in self.data:
-            geometries = self.data['clipped']
-        else:
-            print("No clipped geometry, default geometry will be used.")
-            geometries = self.data.geometry
-
-        self.data["clipped_perimeter"] = geometries.length
-        self.data["clipped_area"] = geometries.area
-        self.data["clipped_perimeter_area_ratio"] = self.data["clipped_area"] / self.data["clipped_perimeter"]
-        self.data["shape_qualified"] = self.data["clipped_perimeter_area_ratio"] > ratio_thres
-
-        if self.data["shape_qualified"].any():
-            print(f"There are {self.data['shape_qualified'].sum()}/{self.data.shape[0]} shape-qualified geometries.")
-        else:
-            print("No shape-qualified geometries found.")
-
-    def get_qualified_geometries(self) -> None:
-        """
-        get geometries that fulfill all the qualification checks.
-        """
-        if not self.data["shade_qualified"].any() or not self.data["shape_qualified"].any():
-            raise ValueError("Please check shade and shape qualification first.")
-
-        self.data["geoms_qualified"] = None
-        self.data["geoms_qualified"] = self.data[self.data["shade_qualified"] and self.data["shape_qualified"]]
 
 
 if __name__ == '__main__':
