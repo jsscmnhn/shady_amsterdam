@@ -111,7 +111,6 @@ class CoolSpace:
                 # calculate average shade value
                 valid_data = out_image[(out_image >= 0) & (out_image <= shade_thres)]
                 avg = valid_data.mean() if valid_data.size > 0 else 0.0
-                avg = np.round(avg, 4)
 
                 # for all the pixels have shade value <= 0.5 (0 means maximum shade, 1 means sun),
                 # calculate the continuous area
@@ -144,11 +143,13 @@ class CoolSpace:
                 self.data.at[idx, f"shadeAvg{raster_idx}"] = np.float64(avg)
                 self.data.at[idx, f"shadeArea{raster_idx}"] = pixel_areas
             self.data[f"shadeGeom{raster_idx}"] = all_shade_geoms
+            self.data[f"shadeArea{raster_idx}"].round(4)
             self.intervals = len(rasters)
 
     def get_shade_geometries(self, raster_idx: int) -> gpd.geodataframe:
         """
         get shade geometries for a specific raster
+
         :param raster_idx: index of raster
         :return: shade geometries for a specific raster
         """
@@ -158,14 +159,15 @@ class CoolSpace:
         if self.data[shade_geom_col].isnull().all():
             print(f"No shade geometry for raster {raster_idx} in data.")
             return None
-        
+
         output = self.data[self.data[shade_geom_col].notnull()][['id', shade_avg_col, shade_area_col,shade_geom_col]].copy()
         output.set_geometry(shade_geom_col, inplace=True)
         return output
-    
+
     def get_cool_spaces(self) -> gpd.geodataframe:
         """
         get cool spaces geometries (the geometries that have shade geometries from all rasters)
+
         :return: cool spaces geometries for a specific raster
         """
         raster_nums = self.intervals
@@ -178,7 +180,7 @@ class CoolSpace:
         for raster_idx in range(raster_nums):
             shade_geom_col = f"shadeGeom{raster_idx}"
             self.data["count"] += self.data[shade_geom_col].notnull().astype(int)
-        
+
         if self.data[cool_geom_col].isnull().all():
             print("No clipped geometry in data, the original geometry will be returned.")
             cool_geom_col = "geometry"
@@ -188,6 +190,30 @@ class CoolSpace:
         output.set_geometry(cool_geom_col, inplace=True)
         self.data.drop(columns=["count"], inplace=True)
         return output
+
+    def evaluate_shade_coverage(self) -> None:
+        raster_nums = self.intervals
+        if raster_nums == 0:
+            print("No shade calculation has been done, please run calculate_shade() first.")
+            return None
+        self.data["tol_shade_avg"] = 0
+        for i in range(raster_nums):
+            shade_avg_col = f"shadeAvg{i}"
+            self.data["tol_shade_avg"] += self.data[shade_avg_col].fillna(0)
+
+        self.data["tol_shade_avg"] /= raster_nums
+        self.data["tol_shade_avg"] = self.data["tol_shade_avg"].round(4)
+
+        if 0 <= self.data["tol_shade_avg"] <= 0.1:
+            self.data["shadeCover"] = 1
+        elif 0.1 < self.data["tol_shade_avg"] <= 0.3:
+            self.data["shadeCover"] = 2
+        elif 0.3 < self.data["tol_shade_avg"] <= 0.5:
+            self.data["shadeCover"] = 3
+        else:
+            self.data["shadeCover"] = 4  # This should not happen, but just in case.
+
+        self.data["shadeCover"] = self.data["shadeCover"].astype(int)
 
 
 if __name__ == '__main__':
@@ -199,4 +225,3 @@ if __name__ == '__main__':
 
     coolSpace = CoolSpace(gpd.read_file(filepath_win))
     coolSpace.get_qualified_shaded_geometries()
-
