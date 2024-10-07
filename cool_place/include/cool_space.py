@@ -192,6 +192,11 @@ class CoolSpace:
         return output
 
     def evaluate_shade_coverage(self) -> None:
+        """
+        calculate the shade coverage based on the average shade value of all rasters.
+        - The shade coverage is classified into 4 categories: 0 (<50%), 1 (50%), 2 (70%), 3 (90%).
+        - The shade coverage will be added as a new column to self.data as "shadeCover".
+        """
         raster_nums = self.intervals
         if raster_nums == 0:
             print("No shade calculation has been done, please run calculate_shade() first.")
@@ -205,15 +210,16 @@ class CoolSpace:
         self.data["tol_shade_avg"] = self.data["tol_shade_avg"].round(4)
 
         if 0 <= self.data["tol_shade_avg"] <= 0.1:
-            self.data["shadeCover"] = 1
+            self.data["shadeCover"] = 3
         elif 0.1 < self.data["tol_shade_avg"] <= 0.3:
             self.data["shadeCover"] = 2
         elif 0.3 < self.data["tol_shade_avg"] <= 0.5:
-            self.data["shadeCover"] = 3
+            self.data["shadeCover"] = 1
         else:
-            self.data["shadeCover"] = 4  # This should not happen, but just in case.
+            self.data["shadeCover"] = 0  # This should not happen, but just in case.
 
         self.data["shadeCover"] = self.data["shadeCover"].astype(int)
+        self.data.drop(columns=["tol_shade_avg"], inplace=True)
 
 
 if __name__ == '__main__':
