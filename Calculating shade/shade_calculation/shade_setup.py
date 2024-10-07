@@ -9,18 +9,16 @@ import geopandas as gpd
 import pandas as pd
 
 
-
 ### Shade calculation setup
 
-def shadecalculation_setup(filepath_dsm='None', filepath_veg='None',
-                           date=dt.datetime.now(),
+def shadecalculation_setup(filepath_dsm='None', filepath_veg='None', tile_no='/', date=dt.datetime.now(),
                            intervalTime=30, onetime=1, filepath_save='None', UTC=0, dst=1, useveg=0, trunkheight=25,
                            transmissivity=20):
     '''Calculates spot, hourly and or daily shading for a DSM
     Needs:
     filepath_dsm = a path to a (building) dsm,
     date = a datetime object (defaults to datetime.now()),
-    intervaltime = an integer in minutes as interval,
+    intervaltime = a integer in minutes as interval,
     onetime = to differentiate between single shade cast and day (default is single timestamp)
     filepath_save = 'path to the folder in which to save the files'
     UTC = defaults to 0, optional in plugin, denotes the UCT shift (AMS +2)
@@ -83,7 +81,9 @@ def shadecalculation_setup(filepath_dsm='None', filepath_veg='None',
     # print('lat:' + str(lat))
 
     ## Import vegetation dsm
+
     trans = transmissivity / 100.0
+
     if useveg == 1:
         usevegdem = 1
 
@@ -92,6 +92,10 @@ def shadecalculation_setup(filepath_dsm='None', filepath_veg='None',
             print("No vegetation filepath given")
             return
 
+        # load raster
+        # gdal.AllRegister()
+        # provider = vegdsm.dataProvider()
+        # filePathOld = str(provider.dataSourceUri())
         dataSet = gdal.Open(filepath_veg)
         vegdsm = dataSet.ReadAsArray().astype(float)
 
@@ -101,7 +105,20 @@ def shadecalculation_setup(filepath_dsm='None', filepath_veg='None',
         if not (vegsizex == sizex) & (vegsizey == sizey):
             print("Error; All grids must be of same extent and resolution")
             return
-        ## Defaulted trunk zone to 25%
+        ## Removed the option for Trunkzone DSM. Defaults to 25%
+        # if self.dlg.checkBoxTrunkExist.isChecked():
+        #     vegdsm2 = self.layerComboManagerVEGDSM2.currentLayer()
+
+        #     if vegdsm2 is None:
+        #         QMessageBox.critical(None, "Error", "No valid trunk zone DSM selected")
+        #         return
+
+        #     # load raster
+        #     gdal.AllRegister()
+        #     provider = vegdsm2.dataProvider()
+        #     filePathOld = str(provider.dataSourceUri())
+        #     dataSet = gdal.Open(filePathOld)
+        #     vegdsm2 = dataSet.ReadAsArray().astype(float)
         # else:
         trunkratio = trunkheight / 100.0
         vegdsm2 = vegdsm * trunkratio
@@ -117,6 +134,39 @@ def shadecalculation_setup(filepath_dsm='None', filepath_veg='None',
         vegdsm2 = 0
         usevegdem = 0
 
+    ## REMOVED WALLSHADOW FUNCTIONS FOR NOW.
+    # if self.dlg.checkBoxWallsh.isChecked():
+    #     wallsh = 1
+    #     # wall height layer
+    #     whlayer = self.layerComboManagerWH.currentLayer()
+    #     if whlayer is None:
+    #             QMessageBox.critical(None, "Error", "No valid wall height raster layer is selected")
+    #             return
+    #     provider = whlayer.dataProvider()
+    #     filepath_wh= str(provider.dataSourceUri())
+    #     self.gdal_wh = gdal.Open(filepath_wh)
+    #     wheight = self.gdal_wh.ReadAsArray().astype(float)
+    #     vhsizex = wheight.shape[0]
+    #     vhsizey = wheight.shape[1]
+    #     if not (vhsizex == sizex) & (vhsizey == sizey):  # &
+    #         QMessageBox.critical(None, "Error", "All grids must be of same extent and resolution")
+    #         return
+
+    #     # wall aspectlayer
+    #     walayer = self.layerComboManagerWA.currentLayer()
+    #     if walayer is None:
+    #             QMessageBox.critical(None, "Error", "No valid wall aspect raster layer is selected")
+    #             return
+    #     provider = walayer.dataProvider()
+    #     filepath_wa= str(provider.dataSourceUri())
+    #     self.gdal_wa = gdal.Open(filepath_wa)
+    #     waspect = self.gdal_wa.ReadAsArray().astype(float)
+    #     vasizex = waspect.shape[0]
+    #     vasizey = waspect.shape[1]
+    #     if not (vasizex == sizex) & (vasizey == sizey):
+    #         QMessageBox.critical(None, "Error", "All grids must be of same extent and resolution")
+    #         return
+    # else:
     wallsh = 0
     wheight = 0
     waspect = 0
@@ -150,7 +200,7 @@ def shadecalculation_setup(filepath_dsm='None', filepath_veg='None',
 
         shadowresult = dailyshading(dsm, vegdsm, vegdsm2, scale, lon, lat, sizex, sizey, tv, UTC, usevegdem,
                                     intervalTime, onetime, filepath_save, gdal_dsm, trans,
-                                    dst, wallsh, wheight, waspect)
+                                    dst, wallsh, wheight, waspect, tile_no)
 
         shfinal = shadowresult["shfinal"]
         time_vector = shadowresult["time_vector"]
@@ -159,14 +209,13 @@ def shadecalculation_setup(filepath_dsm='None', filepath_veg='None',
             timestr = time_vector.strftime("%Y%m%d")
             # Changed filepath to include the tile_id in the filename.
             # savestr = '/shadow_fraction_on_'
-            # savestr = '/shadow_fraction_on_'
-            savestr = 'shadow_'
+            savestr = '_shadow_fraction_on_'
         else:
             timestr = time_vector.strftime("%Y%m%d_%H%M")
             # savestr = '/Shadow_at_'
-            savestr = 'shadow_'
+            savestr = 'Shadow_at_'
 
-    filename = filepath_save + savestr + timestr + '.tif'
+    filename = filepath_save + tile_no + savestr + timestr + '.tif'
 
     ## TODO: change to saverasternd or other function
     saveraster(gdal_dsm, filename, shfinal)
@@ -175,7 +224,7 @@ def shadecalculation_setup(filepath_dsm='None', filepath_veg='None',
 ############## DAILYSHADING ################
 
 def dailyshading(dsm, vegdsm, vegdsm2, scale, lon, lat, sizex, sizey, tv, UTC, usevegdem, timeInterval, onetime, folder,
-                 gdal_data, trans, dst, wallshadow, wheight, waspect):
+                 gdal_data, trans, dst, wallshadow, wheight, waspect, tile_no):
     # lon = lonlat[0]
     # lat = lonlat[1]
     year = tv[0]
@@ -201,6 +250,8 @@ def dailyshading(dsm, vegdsm, vegdsm2, scale, lon, lat, sizex, sizey, tv, UTC, u
         # Bush separation
         bush = np.logical_not((vegdem2 * vegdem)) * vegdem
 
+    #     vegshtot = np.zeros((sizex, sizey))
+    # else:
 
     shtot = np.zeros((sizex, sizey))
 
@@ -216,9 +267,12 @@ def dailyshading(dsm, vegdsm, vegdsm2, scale, lon, lat, sizex, sizey, tv, UTC, u
     time = dict()
     time['UTC'] = UTC
 
-
-    walls = np.zeros((sizex, sizey))
-    dirwalls = np.zeros((sizex, sizey))
+    if wallshadow == 1:
+        walls = wheight
+        dirwalls = waspect
+    else:
+        walls = np.zeros((sizex, sizey))
+        dirwalls = np.zeros((sizex, sizey))
 
     for i in range(0, itera):
         if onetime == 0:
@@ -267,27 +321,57 @@ def dailyshading(dsm, vegdsm, vegdsm2, scale, lon, lat, sizex, sizey, tv, UTC, u
         timestr = time_vector.strftime("%Y%m%d_%H%M")
 
         if alt[i] > 0:
-            if usevegdem == 0:
-                sh = shadow.shadowingfunctionglobalradiation(dsm, azi[i], alt[i], scale, 0)
-                # shtot = shtot + sh
+            if wallshadow == 1:  # Include wall shadows (Issue #121)
+                if usevegdem == 1:
+                    vegsh, sh, _, wallsh, _, wallshve, _, _ = 0,0,0,0,0,0,0,0
+                    sh = sh - (1 - vegsh) * (1 - psi)
+                    if onetime == 0:
+                        filenamewallshve = folder + '/Facadeshadow_fromvegetation_' + timestr + '_LST.tif'
+                        saveraster(gdal_data, filenamewallshve, wallshve)
+                else:
+                    sh, wallsh,= 0,0
+                    # shtot = shtot + sh
+
+                if onetime == 0:
+                    filename = folder + '/Shadow_ground_' + timestr + '_LST.tif'
+                    saveraster(gdal_data, filename, sh)
+                    filenamewallsh = folder + '/Facadeshadow_frombuilding_' + timestr + '_LST.tif'
+                    saveraster(gdal_data, filenamewallsh, wallsh)
+
+
             else:
-                # changed to "optimized" function
-                shadowresult = shadow.shadowingfunction_20(dsm, vegdem, vegdem2, azi[i], alt[i], scale, amaxvalue,
-                                                           bush, 0)
+                if usevegdem == 0:
+                    sh = shadow.shadowingfunctionglobalradiation(dsm, azi[i], alt[i], scale, 0)
+                    # shtot = shtot + sh
+                else:
+                    # changed to "optimized" function
+                    shadowresult = shadow.shadowingfunction_20(dsm, vegdem, vegdem2, azi[i], alt[i], scale, amaxvalue,
+                                                               bush, 0)
 
-                vegsh = shadowresult["vegsh"]
-                sh = shadowresult["sh"]
-                sh = sh - (1 - vegsh) * (1 - psi)
+                    vegsh = shadowresult["vegsh"]
+                    sh = shadowresult["sh"]
+                    sh = sh - (1 - vegsh) * (1 - psi)
+                # vegshtot = vegshtot + sh
+                # sh = shadow.shadowingfunctionglobalradiation(dsm, azi[i], alt[i], scale, 0)
 
-            if onetime == 0:
-                filename = folder + '_Shadow_' + timestr + '_LST.tif'
-                ## EDITED
-                saveraster(gdal_data, filename, sh)
+                if onetime == 0:
+                    filename = folder + tile_no + '_Shadow_' + timestr + '_LST.tif'
+                    ## EDITED
+                    saveraster(gdal_data, filename, sh)
 
-        shtot = shtot + sh
-        index += 1
+            shtot = shtot + sh
+            index += 1
 
     shfinal = shtot / index
+
+    if wallshadow == 1:
+        if onetime == 1:
+            filenamewallsh = folder + '/Facadeshadow_frombuilding_' + timestr + '_LST.tif'
+            saveraster(gdal_data, filenamewallsh, wallsh)
+            if usevegdem == 1:
+                filenamewallshve = folder + '/Facadeshadow_fromvegetation_' + timestr + '_LST.tif'
+                saveraster(gdal_data, filenamewallshve, wallshve)
+
     shadowresult = {'shfinal': shfinal, 'time_vector': time_vector}
 
     # dlg.progressBar.setValue(0)
@@ -334,66 +418,19 @@ def dectime_to_timevec(dectime):
     return (HOURS, MINS, SECS)
 
 
-# def saveraster(gdal_data, filename, raster):
-#     rows = gdal_data.RasterYSize
-#     cols = gdal_data.RasterXSize
-#
-#     outDs = gdal.GetDriverByName("GTiff").Create(filename, cols, rows, int(1), GDT_Float32)
-#     outBand = outDs.GetRasterBand(1)
-#
-#     # write the data
-#     outBand.WriteArray(raster, 0, 0)
-#     # flush data to disk, set the NoData value and calculate stats
-#     outBand.FlushCache()
-#     outBand.SetNoDataValue(-9999)
-#
-#     # georeference the image and set the projection
-#     outDs.SetGeoTransform(gdal_data.GetGeoTransform())
-#     outDs.SetProjection(gdal_data.GetProjection())
-
 def saveraster(gdal_data, filename, raster):
     rows = gdal_data.RasterYSize
     cols = gdal_data.RasterXSize
 
-    # Check if rows and cols are valid
-    if rows <= 0 or cols <= 0:
-        print(f"Invalid raster dimensions: rows={rows}, cols={cols}")
-        return
-
-    # Create the output dataset
-    driver = gdal.GetDriverByName("GTiff")
-    if driver is None:
-        print("GTiff driver is not available.")
-        return
-
-    outDs = driver.Create(filename, cols, rows, 1, gdal.GDT_Float32)  # 1 = single band
-
-    # Check if outDs was created successfully
-    if outDs is None:
-        print(f"Failed to create raster dataset for file: {filename}")
-        return
-
+    outDs = gdal.GetDriverByName("GTiff").Create(filename, cols, rows, int(1), GDT_Float32)
     outBand = outDs.GetRasterBand(1)
-    if outBand is None:
-        print(f"Failed to get raster band for file: {filename}")
-        return
 
-    # Write the data
-    try:
-        outBand.WriteArray(raster)
-    except Exception as e:
-        print(f"Error writing raster data: {e}")
-        return
-
-    # Flush cache and set NoData value
+    # write the data
+    outBand.WriteArray(raster, 0, 0)
+    # flush data to disk, set the NoData value and calculate stats
     outBand.FlushCache()
     outBand.SetNoDataValue(-9999)
 
-    # Georeference the image and set projection
+    # georeference the image and set the projection
     outDs.SetGeoTransform(gdal_data.GetGeoTransform())
     outDs.SetProjection(gdal_data.GetProjection())
-
-    # Close the dataset properly to ensure the data is written to disk
-    outDs = None
-    print(f"Raster saved successfully to {filename}")
-
