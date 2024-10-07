@@ -14,9 +14,6 @@ class CoolSpace:
     def __init__(self, data: gpd.geodataframe) -> None:
         self.data = data
         self.data["clipped"] = None
-        self.data["shade_qualified"] = None
-        self.data["shape_qualified"] = None
-        self.data["geoms_qualified"] = None
 
     def clip(self, clipper: gpd.geodataframe, how='difference', use_clip=False) -> None:
         if how not in ['difference', 'intersection', 'union', 'symmetric_difference']:
