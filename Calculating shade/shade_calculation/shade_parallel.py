@@ -26,8 +26,10 @@ def process_file_pair(chm_filename, dsm_filename, folder_path, output_dir, date)
         dst=1,
         useveg=1,
         trunkheight=25,
-        transmissivity=10
-    )
+        transmissivity=10,
+        start_time=10,
+        end_time=21
+        )
 
     print(f"Completed shade calculation for: {chm_filename} and {dsm_filename}.")
 
@@ -74,7 +76,7 @@ def run_shade_calculation(folder_path, output_base_folder, date, max_workers=4):
                 print(f"Error occurred while processing: {e}")
 
 
-def process_folders_sequentially(base_folder, output_base_folder, date, max_workers=12):
+def process_folders_sequentially(base_folder, output_base_folder, date, max_workers=4):
     # Get a list of all folders in the base folder
     folder_paths = [os.path.join(base_folder, f) for f in os.listdir(base_folder) if
                     os.path.isdir(os.path.join(base_folder, f))]
@@ -88,4 +90,4 @@ base_folder = "C:/Users/Admin/Documents/Jessica/test"
 output_base_folder = "C:/Users/Admin/Documents/Jessica/output"
 date = dt.datetime(2015, 7, 1)
 
-process_folders_sequentially(base_folder, output_base_folder, date, max_workers=8)
+process_folders_sequentially(base_folder, output_base_folder, date, max_workers=24)
