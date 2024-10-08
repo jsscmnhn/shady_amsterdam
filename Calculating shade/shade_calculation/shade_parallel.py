@@ -84,8 +84,8 @@ def process_folders_sequentially(base_folder, output_base_folder, date, max_work
         run_shade_calculation(folder_path, output_base_folder, date, max_workers)
 
 
-base_folder = "C:/Users/Admin/Documents/Jessica/test"
-output_base_folder = "C:/Users/Admin/Documents/Jessica/output"
+base_folder = "G:/Geomatics/final"
+output_base_folder = "G:/Geomatics/output"
 date = dt.datetime(2015, 7, 1)
 
-process_folders_sequentially(base_folder, output_base_folder, date, max_workers=8)
+process_folders_sequentially(base_folder, output_base_folder, date, max_workers=24)
