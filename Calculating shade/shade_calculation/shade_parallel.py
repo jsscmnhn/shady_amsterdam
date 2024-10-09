@@ -90,4 +90,4 @@ base_folder = "G:/Geomatics/final"
 output_base_folder = "G:/Geomatics/output"
 date = dt.datetime(2015, 7, 1)
 
-process_folders_sequentially(base_folder, output_base_folder, date, max_workers=24)
+process_folders_sequentially(base_folder, output_base_folder, date, max_workers=50)
