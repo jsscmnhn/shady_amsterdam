@@ -46,15 +46,16 @@ class CoolSpace:
     def calculate_shade(self, rasters: list[rasterio.io.DatasetReader], area_thres=200, shade_thres=0.5, ratio_thres=0.35, use_clip=False) -> None:
         """
         input a series of rasters, use previous geometries to clip the rasters, and calculate each raster's average shade, areas of shade, and shade geometries.
+
         - The average shade value is calculated as the average of all pixels with 0 <=shade value <= 0.5 (0 means maximum shade, 1 means sun).
         - The shade area is calculated as the area of all continuous areas larger than 200m2.
         - The shade geometry is calculated as the union of all shade polygons with area-to-perimeter ratio >= 0.35.
 
-        - The average shade value will be added as a new column to self.data as "shadeAvg{raster_idx}"
-        - The shade area will be added as a new column to self.data as "shadeArea{raster_idx}"
-        - The shade geometry will be added as a new column to self.data as "shadeGeom{raster_idx}"
+        - The average shade value will be added as a new column to "self.data" as "shadeAvg{raster_idx}"
+        - The shade area will be added as a new column to "self.data" as "shadeArea{raster_idx}"
+        - The shade geometry will be added as a new column to "self.data" as "shadeGeom{raster_idx}"
 
-        - An extra column "intervals" will be added to self (NOT self.data!) to indicate the number of rasters used for shade calculation.
+        - An extra column "intervals" will be added to self (NOT "self.data"!) to indicate the number of rasters used for shade calculation.
 
         :param rasters: input list of rasters
         :param area_thres: minimum threshold of shade area, by default is 200m2
@@ -88,7 +89,7 @@ class CoolSpace:
             for idx, row in self.data.iterrows():
                 geom = row[self.data.geometry.name]
                 if geom is None:
-                    print(f"Geometry {idx} is None, skipping.")
+                    # print(f"Geometry {idx} is None, skipping.")
                     all_shade_geoms.at[idx] = None
                     continue
 
@@ -110,7 +111,7 @@ class CoolSpace:
 
                 # calculate average shade value
                 valid_data = out_image[(out_image >= 0) & (out_image <= shade_thres)]
-                avg = valid_data.mean() if valid_data.size >= 0 else -1
+                avg = valid_data.mean() if valid_data.size > 0 else -1
 
                 # for all the pixels have shade value <= 0.5 (0 means maximum shade, 1 means sun),
                 # calculate the continuous area
@@ -161,23 +162,34 @@ class CoolSpace:
             return None
 
         output = self.data[self.data[shade_geom_col].notnull()][['id', shade_avg_col, shade_area_col,shade_geom_col]].copy()
-        output.set_geometry(shade_geom_col, inplace=True)
+        output = output.set_geometry(shade_geom_col, crs=self.data.crs)
         return output
 
-    def get_cool_spaces(self) -> gpd.geodataframe:
+    def get_cool_spaces(self, start: int = None, end: int = None) -> gpd.geodataframe:
         """
-        get cool spaces geometries (the geometries that have shade geometries from all rasters)
+        get cool spaces geometries (the geometries that have shade geometries from the rasters within the search range).
 
+        - if a cool space has at least one shade geometry from all searching rasters, it will be return, otherwise it
+          will be discarded.
+
+        :param start: the index of the first raster of the search range
+        :param end: the index of the last raster of the search range
         :return: cool spaces geometries for a specific raster
         """
         raster_nums = self.intervals
         cool_geom_col = f"clipped"
         self.data["count"] = 0
-        # shade_geom_col_list = [f"shadeGeom{i}" for i in range(raster_nums)]
-        shade_avg_col_list = [f"shadeAvg{i}" for i in range(raster_nums)]
-        shade_area_col_list = [f"shadeArea{i}" for i in range(raster_nums)]
 
-        for raster_idx in range(raster_nums):
+        if start is not None and end is not None:
+            search_range = range(start, end + 1)
+        else:
+            search_range = range(raster_nums)
+
+        # shade_geom_col_list = [f"shadeGeom{i}" for i in range(raster_nums)]
+        shade_avg_col_list = [f"shadeAvg{i}" for i in search_range]
+        shade_area_col_list = [f"shadeArea{i}" for i in search_range]
+
+        for raster_idx in search_range:
             shade_geom_col = f"shadeGeom{raster_idx}"
             self.data["count"] += self.data[shade_geom_col].notnull().astype(int)
 
@@ -194,8 +206,9 @@ class CoolSpace:
     def evaluate_shade_coverage(self) -> None:
         """
         calculate the shade coverage based on the average shade value of all rasters.
+
         - The shade coverage is classified into 4 categories: 0 (<50%), 1 (50%), 2 (70%), 3 (90%).
-        - The shade coverage will be added as a new column to self.data as "shadeCover".
+        - The shade coverage will be added as a new column to "self.data" as "shadeCover".
         """
         raster_nums = self.intervals
         if raster_nums == 0:
@@ -209,25 +222,17 @@ class CoolSpace:
         self.data["tol_shade_avg"] /= raster_nums
         self.data["tol_shade_avg"] = self.data["tol_shade_avg"].round(4)
 
-        if 0 <= self.data["tol_shade_avg"] <= 0.1:
-            self.data["shadeCover"] = 3
-        elif 0.1 < self.data["tol_shade_avg"] <= 0.3:
-            self.data["shadeCover"] = 2
-        elif 0.3 < self.data["tol_shade_avg"] <= 0.5:
-            self.data["shadeCover"] = 1
-        else:
-            self.data["shadeCover"] = 0  # This should not happen, but just in case.
+        def classify_shade_coverage(avg) -> int:
+            if 0 <= avg <= 0.1:
+                return 3
+            elif avg <= 0.3:
+                return 2
+            elif avg <= 0.5:
+                return 1
+            else:
+                return 0
+
+        self.data["shadeCover"] = self.data["tol_shade_avg"].apply(classify_shade_coverage).astype(int)
 
         self.data["shadeCover"] = self.data["shadeCover"].astype(int)
         self.data.drop(columns=["tol_shade_avg"], inplace=True)
-
-
-if __name__ == '__main__':
-    directory_mac = "/Volumes/T7 Shield/TUD/Synthesis/cool_place/"
-    directory_win = "G:\\TUD\\Synthesis\\cool_place\\"
-    filename = "ams_landuse_top10NL.shp"
-    filepath_mac = directory_mac + filename
-    filepath_win = directory_win + filename
-
-    coolSpace = CoolSpace(gpd.read_file(filepath_win))
-    coolSpace.get_qualified_shaded_geometries()
