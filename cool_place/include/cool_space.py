@@ -110,7 +110,7 @@ class CoolSpace:
 
                 # calculate average shade value
                 valid_data = out_image[(out_image >= 0) & (out_image <= shade_thres)]
-                avg = valid_data.mean() if valid_data.size > 0 else 0.0
+                avg = valid_data.mean() if valid_data.size >= 0 else -1
 
                 # for all the pixels have shade value <= 0.5 (0 means maximum shade, 1 means sun),
                 # calculate the continuous area
