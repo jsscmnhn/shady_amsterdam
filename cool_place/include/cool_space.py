@@ -109,10 +109,6 @@ class CoolSpace:
                 out_image, out_transform = mask(raster, geom_geojson, crop=True)
                 out_image = out_image[0]  # assume shade value is stored in band 1
 
-                # calculate average shade value
-                valid_data = out_image[(out_image >= 0) & (out_image <= shade_thres)]
-                avg = valid_data.mean() if valid_data.size > 0 else -1
-
                 # for all the pixels have shade value <= 0.5 (0 means maximum shade, 1 means sun),
                 # calculate the continuous area
                 labeled_array, num_features = label((out_image >= 0) & (out_image <= shade_thres))
@@ -141,8 +137,17 @@ class CoolSpace:
                 else:
                     all_shade_geoms.at[idx] = None
 
-                self.data.at[idx, f"shadeAvg{raster_idx}"] = np.float64(avg)
                 self.data.at[idx, f"shadeArea{raster_idx}"] = pixel_areas
+
+                # calculate average shade value
+                valid_data = out_image[(out_image >= 0) & (out_image <= shade_thres)]
+                if len(pixel_areas) == 0:
+                    avg = 1
+                else:
+                    avg = valid_data.mean() if valid_data.size > 0 else 1
+
+                self.data.at[idx, f"shadeAvg{raster_idx}"] = np.float64(avg)
+
             self.data[f"shadeGeom{raster_idx}"] = all_shade_geoms
             self.data[f"shadeArea{raster_idx}"].round(4)
             self.intervals = len(rasters)
@@ -214,10 +219,10 @@ class CoolSpace:
         if raster_nums == 0:
             print("No shade calculation has been done, please run calculate_shade() first.")
             return None
-        self.data["tol_shade_avg"] = 0
+        self.data["tol_shade_avg"] = None
         for i in range(raster_nums):
             shade_avg_col = f"shadeAvg{i}"
-            self.data["tol_shade_avg"] += self.data[shade_avg_col].fillna(0)
+            self.data["tol_shade_avg"] += self.data[shade_avg_col].fillna(1)
 
         self.data["tol_shade_avg"] /= raster_nums
         self.data["tol_shade_avg"] = self.data["tol_shade_avg"].round(4)
