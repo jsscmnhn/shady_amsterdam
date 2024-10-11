@@ -35,13 +35,34 @@ class CoolSpace:
 
         clipped = gpd.overlay(self.data, clipper, how=how, keep_geom_type=True)
 
-        # map clipped geometry back to origin index
-        clipped['orig_id'] = clipped['orig_id'].astype(int)
-        clipped.set_index('orig_id', inplace=True)
+        # # map clipped geometry back to origin index
+        # clipped['orig_id'] = clipped['orig_id'].astype(int)
+        # clipped.set_index('orig_id', inplace=True)
+
+        # Explode multipolygons into individual polygons
+        exploded = clipped.explode(index_parts=False).reset_index(drop=True)
+
+        # Calculate area to perimeter ratio
+        exploded['area'] = exploded.geometry.area
+        exploded['perimeter'] = exploded.geometry.length
+        exploded['area_to_perimeter'] = exploded['area'] / exploded['perimeter']
+
+        # Filter polygons based on area to perimeter ratio
+        filtered = exploded[exploded['area_to_perimeter'] >= 0.35]
+
+        # Group by original geometry and merge polygons back to multipolygon if needed
+        filtered = filtered.dissolve(by='orig_id')
+
+        # Set back to original index
+        filtered.set_index('orig_id', inplace=True)
+
+        # Update self.data with the filtered multipolygon geometries
+        self.data['clipped'] = filtered.geometry.reindex(self.data.index)
+        self.data.drop(columns='orig_id', inplace=True)
 
         # match geometry and attributes to self.data using index
         self.data['clipped'] = clipped.geometry.reindex(self.data.index)
-        self.data.drop(columns='orig_id', inplace=True)
+        self.data.drop(columns=['orig_id', 'area', 'perimeter', 'area_to_perimeter'], inplace=True)
 
     def calculate_shade(self, rasters: list[rasterio.io.DatasetReader], area_thres=200, shade_thres=0.5, ratio_thres=0.35, use_clip=False) -> None:
         """
@@ -120,7 +141,7 @@ class CoolSpace:
                 for region_label in range(1, num_features + 1):
                     region_area = np.sum(labeled_array == region_label) * pixel_size
                     if region_area >= area_thres:
-                        pixel_areas.append(region_area)
+                        pixel_areas.append(np.round(region_area, 4))
 
                         # create region mask (bool)
                         region_mask = (labeled_array == region_label).astype(np.uint8)
@@ -149,7 +170,6 @@ class CoolSpace:
                 self.data.at[idx, f"sdAvg{raster_idx}"] = np.float64(avg)
 
             self.data[f"sdGeom{raster_idx}"] = all_shade_geoms
-            self.data[f"sdArea{raster_idx}"].round(4)
             self.intervals = len(rasters)
 
     def get_shade_geometries(self, raster_idx: int) -> gpd.geodataframe:
