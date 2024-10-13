@@ -35,10 +35,6 @@ class CoolSpace:
 
         clipped = gpd.overlay(self.data, clipper, how=how, keep_geom_type=True)
 
-        # # map clipped geometry back to origin index
-        # clipped['orig_id'] = clipped['orig_id'].astype(int)
-        # clipped.set_index('orig_id', inplace=True)
-
         # Explode multipolygons into individual polygons
         exploded = clipped.explode(index_parts=False).reset_index(drop=True)
 
@@ -47,11 +43,11 @@ class CoolSpace:
         exploded['perimeter'] = exploded.geometry.length
         exploded['area_to_perimeter'] = exploded['area'] / exploded['perimeter']
 
-        # Filter polygons based on area to perimeter ratio
-        filtered = exploded[exploded['area_to_perimeter'] >= 0.35]
+        # Filter polygons based on area to perimeter ratio and area
+        filtered = exploded[(exploded['area'] >= 200) & (exploded['area_to_perimeter'] >= 0.35)]
 
         # Group by original geometry and merge polygons back to multipolygon if needed
-        filtered = filtered.dissolve(by='orig_id')
+        filtered = filtered.dissolve(by='orig_id', as_index=False)
 
         # Set back to original index
         filtered.set_index('orig_id', inplace=True)
@@ -59,10 +55,6 @@ class CoolSpace:
         # Update self.data with the filtered multipolygon geometries
         self.data['clipped'] = filtered.geometry.reindex(self.data.index)
         self.data.drop(columns='orig_id', inplace=True)
-
-        # match geometry and attributes to self.data using index
-        self.data['clipped'] = clipped.geometry.reindex(self.data.index)
-        self.data.drop(columns=['orig_id', 'area', 'perimeter', 'area_to_perimeter'], inplace=True)
 
     def calculate_shade(self, rasters: list[rasterio.io.DatasetReader], area_thres=200, shade_thres=0.5, ratio_thres=0.35, use_clip=False) -> None:
         """
