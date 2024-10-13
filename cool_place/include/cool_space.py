@@ -186,13 +186,15 @@ class CoolSpace:
         output = output.set_geometry(shade_geom_col, crs=self.data.crs)
         return output
 
-    def get_cool_spaces(self, start: int = None, end: int = None) -> gpd.geodataframe:
+    def get_cool_spaces(self, start: int = None, end: int = None, geom_type: str = 'geometry') -> gpd.geodataframe:
         """
         get cool spaces geometries (the geometries that have shade geometries from the rasters within the search range).
 
         - if a cool space has at least one shade geometry from all searching rasters, it will be return, otherwise it
           will be discarded.
 
+        :param geom_type: by default, the output cool space polygon will be the filtered input land-use polygons.
+                    If user wants to output the clipped geometry (public space) as output, set 'type' to 'clipped'
         :param start: the index of the first raster of the search range
         :param end: the index of the last raster of the search range
         :return: cool spaces geometries for a specific raster
@@ -202,7 +204,11 @@ class CoolSpace:
             return None
         
         raster_nums = self.intervals
-        cool_geom_col = f"clipped"
+
+        if geom_type not in ['geometry', 'clipped']:
+            raise ValueError("Invalid type. Expected 'geometry' or 'clipped'.")
+        cool_geom_col = f"{geom_type}"
+
         self.data["count"] = 0
 
         if start is not None and end is not None:
