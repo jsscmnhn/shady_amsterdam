@@ -26,7 +26,7 @@ class Road:
         elif "lokale weg" in roadtype:
             return 10
         elif "overig" in roadtype:
-            return 5
+            return 0
         elif "parkeerplaats" in roadtype:
             return 5
         elif "regionale weg" in roadtype:
