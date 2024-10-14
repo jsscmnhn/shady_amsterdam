@@ -264,6 +264,41 @@ def extract_tilename(filename):
     return None
 
 
+def process_all_folders(input_base_folder, dtm_path, dsm_path, buildings_path, output_base_folder, nodata_value=-9999):
+    """
+    Iterate through each subfolder in the input base folder and process TIF files.
+    ------
+    Input:
+    - input_base_folder (string): Path to the folder containing subfolders of CHM .tif files.
+    - dtm_path (string):          Path to the DTM .tif file.
+    - dsm_path (string):          Path to the DSM .tif file.
+    - buildings_path (string):    Path to the geopackage file containing building geometries.
+    - output_base_folder (string): Base path for saving the output DSM and CHM files.
+    - nodata_value (int):         NoData value for raster processing (default: -9999).
+    """
+    # List all subfolders in the input base folder
+    subfolders = [os.path.join(input_base_folder, subfolder) for subfolder in os.listdir(input_base_folder)
+                  if os.path.isdir(os.path.join(input_base_folder, subfolder))]
+
+    if not subfolders:
+        print(f"No subfolders found in {input_base_folder}.")
+        return
+
+    with tqdm.tqdm(total=len(subfolders), desc="Processing Subfolders", unit="subfolder") as pbar:
+        # Process each subfolder
+        for chm_folder in subfolders:
+            print(f"\nProcessing CHM files in folder: {chm_folder}")
+            process_files(
+                chm_folder=chm_folder,
+                dtm_path=dtm_path,
+                dsm_path=dsm_path,
+                buildings_path=buildings_path,
+                output_base_folder=output_base_folder,
+                nodata_value=nodata_value
+            )
+            pbar.update(1)
+
+
 def process_files(chm_folder, dtm_path, dsm_path, buildings_path, output_base_folder, nodata_value=-9999):
     """
       Function to run the whole process of creating the final DSM and CHM.
@@ -318,12 +353,11 @@ def process_files(chm_folder, dtm_path, dsm_path, buildings_path, output_base_fo
         dsm_cropped, dsm_transform, dsm_crs = crop_raster(dsm_path, overlapping_bbox, no_data=nodata_value, tile=tile,
                                                           file_number=file_number)
         chm_cropped, chm_transform, _ = crop_raster(chm_path, overlapping_bbox, no_data=nodata_value, tile=tile,
-                                                    file_number=file_number)
+                                                          file_number=file_number)
 
         print(f"cropped at {(time.time() - start_time):.2f}")
-        # no data values fill
 
-        # fill
+        # fill no data values dtm & dsm
         filled_dtm, _ = fill_raster(dtm_cropped, nodata_value, dtm_transform)
         print(f"filled dtm at {(time.time() - start_time):.2f}")
 
@@ -332,22 +366,20 @@ def process_files(chm_folder, dtm_path, dsm_path, buildings_path, output_base_fo
 
         # normalized CHM calculation
         chm_result, new_chm_transform = chm_finish(chm_cropped, filled_dtm, chm_transform)
-        #
+
         # Insert buildings from DSM in DTM
         final_dsm_with_buildings = replace_buildings(filled_dtm, filled_dsm, building_geometries, new_dsm_transform,
                                                      nodata_value)
-        print(f"filled buildings at {(time.time() - start_time):.2f}")
+        print(f"Inserted buildings at {(time.time() - start_time):.2f}")
 
-        # output file names
+        # Define output file paths
         output_dtm_filename = f"DSM_{tile}_{file_number}.tif"
         output_chm_filename = f"CHM_{tile}_{file_number}.tif"
-
-        # Saving final DTM + buildings
         output_dtm_path = os.path.join(output_folder, output_dtm_filename)
-        write_output(rasterio.open(dtm_path), final_dsm_with_buildings, new_dsm_transform, output_dtm_path, True)
-
-        # FOR NOW SAVING TO NEW PATH FOR TESTING -> CHANGE THIS WHEN IT WORKS
         output_chm_path = os.path.join(output_folder, output_chm_filename)
+
+        # Write output rasters
+        write_output(rasterio.open(dtm_path), final_dsm_with_buildings, new_dsm_transform, output_dtm_path, True)
         write_output(rasterio.open(chm_path), chm_result, new_chm_transform, output_chm_path, True)
 
         elapsed_time = time.time() - start_time
@@ -355,7 +387,6 @@ def process_files(chm_folder, dtm_path, dsm_path, buildings_path, output_base_fo
 
     total_elapsed_time = time.time() - total_start_time
     print(f"\nAll files processed in {total_elapsed_time:.2f} seconds.")
-
 
 """
 geotiff_dtm = "data/DTM_ams.tif"

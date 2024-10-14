@@ -1,10 +1,8 @@
-import functions
-import os
-import laspy
-import time  # Import time module to track time
-from tqdm import tqdm
-import numpy as np
+""" This file contains the functions to create the 'first CHM', which is the direct output of rasterizing the
+point cloud data. This CHM will still contain no data values, and the ground height is not substracted from the
+vegetation heights. This file can run the CHM creation process in parallel."""
 
+import concurrent.futures
 import functions
 import os
 import laspy
@@ -13,7 +11,37 @@ from tqdm import tqdm
 import numpy as np
 import startinpy
 from scipy.spatial import cKDTree
+from scipy.ndimage import median_filter
 
+def median_filter_chm(chm_array, nodata_value=-9999, size=3):
+    """
+    Apply a median filter to a CHM, handling NoData values.
+    -----
+    Parameters:
+    - chm_array (np.ndarray): The array representing the height values of the CHM.
+    - nodata_value (float): Value representing NoData in the input raster.
+    - size (int): Size of the median filter. It defines the footprint of the filter.
+
+    Returns:
+    - smoothed_chm (np.ndarray): The smoothed CHM array.
+    """
+    # Create a mask for valid data
+    valid_mask = chm_array != nodata_value
+
+    # Pad the data with nodata_value
+    pad_width = size // 2
+    padded_chm = np.pad(chm_array, pad_width, mode='constant', constant_values=nodata_value)
+
+    # Apply median filter to padded data
+    filtered_padded = median_filter(padded_chm.astype(np.float32), size=size)
+
+    # Remove padding
+    smoothed_chm = filtered_padded[pad_width:-pad_width, pad_width:-pad_width]
+
+    # Only keep valid data in smoothed result
+    smoothed_chm[~valid_mask] = nodata_value
+
+    return smoothed_chm
 
 def extract_vegetation_points(LasData, ndvi_threshold=0.1, pre_filter=False):
     """
@@ -58,7 +86,7 @@ def extract_vegetation_points(LasData, ndvi_threshold=0.1, pre_filter=False):
     return veg_points
 
 
-def chm_creation(LasData, vegetation_data, output_filename, resolution=0.5):
+def chm_creation(LasData, vegetation_data, output_filename, resolution=0.5, smooth=False, nodata_value=-9999, filter_size=3):
     """
     Create a CHM from LiDAR vegetation data and save it as a raster.
     -------
@@ -71,6 +99,9 @@ def chm_creation(LasData, vegetation_data, output_filename, resolution=0.5):
     - output_filename (str): The name of the output .tif file for saving the CHM.
     - resolution (float, optional): The spatial resolution of the output raster in the same units as the input data
                                     (default: 0.5).
+    - smooth (bool, optional): If True, applies a median filter to smooth the CHM.
+    - nodata_value (float, optional): The value for NoData pixels (default: -9999).
+    - filter_size (int, optional): Size of the median filter (default: 3).
 
     Output:
     - None: The function saves the CHM as a raster file (.tif) to the specified output path.
@@ -81,6 +112,9 @@ def chm_creation(LasData, vegetation_data, output_filename, resolution=0.5):
     top_left_y = grid_centers[1][0, 0] + resolution / 2
 
     transform = functions.create_affine_transform(top_left_x, top_left_y, resolution)
+
+    if smooth:
+        veg_raster = median_filter_chm(veg_raster, nodata_value=nodata_value, size=filter_size)
 
     functions.write_output(LasData, veg_raster, transform, output_filename, True)
 
@@ -152,58 +186,85 @@ def interpolation_vegetation(LasData, veg_points, resolution, no_data_value=-999
     return interpolated_grid, grid_center_xy
 
 
-def process_laz_files(input_folder, output_folder, ndvi_threshold=0.0, resolution=0.5, remove=False):
+def process_single_laz_file(file_path, output_folder, ndvi_threshold=0.0, resolution=0.5, remove=False,
+                            smooth_chm=False, filter_size=3):
     """
-    Process a folder of LAZ files to extract vegetation points and generate Canopy Height Models (CHMs).
+    Process a LAZ file to extract vegetation points and generate a CHM.
     -------
     Input:
-    - input_folder (str):       The folder containing input .LAZ files.
+    - file_path (str):          The file_path containing the input .LAZ file.
     - output_folder (str):      The folder where the output CHM .tif files will be saved.
     - ndvi_threshold (float):   The NDVI threshold for classifying vegetation points.
     - resolution (float):       The resolution of the output CHM rasters, defining the size of each pixel (default: 0.5).
     - remove (bool):            If True, deletes the original .LAZ files after processing (default: False).
+    - smooth_chm (bool):        If True, applies smoothing to the CHM using a median filter (default: False).
+    - filter_size (int):        Size of the median filter to use if smoothing (default: 3).
 
     Output:
-    - None: The function processes each .LAZ file, creates corresponding CHM .tif files, and saves them to the output folder.
+    - None: The function process a .LAZ file, creates a corresponding CHM .tif file, and saves it to the output folder.
             Optionally deletes the original .LAZ files if `remove` is set to True.
     """
+    tile_name = os.path.splitext(os.path.basename(file_path))[0]
+    output_filename = os.path.join(output_folder, f"CHM_{tile_name}.TIF")
+    print(f"Processing tile {tile_name}")
+    start_time = time.time()
 
+    # Load LAS data
+    with laspy.open(file_path) as las:
+        LasData = las.read()
+
+    # Extract vegetation points
+    veg_points = extract_vegetation_points(LasData, ndvi_threshold=ndvi_threshold)
+
+    # Perform interpolation for vegetation data
+    vegetation_data = interpolation_vegetation(LasData, veg_points, resolution)
+
+    # Create the CHM and save it
+    chm_creation(
+        LasData,
+        vegetation_data,
+        output_filename=output_filename,
+        resolution=resolution,
+        smooth=smooth_chm,
+        nodata_value=-9999,
+        filter_size=filter_size
+    )
+
+    elapsed_time = time.time() - start_time
+    print(
+        f"Processed {os.path.basename(file_path)} in {elapsed_time:.2f} seconds and saved output to {output_filename}")
+
+    # Optionally remove the original file
+    if remove:
+        os.remove(file_path)
+        print(f"Deleted file: {file_path}")
+
+    return file_path
+
+
+def process_laz_files(input_folder, output_folder, ndvi_threshold=0.0, resolution=0.5, remove=False, smooth_chm=False,
+                      filter_size=3, max_workers=4):
+    """
+    Process a folder of LAZ files in parallel to extract vegetation points and generate CHMs.
+    """
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
-    laz_files = [f for f in os.listdir(input_folder) if f.endswith(".LAZ")]
+    laz_files = [os.path.join(input_folder, f) for f in os.listdir(input_folder) if f.endswith(".LAZ")]
 
     total_start_time = time.time()
 
-    # Iterate over files
-    for file_name in tqdm(laz_files, desc="Processing files", unit="file"):
-        file_path = os.path.join(input_folder, file_name)
-        tile_name = os.path.splitext(file_name)[0]
-        output_filename = os.path.join(output_folder, f"CHM_{tile_name}.TIF")
-        print(f"processing tile {tile_name}")
-        start_time = time.time()
+    # Use ProcessPoolExecutor for parallel processing
+    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+        list(tqdm.tqdm(
+            executor.map(lambda file: process_single_laz_file(
+                file, output_folder, ndvi_threshold, resolution, remove, smooth_chm, filter_size
+            ), laz_files),
+            total=len(laz_files),
+            desc="Processing files",
+            unit="file"
+        ))
 
-        # Load LAS data
-        with laspy.open(file_path) as las:
-            LasData = las.read()
-
-        # Extract vegetation points
-        veg_points = extract_vegetation_points(LasData, ndvi_threshold=ndvi_threshold)
-
-        vegetation_data = interpolation_vegetation(LasData, veg_points, 0.5)
-
-        # Create the CHM and save it
-        chm_creation(LasData, vegetation_data, output_filename, resolution=resolution)
-
-        # Calculate time taken for current file
-        elapsed_time = time.time() - start_time
-        print(f"\nProcessed {file_name} in {elapsed_time:.2f} seconds and saved output to {output_filename}")
-
-        if remove:
-            os.remove(file_path)
-            print(f"Deleted file: {file_path}")
-
-    # Calculate and print total processing time
     total_elapsed_time = time.time() - total_start_time
     print(f"\nAll files processed in {total_elapsed_time:.2f} seconds.")
 

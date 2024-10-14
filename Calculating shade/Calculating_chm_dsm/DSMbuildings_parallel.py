@@ -7,7 +7,7 @@ import rasterio
 from shapely.geometry import mapping
 from rasterio.features import geometry_mask
 from scipy.interpolate import NearestNDInterpolator
-from functions import write_output
+from shade_calculation.src.functions import write_output
 import tqdm
 import startinpy
 import time
