@@ -1,3 +1,7 @@
+"""
+This script contains code of the UMEP tool, used to setup the shade calculations. A few changes have been made
+to allow for a user-given timeframe. Thereby, some unused code has been removed.
+"""
 import os
 import datetime as dt
 import sun_position as sp
@@ -5,11 +9,7 @@ import shadowingfunctions as shadow
 from osgeo import gdal, osr
 from osgeo.gdalconst import *
 import numpy as np
-import geopandas as gpd
-import pandas as pd
 
-
-### Shade calculation setup
 
 def shadecalculation_setup(filepath_dsm='None', filepath_veg='None', tile_no='/', date=dt.datetime.now(),
                            intervalTime=30, onetime=1, filepath_save='None', UTC=0, dst=1, useveg=0, trunkheight=25,

@@ -1,10 +1,11 @@
 
 data/C_25GN1.LAZ
 /data
-/Calculating shade/Calculating_chm_dsm/data
-Calculating shade/Calculating_chm_dsm/final/top_CHM_25DN2.TIF
-/Calculating shade/Calculating_chm_dsm/final
-/Calculating shade/Calculating_chm_dsm/output
+/Calculating shade/archive/data
+Calculating shade/archive/final/top_CHM_25DN2.TIF
+/Calculating shade/archive/final
+/Calculating shade/archive/output
 /Calculating shade/shade_calculation/output
-/Calculating shade/Calculating_chm_dsm/tryout
+/Calculating shade/archive/tryout
 Calculating shade/Calculating_chm_dsm/myfile.geojson
+/Calculating shade/data

@@ -1,8 +1,9 @@
+"""
+This script contains code of the UMEP tool, used to calculate the shadows.
+"""
 # -*- coding: utf-8 -*-
 # Ready for python action!
 import numpy as np
-# import matplotlib.pylab as plt
-# from numba import jit
 
 def shadowingfunctionglobalradiation(a, azimuth, altitude, scale, forsvf):
 
@@ -177,25 +178,6 @@ def shadowingfunction_20_updated(a, vegdem, vegdem2, azimuth, altitude, scale, a
 
 def shadowingfunction_20(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue, bush, forsvf):
     ''' Adapted by LB for standalone execution'''
-    # plt.ion()
-    # fig = plt.figure(figsize=(24, 7))
-    # plt.axis('image')
-    # ax1 = plt.subplot(2, 3, 1)
-    # ax2 = plt.subplot(2, 3, 2)
-    # ax3 = plt.subplot(2, 3, 3)
-    # ax4 = plt.subplot(2, 3, 4)
-    # ax5 = plt.subplot(2, 3, 5)
-    # ax6 = plt.subplot(2, 3, 6)
-    # ax1.title.set_text('fabovea')
-    # ax2.title.set_text('gabovea')
-    # ax3.title.set_text('vegsh at ' + str(altitude))
-    # ax4.title.set_text('lastfabovea')
-    # ax5.title.set_text('lastgabovea')
-    # ax6.title.set_text('vegdem')
-
-    # This function casts shadows on buildings and vegetation units.
-    # New capability to deal with pergolas 20210827
-
     # conversion
     degrees = np.pi/180.
     azimuth = azimuth * degrees
@@ -303,21 +285,6 @@ def shadowingfunction_20(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue
         vegsh[(vegsh * sh > 0.)] = 0.
         vbshvegsh = vegsh + vbshvegsh # removing shadows 'behind' buildings
 
-        # im1 = ax1.imshow(fabovea)
-        # im2 = ax2.imshow(gabovea)
-        # im3 = ax3.imshow(vegsh)
-        # im4 = ax4.imshow(lastfabovea)
-        # im5 = ax5.imshow(lastgabovea)
-        # im6 = ax6.imshow(vegshtest)
-        # im1 = ax1.imshow(tempvegdem)
-        # im2 = ax2.imshow(tempvegdem2)
-        # im3 = ax3.imshow(vegsh)
-        # im4 = ax4.imshow(templastfabovea)
-        # im5 = ax5.imshow(templastgabovea)
-        # im6 = ax6.imshow(vegshtest)
-        # plt.show()
-        # plt.pause(0.05)
-
         index += 1.
 
     sh = 1.-sh
@@ -326,26 +293,6 @@ def shadowingfunction_20(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue
     vegsh = 1.-vegsh
     vbshvegsh = 1.-vbshvegsh
 
-    # plt.close()
-    # plt.ion()
-    # fig = plt.figure(figsize=(24, 7))
-    # plt.axis('image')
-    # ax1 = plt.subplot(1, 3, 1)
-    # im1 = ax1.imshow(vegsh)
-    # plt.colorbar(im1)
-
-    # ax2 = plt.subplot(1, 3, 2)
-    # im2 = ax2.imshow(vegdem2)
-    # plt.colorbar(im2)
-    # plt.title('TDSM')
-
-    # ax3 = plt.subplot(1, 3, 3)
-    # im3 = ax3.imshow(vegdem)
-    # plt.colorbar(im3)
-    # plt.tight_layout()
-    # plt.title('CDSM')
-    # plt.show()
-    # plt.pause(0.05)
 
     shadowresult = {'sh': sh, 'vegsh': vegsh, 'vbshvegsh': vbshvegsh}
 

@@ -1,3 +1,7 @@
+"""
+This script contains code of the UMEP tool, used to calculate the position of the sun for the shade calculation.
+"""
+
 # -*- coding: utf-8 -*-
 from __future__ import division
 from __future__ import print_function

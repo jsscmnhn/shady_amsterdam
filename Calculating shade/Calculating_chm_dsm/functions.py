@@ -2,26 +2,15 @@
 Contains relevant functions for completing tasks or visualizations.
 
 ----
-
-- crop_laz:
-
-  Necessary function for crop the LAZ/LAS file to a certain bounding box.
-
-- plot_pointcloud:
-
-  Used for the 3D visualization of point cloud.
-
-- plot_grid:
-
-  Used for the visualization of grid.
+Script containing some functions necessary for creating the rasters.
+- raster_center_coords:
+  To compute the center xy coordinates of a grid
 
 - create_affine_transform:
-
   To create an Affine object which is a transformer necessary for the write_output function.
 
 - write_output:
-
-  For writing the grid to an output .tiff file.
+  For writing the grid to an output .tiff file, original data can be either from a LAZ file or from a TIF.
 """
 
 import laspy
@@ -35,15 +24,12 @@ from scipy.spatial import cKDTree
 def raster_center_coords(min_x, max_x, min_y, max_y, resolution):
     """
     Compute the center xy coordinates of a grid.
-
     ----
+    Input:
+    - min_x, max_x, min_y, max_y(float): Minimum and maximum x and y coordinates of the grid.
+    - resolution (float): The length of each cell, function can only be used for square cells.
 
-    Parameters:
-
-    - resolution: The length of each cell.
-
-    Return:
-
+    Output:
     - grid_center_x: a grid where each cell contains the value of its center point's x coordinates.
     - grid_center_y: a grid where each cell contains the value of its center point's y coordinates.
     """
@@ -57,62 +43,6 @@ def raster_center_coords(min_x, max_x, min_y, max_y, resolution):
     grid_center_y = grid_y - resolution / 2
     return grid_center_x, grid_center_y
 
-
-def interpolation_idw_kdtree(points_list, grid, grid_center_xy, search_radius=1, power=2):
-    """
-    Perform points to raster manipulation using IDW interpolation where the default power is 2.
-
-    *This is the improved version by using KD-Tree method to search points, which takes about
-    7 seconds to perform a 500m * 500m raster (resolution=0.5m).*
-
-    ----
-
-    Parameters:
-
-    - points: a numpy 2D array (n,3), it has n rows (n points) and each row contains each point's xyz values.
-    - grid: a numpy grid for interpolation, which will be manipulated directly.
-    - grid_center_xy:
-
-      a tuple containing two numpy grid (grid_center_x, grid_center_y), both of them has the
-      same shape as the grid and contain the xy coordinates of the center points of grid cells.
-      (e.g.  the center point of grid[i][j] --> grid_center_xy[0][i][j], grid_center_xy[1][i][j])
-
-    - search_radius:
-
-      the search radius of each cell. Default is 1m. Because the IDW interpolation is used, even though there
-      may be some points that shouldn't be included, they shouldn't have significant effect to the assigned z
-      value because their weight is low.
-
-    - power: the power for IDW interpolation equation.
-
-    Return:
-
-    - grid: the output is the manipulated/changed input grid.
-    """
-    rows, cols = grid.shape
-    grid_center_x, grid_center_y = grid_center_xy
-    points_x = points_list[:, 0]
-    points_y = points_list[:, 1]
-    points_z = points_list[:, 2]
-    tree = cKDTree(points_list[:, :2])  # Use xy coordinates to build KD-Tree.
-    for i in range(rows):
-        for j in range(cols):
-            cell_center = [grid_center_x[i, j], grid_center_y[i, j]]
-            # Use query_ball_point method to search points that are inside the range. The
-            # idx is a list contains row numbers, indicating the corresponding points.
-            idx = tree.query_ball_point(cell_center, search_radius)
-
-            if idx:
-                epsilon = 1e-10  # create a very small number to prevent divison by zero.
-                distances = np.sqrt((points_x[idx] - cell_center[0]) ** 2 + (points_y[idx] - cell_center[1]) ** 2)
-                weights = 1 / (distances ** power + epsilon)  # Add the epsilon here.
-                if np.all(weights > 0):  # check there is no zero inside the weights list.
-                    grid[i, j] = np.sum(weights * points_z[idx]) / np.sum(weights)
-                else:
-                    raise ValueError("weights == 0, cannot perform division.")
-    return grid
-
-
 def create_affine_transform(top_left_x, top_left_y, res):
     """
     Create Affine transform for the write_output function.
@@ -123,21 +53,19 @@ def create_affine_transform(top_left_x, top_left_y, res):
 def write_output(dataset, output, transform, name, nodata_value=False):
     """
     Write grid to .tiff file.
-
     ----
-
-    Parameters:
-
+    Input:
     - dataset: Can be either a rasterio dataset (for rasters) or laspy dataset (for point clouds)
-    - output: the output grid, a numpy grid.
-    - name: the name of the output file.
+    - output (Array): the output grid, a numpy grid.
+    - name (String): the name of the output file.
     - transform:
       a user defined rasterio Affine object, used for the transforming the pixel coordinates
       to spatial coordinates.
+    - nodata_value (Boolean): true: use a no data value of -9999, false: use the datasets no data value
     """
     output_file = name
 
-    # Check if dataset is laspy pc
+    #  Determine the CRS: If it's a laspy dataset with a header, use parse_crs; otherwise, use the dataset's crs.
     if hasattr(dataset, 'header') and hasattr(dataset.header, 'parse_crs'):
         crs = dataset.header.parse_crs()
     else:
@@ -145,10 +73,19 @@ def write_output(dataset, output, transform, name, nodata_value=False):
 
     output = np.squeeze(output)
 
-    if nodata_value == True:
+    # Set the nodata value: use -9999 if nodata_value is True or dataset does not have nodata.
+    if nodata_value:
         nodata_value = -9999
-    else: nodata_value = dataset.nodata
+    else:
+        try:
+            nodata_value = dataset.nodata
+            if nodata_value is None:
+                raise AttributeError("No no data value found in dataset.")
+        except AttributeError as e:
+            print(f"Warning: {e}. Defaulting to -9999.")
+            nodata_value = -9999
 
+    # output the dataset
     with rasterio.open(output_file, 'w',
                        driver='GTiff',
                        height=output.shape[0],  # Assuming output is (rows, cols)
