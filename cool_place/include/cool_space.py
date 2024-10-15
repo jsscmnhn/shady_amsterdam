@@ -219,6 +219,7 @@ class CoolSpace:
         # shade_geom_col_list = [f"sdGeom{i}" for i in range(raster_nums)]
         shade_avg_col_list = [f"sdAvg{i}" for i in search_range]
         shade_area_col_list = [f"sdArea{i}" for i in search_range]
+        shade_geom_col_list = [f"sdGeom{i}" for i in search_range]
 
         for raster_idx in search_range:
             shade_geom_col = f"sdGeom{raster_idx}"
@@ -228,13 +229,24 @@ class CoolSpace:
             print("No clipped geometry in data, the original geometry will be returned.")
             cool_geom_col = "geometry"
 
-        columns_to_select = ['id'] + shade_area_col_list + shade_avg_col_list + [cool_geom_col]
+        columns_to_select = (['id'] +
+                             shade_area_col_list +
+                             shade_avg_col_list +
+                             shade_geom_col_list +
+                             ['sdAvgTol'] +
+                             [cool_geom_col])
+
         output = self.data[self.data["count"] > 0][columns_to_select].copy()
         output.set_geometry(cool_geom_col, inplace=True)
+
+        # transform all shade geometries into WKT and store as new columns
+        for i in search_range:
+            output[f"sdGeom{i}"] = output[f"sdGeom{i}"].to_wkt()
+
         self.data.drop(columns=["count"], inplace=True)
         return output
 
-    def evaluate_shade_coverage(self) -> None:
+    def evaluate_shade_coverage(self, start: int = None, end: int = None) -> None:
         """
         calculate the shade coverage based on the average shade value of all rasters.
 
@@ -245,8 +257,14 @@ class CoolSpace:
         if raster_nums == 0:
             print("No shade calculation has been done, please run calculate_shade() first.")
             return None
-        self.data["tol_shade_avg"] = None
-        for i in range(raster_nums):
+
+        if start is not None and end is not None:
+            search_range = range(start, end + 1)
+        else:
+            search_range = range(raster_nums)
+
+        self.data["tol_shade_avg"] = 0
+        for i in search_range:
             shade_avg_col = f"sdAvg{i}"
             self.data["tol_shade_avg"] += self.data[shade_avg_col].fillna(1)
 
@@ -263,7 +281,7 @@ class CoolSpace:
             else:
                 return 0
 
-        self.data["sdAvgTol"] = self.data["tol_shade_avg"].apply(classify_shade_coverage).astype(int)
+        self.data["scScore"] = self.data["tol_shade_avg"].apply(classify_shade_coverage).astype(int)
 
-        self.data["sdAvgTol"] = self.data["sdAvgTol"].astype(int)
+        self.data["scScore"] = self.data["sdScore"].astype(int)
         self.data.drop(columns=["tol_shade_avg"], inplace=True)
