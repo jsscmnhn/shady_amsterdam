@@ -216,7 +216,28 @@ def process_single_file(chm_path, dtm_path, dsm_path, building_geometries, outpu
     print(f"Processed {chm_filename} and saved output to {output_dtm_filename}")
 
 
-def process_files(chm_files, dtm_path, dsm_path, buildings_path, output_base_folder, nodata_value=-9999):
+def process_files(chm_files, dtm_path, dsm_path, buildings_path, output_base_folder, nodata_value=-9999, max_workers=4):
+    """
+      Function to run the whole process of creating the final DSM and CHM.
+      ----
+      Input:
+      - chm_folder (string):         Path to the folder containing input CHM .tif files.
+      - dtm_path (string):           Path to the DTM .tif file.
+      - dsm_path (string):           Path to the DSM .tif file.
+      - buildings_path (string):     Path to the geopackage file containing building geometries.
+      - output_base_folder (string): Base path for saving the output DSM and CHM files.
+      - nodata_value (int):          NoData value for raster processing (default: -9999).
+      - max_workers (int):           Number of parallel processes.
+
+      Output:
+      - None: The function writes output files directly to the specified `output_base_folder`.
+      - Output files:
+          - For each input CHM file, the function generates:
+              - A DSM file with building data incorporated: `DSM_<tile>_<subtile_number>.tif`
+              - A processed CHM file: `CHM_<tile>_<subtile_number>.tif`
+          - These files are saved in folders named after the tile in `output_base_folder`.
+      """
+
     total_start_time = time.time()
 
     # Load building geometries once
@@ -230,28 +251,59 @@ def process_files(chm_files, dtm_path, dsm_path, buildings_path, output_base_fol
     # Load building geometries once for the tile
     building_geometries = load_buildings(buildings_path, layer=tile)
 
-    # Set up a ProcessPoolExecutor to parallelize the file processing
-    with ProcessPoolExecutor() as executor:
-        # Use tqdm for progress tracking and parallel submission of tasks
+    # Parallelize
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
         list(tqdm.tqdm(executor.map(
             process_single_file,
-            chm_files,  # CHM files are iterated over
-            [dtm_path] * len(chm_files),  # All share the same DTM path
-            [dsm_path] * len(chm_files),  # All share the same DSM path
-            [building_geometries] * len(chm_files),  # Pass the building geometries loaded once
-            [output_base_folder] * len(chm_files),  # All share the same output base folder
-            [nodata_value] * len(chm_files)  # All use the same nodata value
+            chm_files,
+            [dtm_path] * len(chm_files),
+            [dsm_path] * len(chm_files),
+            [building_geometries] * len(chm_files),
+            [output_base_folder] * len(chm_files),
+            [nodata_value] * len(chm_files)
         ), total=len(chm_files), desc="Processing Files", unit="file"))
 
     total_elapsed_time = time.time() - total_start_time
     print(f"\nAll files processed in {total_elapsed_time:.2f} seconds.")
 
-geotiff_dtm = "data/DTM_ams.tif"
-geotiff_dsm = "data/DSM_ams.tif"
-buildings = "data/ams_buildings.gpkg"
 
-chm_folder = "D:/Geomatics/CHM/25DN2"
-output_base_folder = "D:/Geomatics/final"
+def process_folders(base_chm_folder, dtm_path, dsm_path, buildings_path, output_base_folder, nodata_value=-9999, max_workers=4):
+    """
+    Process each folder containing CHM files concurrently.
+    -----------------
+    Input:
+    - base_chm_folder (string):     Path to the base folder containing subfolders of CHM files.
+    - dtm_path (string):            Path to the DTM .tif file.
+    - dsm_path (string):            Path to the DSM .tif file.
+    - buildings_path (string):      Path to the geopackage file containing building geometries.
+    - output_base_folder (string):  Base path for saving the output DSM and CHM files.
+    - nodata_value (int):           NoData value for raster processing (default: -9999).
+    - max_workers (int):            Number of parallel processes.
 
-chm_files = glob.glob(os.path.join(chm_folder, "*.TIF"))
-process_files(chm_files, geotiff_dtm, geotiff_dsm, buildings, output_base_folder, nodata_value=-9999)
+    Output:
+    - None: The function writes output files directly to the specified `output_base_folder`.
+    """
+
+    # Iterate over each folder in the base folder
+    for root, dirs, files in os.walk(base_chm_folder):
+        for dir_name in dirs:
+            chm_folder = os.path.join(root, dir_name)
+            print(f"Processing folder: {chm_folder}")
+            process_files(chm_folder, dtm_path, dsm_path, buildings_path, output_base_folder, nodata_value, max_workers=max_workers)
+
+
+"""
+if __name__ == '__main__':
+    geotiff_dtm = "data/DTM_ams.tif"
+    geotiff_dsm = "data/DSM_ams.tif"
+    buildings = "data/ams_buildings.gpkg"
+
+    chm_folder = "E:/temporary_jessica/CHM/25HZ2"
+    output_base_folder = "E:/temporary_jessica/testdsmparallel"
+
+    chm_files = glob.glob(os.path.join(chm_folder, "*.TIF"))
+
+    max_workers = 4
+
+    process_files(chm_files, geotiff_dtm, geotiff_dsm, buildings, output_base_folder, nodata_value=-9999, max_workers=max_workers)
+"""

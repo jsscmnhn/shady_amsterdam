@@ -189,7 +189,7 @@ def process_laz_files(input_folder, output_folder, ndvi_threshold=0.0, resolutio
     Process a folder of LAZ files to extract vegetation points and generate Canopy Height Models (CHMs).
     -------
     Input:
-    - input_folder (str):       The folder containing input .LAZ files.
+    - input_folder (str):       The folder containing folders with the input .LAZ files.
     - output_folder (str):      The folder where the output CHM .tif files will be saved.
     - ndvi_threshold (float):   The NDVI threshold for classifying vegetation points.
     - resolution (float):       The resolution of the output CHM rasters, defining the size of each pixel (default: 0.5).

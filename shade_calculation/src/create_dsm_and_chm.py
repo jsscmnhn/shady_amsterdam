@@ -388,6 +388,30 @@ def process_files(chm_folder, dtm_path, dsm_path, buildings_path, output_base_fo
     total_elapsed_time = time.time() - total_start_time
     print(f"\nAll files processed in {total_elapsed_time:.2f} seconds.")
 
+
+def process_folders(base_chm_folder, dtm_path, dsm_path, buildings_path, output_base_folder, nodata_value=-9999):
+    """
+    Process each folder containing CHM files concurrently.
+    -----------------
+    Input:
+    - base_chm_folder (string):     Path to the base folder containing subfolders of CHM files.
+    - dtm_path (string):            Path to the DTM .tif file.
+    - dsm_path (string):            Path to the DSM .tif file.
+    - buildings_path (string):      Path to the geopackage file containing building geometries.
+    - output_base_folder (string):  Base path for saving the output DSM and CHM files.
+    - nodata_value (int):           NoData value for raster processing (default: -9999).
+
+    Output:
+    - None: The function writes output files directly to the specified `output_base_folder`.
+    """
+
+    # Iterate over each folder in the base folder
+    for root, dirs, files in os.walk(base_chm_folder):
+        for dir_name in dirs:
+            chm_folder = os.path.join(root, dir_name)
+            print(f"Processing folder: {chm_folder}")
+            process_files(chm_folder, dtm_path, dsm_path, buildings_path, output_base_folder, nodata_value)
+
 """
 geotiff_dtm = "data/DTM_ams.tif"
 geotiff_dsm = "data/DSM_ams.tif"

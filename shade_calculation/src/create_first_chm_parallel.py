@@ -250,11 +250,6 @@ def process_single_laz_file(file_path, output_folder, ndvi_threshold=0.0, resolu
 
     return file_path
 
-def process_single_laz_wrapper(file, output_folder, ndvi_threshold, resolution, remove, smooth_chm, filter_size):
-    return process_single_laz_file(
-        file, output_folder, ndvi_threshold, resolution, remove, smooth_chm, filter_size
-    )
-
 def process_laz_files(input_folder, output_folder, ndvi_threshold=0.0, resolution=0.5, remove=False, smooth_chm=False,
                       filter_size=3, max_workers=4):
     """
@@ -277,33 +272,30 @@ def process_laz_files(input_folder, output_folder, ndvi_threshold=0.0, resolutio
     total_start_time = time.time()
 
     # Use ProcessPoolExecutor for parallel processing
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
         list(tqdm(
             executor.map(
-                functools.partial(
-                    process_single_laz_wrapper,
-                    output_folder=output_folder,
-                    ndvi_threshold=ndvi_threshold,
-                    resolution=resolution,
-                    remove=remove,
-                    smooth_chm=smooth_chm,
-                    filter_size=filter_size
-                ),
-                laz_files
+                process_single_laz_file,
+                laz_files,
+                [output_folder] * len(laz_files),
+                [ndvi_threshold] * len(laz_files),
+                [resolution] * len(laz_files),
+                [remove] * len(laz_files),
+                [smooth_chm] * len(laz_files),
+                [filter_size] * len(laz_files)
             ),
             total=len(laz_files),
             desc="Processing files",
             unit="file"
         ))
-
     total_elapsed_time = time.time() - total_start_time
     print(f"\nAll files processed in {total_elapsed_time:.2f} seconds.")
 
 
-"""
+
 if __name__ == '__main__':
     input_folder = "E:/temporary_jessica/LAZ_TILES/25HN1"
     output_folder = "E:/temporary_jessica/LAZ_TILES/25HN1"
     max_workers = 20
     process_laz_files(input_folder, output_folder, max_workers=max_workers)
-"""
+
