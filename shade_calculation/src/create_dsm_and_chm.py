@@ -12,10 +12,11 @@ import rasterio
 from shapely.geometry import mapping
 from rasterio.features import geometry_mask
 from scipy.interpolate import NearestNDInterpolator
-from functions import write_output
+from shade_calculation.extra.functions import write_output
 import tqdm
 import startinpy
 import time
+import scipy.ndimage as ndimage
 from rasterio import Affine
 
 def get_bbox(raster_paths):
@@ -133,7 +134,7 @@ def extract_center_cells(cropped_data, no_data=-9999):
     return xyz_filled
 
 
-def fill_raster(cropped_data, nodata_value, transform):
+def fill_raster(cropped_data, nodata_value, transform, speed_up=False):
     """
     Fill the no data values of a given raster using Laplace interpolation.
     ----
@@ -141,6 +142,8 @@ def fill_raster(cropped_data, nodata_value, transform):
     - cropped_data (2d numpy array): cropped raster data.
     - nodata_value (int): nodata value to replace NAN after interplation with.
     - transform (rasterio transform): affine transform matrix.
+    - speed_up (boolean): If True, checks if there is a large nodata area and uses linear interpolation
+            if so. Default is set to False.
 
     Output:
     - new_data[0, 1:-1, 1:-1] (2d numpy array): filled raster data with first and last rows and columns remove to ensure
@@ -166,8 +169,30 @@ def fill_raster(cropped_data, nodata_value, transform):
     # flatten the grid to get a list of all (col, row) locations
     locs = np.column_stack((cols.ravel(), rows.ravel()))
 
-    # laplace interpolation
-    interpolated_values = dt.interpolate({"method": "Laplace"}, locs)
+    # handle cases with large nodata areas if speed_up is true
+    large_nodata_region = False
+    if speed_up:
+        nodata_mask = (cropped_data == nodata_value)
+
+        # Find connected nodata regions
+        labeled_array, num_features = ndimage.label(nodata_mask)
+
+        # Check if any region meets the minimum size criteria (1100x600 or 600x1100)
+        for region_idx in range(1, num_features + 1):
+            region_slice = ndimage.find_objects(labeled_array == region_idx)[0]
+            region_height = region_slice[1].stop - region_slice[1].start
+            region_width = region_slice[2].stop - region_slice[2].start
+
+            # Check for a region that meets the size condition in either orientation
+            if (region_height >= 1100 and region_width >= 600) or (region_height >= 600 and region_width >= 1100):
+                large_nodata_region = True
+                break
+
+                # laplace interpolation
+    if speed_up and large_nodata_region:
+        interpolated_values = dt.interpolate({"method": "TIN"}, locs)
+    else:
+        interpolated_values = dt.interpolate({"method": "Laplace"}, locs)
 
     # reshape interpolated grid back to original
     interpolated_grid = np.reshape(interpolated_values, (cropped_data.shape[1] - 2, cropped_data.shape[2] - 2))
@@ -299,7 +324,8 @@ def process_all_folders(input_base_folder, dtm_path, dsm_path, buildings_path, o
             pbar.update(1)
 
 
-def process_files(chm_folder, dtm_path, dsm_path, buildings_path, output_base_folder, nodata_value=-9999):
+def process_files(chm_folder, dtm_path, dsm_path, buildings_path, output_base_folder, nodata_value=-9999, speed_up=False,
+                  min_height=2, max_height=40):
     """
       Function to run the whole process of creating the final DSM and CHM.
       ----
@@ -358,14 +384,15 @@ def process_files(chm_folder, dtm_path, dsm_path, buildings_path, output_base_fo
         print(f"cropped at {(time.time() - start_time):.2f}")
 
         # fill no data values dtm & dsm
-        filled_dtm, _ = fill_raster(dtm_cropped, nodata_value, dtm_transform)
+        filled_dtm, _ = fill_raster(dtm_cropped, nodata_value, dtm_transform, speed_up=speed_up)
         print(f"filled dtm at {(time.time() - start_time):.2f}")
 
-        filled_dsm, new_dsm_transform = fill_raster(dsm_cropped, nodata_value, dsm_transform)
+        filled_dsm, new_dsm_transform = fill_raster(dsm_cropped, nodata_value, dsm_transform, speed_up=False)
         print(f"filled dsm at {(time.time() - start_time):.2f}")
 
         # normalized CHM calculation
-        chm_result, new_chm_transform = chm_finish(chm_cropped, filled_dtm, chm_transform)
+        chm_result, new_chm_transform = chm_finish(chm_cropped, filled_dtm, chm_transform, min_height=min_height,
+                                               max_height=max_height)
 
         # Insert buildings from DSM in DTM
         final_dsm_with_buildings = replace_buildings(filled_dtm, filled_dsm, building_geometries, new_dsm_transform,
@@ -389,7 +416,8 @@ def process_files(chm_folder, dtm_path, dsm_path, buildings_path, output_base_fo
     print(f"\nAll files processed in {total_elapsed_time:.2f} seconds.")
 
 
-def process_folders(base_chm_folder, dtm_path, dsm_path, buildings_path, output_base_folder, nodata_value=-9999):
+def process_folders(base_chm_folder, dtm_path, dsm_path, buildings_path, output_base_folder, nodata_value=-9999,
+                    speed_up=False, min_height=2, max_height=40):
     """
     Process each folder containing CHM files concurrently.
     -----------------
@@ -410,7 +438,8 @@ def process_folders(base_chm_folder, dtm_path, dsm_path, buildings_path, output_
         for dir_name in dirs:
             chm_folder = os.path.join(root, dir_name)
             print(f"Processing folder: {chm_folder}")
-            process_files(chm_folder, dtm_path, dsm_path, buildings_path, output_base_folder, nodata_value)
+            process_files(chm_folder, dtm_path, dsm_path, buildings_path, output_base_folder, nodata_value,
+                          speed_up=speed_up, min_height=min_height, max_height=max_height)
 
 """
 geotiff_dtm = "data/DTM_ams.tif"

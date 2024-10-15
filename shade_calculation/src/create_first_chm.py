@@ -2,7 +2,7 @@
 point cloud data. This CHM will still contain no data values, and the ground height is not substracted from the
 vegetation heights."""
 
-import functions
+from shade_calculation.extra import functions
 import os
 import laspy
 import time

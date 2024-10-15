@@ -3,7 +3,7 @@ point cloud data. This CHM will still contain no data values, and the ground hei
 vegetation heights. This file can run the CHM creation process in parallel."""
 
 import concurrent.futures
-import functions
+from shade_calculation.extra import functions
 import os
 import laspy
 import time
@@ -12,7 +12,7 @@ import numpy as np
 import startinpy
 from scipy.spatial import cKDTree
 from scipy.ndimage import median_filter
-import functools
+
 
 def median_filter_chm(chm_array, nodata_value=-9999, size=3):
     """
@@ -292,10 +292,10 @@ def process_laz_files(input_folder, output_folder, ndvi_threshold=0.0, resolutio
     print(f"\nAll files processed in {total_elapsed_time:.2f} seconds.")
 
 
-
+"""
 if __name__ == '__main__':
     input_folder = "E:/temporary_jessica/LAZ_TILES/25HN1"
     output_folder = "E:/temporary_jessica/LAZ_TILES/25HN1"
     max_workers = 20
     process_laz_files(input_folder, output_folder, max_workers=max_workers)
-
+"""

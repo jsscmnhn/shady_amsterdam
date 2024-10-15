@@ -4,8 +4,8 @@ to allow for a user-given timeframe. Thereby, some unused code has been removed.
 """
 import os
 import datetime as dt
-import sun_position as sp
-import shadowingfunctions as shadow
+from . import sun_position as sp
+from . import shadowingfunctions as shadow
 from osgeo import gdal, osr
 from osgeo.gdalconst import *
 import numpy as np

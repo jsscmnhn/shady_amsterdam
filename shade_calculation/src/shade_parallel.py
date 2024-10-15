@@ -1,10 +1,8 @@
 """ This file contains the functions that can take a DSM and CHM of an AHN subtile, and calculate shade maps for
 them. The process can run in parallel."""
+from turtledemo.penrose import start
 
-import tqdm
-import os
-import datetime as dt
-import shade_setup as shade
+from shade_calculation.extra import shade_setup as shade
 
 import os
 import concurrent.futures
@@ -76,6 +74,10 @@ def run_shade_calculation(folder_path, output_base_folder, date, start_time, end
       - None: This function prints messages regarding the processing status and creates output directories.
       """
 
+    # update start time and endtime
+    start_time += 1
+    end_time += 1
+
     chm_files = [f for f in os.listdir(folder_path) if f.startswith('CHM')]
     dsm_files = [f for f in os.listdir(folder_path) if f.startswith('DSM')]
 
@@ -119,7 +121,8 @@ def run_shade_calculation(folder_path, output_base_folder, date, start_time, end
         ), total=len(chm_files), desc=f"Processing files in {folder_path}", unit="file"))
 
 
-def process_folders(base_folder, output_base_folder, date, start_time=10, end_time=21, interval=30, trans=10, trunkheight=25, max_workers=4):
+def process_folders(base_folder, output_base_folder, date, start_time=9, end_time=20, interval=30, trans=10,
+                    trunkheight=25, max_workers=4):
     """
     Function to process all subfolders in a base folder for shade calculations.
     ----
@@ -144,7 +147,8 @@ def process_folders(base_folder, output_base_folder, date, start_time=10, end_ti
 
     for folder_path in tqdm.tqdm(folder_paths, desc="Processing folders"):
         print(f"Processing folder: {folder_path}")
-        run_shade_calculation(folder_path, output_base_folder, date, start_time, end_time, interval, max_workers)
+        run_shade_calculation(folder_path, output_base_folder, date, start_time, end_time, interval, trans,
+                              trunkheight, max_workers)
 
 
 # base_folder = "G:/Geomatics/final"
