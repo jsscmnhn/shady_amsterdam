@@ -12,6 +12,7 @@ import numpy as np
 import startinpy
 from scipy.spatial import cKDTree
 from scipy.ndimage import median_filter
+import functools
 
 def median_filter_chm(chm_array, nodata_value=-9999, size=3):
     """
@@ -57,7 +58,6 @@ def extract_vegetation_points(LasData, ndvi_threshold=0.1, pre_filter=False):
     - laspy.LasData: A new LasData object containing only the filtered vegetation points based on the specified criteria.
     """
 
-
     # Filter points based on classification (vegetation-related classes), note: vegetation classes are empty in AHN4
     possible_vegetation_points = LasData[(LasData.classification == 1) |  # Unclassified
                                          (LasData.classification == 3) |  # Low vegetation
@@ -65,13 +65,13 @@ def extract_vegetation_points(LasData, ndvi_threshold=0.1, pre_filter=False):
                                          (LasData.classification == 5)]  # High vegetation
 
     # Calculate NDVI
+
     red = possible_vegetation_points.red
     nir = possible_vegetation_points.nir
     ndvi = (nir.astype(float) - red) / (nir + red)
 
     # Filter the points whose NDVI is greater than the threshold
     veg_points = possible_vegetation_points[ndvi > ndvi_threshold]
-    print("extracted vegetation points")
 
     # Option: already filter away the points with a height below 1.5m from the lowest veg point, introduced because
     # of one very large tile (25GN2_24.LAZ)
@@ -192,7 +192,7 @@ def process_single_laz_file(file_path, output_folder, ndvi_threshold=0.0, resolu
     Process a LAZ file to extract vegetation points and generate a CHM.
     -------
     Input:
-    - file_path (str):          The file_path containing the input .LAZ file.
+    - file_path (str):          The file_path containing the folders containing the input .LAZ file.
     - output_folder (str):      The folder where the output CHM .tif files will be saved.
     - ndvi_threshold (float):   The NDVI threshold for classifying vegetation points.
     - resolution (float):       The resolution of the output CHM rasters, defining the size of each pixel (default: 0.5).
@@ -205,13 +205,22 @@ def process_single_laz_file(file_path, output_folder, ndvi_threshold=0.0, resolu
             Optionally deletes the original .LAZ files if `remove` is set to True.
     """
     tile_name = os.path.splitext(os.path.basename(file_path))[0]
-    output_filename = os.path.join(output_folder, f"CHM_{tile_name}.TIF")
+    tile = tile_name.split("_")[0]
+
+    # Create a subfolder for this tile's outputs
+    tile_output_folder = os.path.join(output_folder, tile)
+    os.makedirs(tile_output_folder, exist_ok=True)
+
+    # Define the output filename in the tile-specific subfolder
+    output_filename = os.path.join(tile_output_folder, f"CHM_{tile_name}.TIF")
+
     print(f"Processing tile {tile_name}")
     start_time = time.time()
 
     # Load LAS data
     with laspy.open(file_path) as las:
         LasData = las.read()
+        print(f"Loaded {file_path} with {len(LasData.points)} points.")
 
     # Extract vegetation points
     veg_points = extract_vegetation_points(LasData, ndvi_threshold=ndvi_threshold)
@@ -241,6 +250,10 @@ def process_single_laz_file(file_path, output_folder, ndvi_threshold=0.0, resolu
 
     return file_path
 
+def process_single_laz_wrapper(file, output_folder, ndvi_threshold, resolution, remove, smooth_chm, filter_size):
+    return process_single_laz_file(
+        file, output_folder, ndvi_threshold, resolution, remove, smooth_chm, filter_size
+    )
 
 def process_laz_files(input_folder, output_folder, ndvi_threshold=0.0, resolution=0.5, remove=False, smooth_chm=False,
                       filter_size=3, max_workers=4):
@@ -250,16 +263,34 @@ def process_laz_files(input_folder, output_folder, ndvi_threshold=0.0, resolutio
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
-    laz_files = [os.path.join(input_folder, f) for f in os.listdir(input_folder) if f.endswith(".LAZ")]
+    laz_files = []
+    for root, dirs, files in os.walk(input_folder):
+        for file in files:
+            if file.endswith(".LAZ"):
+                laz_files.append(os.path.join(root, file))
+
+    if not laz_files:
+        print("No LAZ files found in the input folder or its subfolders.")
+        return
+
 
     total_start_time = time.time()
 
     # Use ProcessPoolExecutor for parallel processing
-    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
-        list(tqdm.tqdm(
-            executor.map(lambda file: process_single_laz_file(
-                file, output_folder, ndvi_threshold, resolution, remove, smooth_chm, filter_size
-            ), laz_files),
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        list(tqdm(
+            executor.map(
+                functools.partial(
+                    process_single_laz_wrapper,
+                    output_folder=output_folder,
+                    ndvi_threshold=ndvi_threshold,
+                    resolution=resolution,
+                    remove=remove,
+                    smooth_chm=smooth_chm,
+                    filter_size=filter_size
+                ),
+                laz_files
+            ),
             total=len(laz_files),
             desc="Processing files",
             unit="file"
@@ -268,8 +299,11 @@ def process_laz_files(input_folder, output_folder, ndvi_threshold=0.0, resolutio
     total_elapsed_time = time.time() - total_start_time
     print(f"\nAll files processed in {total_elapsed_time:.2f} seconds.")
 
+
 """
-input_folder = "data/25DN2"
-output_folder = "output/25DN2"
-process_laz_files(input_folder, output_folder)
+if __name__ == '__main__':
+    input_folder = "E:/temporary_jessica/LAZ_TILES/25HN1"
+    output_folder = "E:/temporary_jessica/LAZ_TILES/25HN1"
+    max_workers = 20
+    process_laz_files(input_folder, output_folder, max_workers=max_workers)
 """
