@@ -103,19 +103,20 @@ def run_shade_calculation(folder_path, output_base_folder, date, start_time, end
         print(f"Output directory already exists: {output_dir}")
 
     # Process files concurrently within the folder
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = []
-        for chm_filename, dsm_filename in zip(chm_files, dsm_files):
-            futures.append(
-                executor.submit(process_chm_dsm, chm_filename, dsm_filename, folder_path, output_dir,
-                                date, start_time, end_time, interval, trans, trunkheight))
-
-        for future in tqdm.tqdm(concurrent.futures.as_completed(futures), total=len(futures),
-                                desc=f"Processing files in {folder_path}"):
-            try:
-                future.result()
-            except Exception as e:
-                print(f"Error occurred while processing: {e}")
+    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+        list(tqdm.tqdm(executor.map(
+            process_chm_dsm,  # Assuming process_chm_dsm takes the necessary arguments
+            chm_files,
+            dsm_files,
+            [folder_path] * len(chm_files),
+            [output_dir] * len(chm_files),
+            [date] * len(chm_files),
+            [start_time] * len(chm_files),
+            [end_time] * len(chm_files),
+            [interval] * len(chm_files),
+            [trans] * len(chm_files),
+            [trunkheight] * len(chm_files)
+        ), total=len(chm_files), desc=f"Processing files in {folder_path}", unit="file"))
 
 
 def process_folders(base_folder, output_base_folder, date, start_time=10, end_time=21, interval=30, trans=10, trunkheight=25, max_workers=4):

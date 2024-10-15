@@ -70,7 +70,6 @@ def extract_vegetation_points(LasData, ndvi_threshold=0.1, pre_filter=False):
 
     # Filter the points whose NDVI is greater than the threshold
     veg_points = possible_vegetation_points[ndvi > ndvi_threshold]
-    print("extracted vegetation points")
 
     # Option: already filter away the points with a height below 1.5m from the lowest veg point, introduced because
     # of one very large tile (25GN2_24.LAZ)
@@ -190,7 +189,7 @@ def process_laz_files(input_folder, output_folder, ndvi_threshold=0.0, resolutio
     Process a folder of LAZ files to extract vegetation points and generate Canopy Height Models (CHMs).
     -------
     Input:
-    - input_folder (str):       The folder containing input .LAZ files.
+    - input_folder (str):       The folder containing folders with the input .LAZ files.
     - output_folder (str):      The folder where the output CHM .tif files will be saved.
     - ndvi_threshold (float):   The NDVI threshold for classifying vegetation points.
     - resolution (float):       The resolution of the output CHM rasters, defining the size of each pixel (default: 0.5).
@@ -206,15 +205,34 @@ def process_laz_files(input_folder, output_folder, ndvi_threshold=0.0, resolutio
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
-    laz_files = [f for f in os.listdir(input_folder) if f.endswith(".LAZ")]
+    laz_files = []
+    for root, dirs, files in os.walk(input_folder):
+        for file in files:
+            if file.endswith(".LAZ"):
+                laz_files.append(os.path.join(root, file))
+
+    if not laz_files:
+        print("No LAZ files found in the input folder or its subfolders.")
+        return
+
 
     total_start_time = time.time()
 
     # Iterate over files
     for file_name in tqdm(laz_files, desc="Processing files", unit="file"):
         file_path = os.path.join(input_folder, file_name)
-        tile_name = os.path.splitext(file_name)[0]
-        output_filename = os.path.join(output_folder, f"CHM_{tile_name}.TIF")
+
+        tile_name = os.path.splitext(os.path.basename(file_path))[0]
+        tile = tile_name.split("_")[0]
+
+        # Create a subfolder for this tile's outputs
+        tile_output_folder = os.path.join(output_folder, tile)
+        os.makedirs(tile_output_folder, exist_ok=True)
+
+        # Define the output filename in the tile-specific subfolder
+        output_filename = os.path.join(tile_output_folder, f"CHM_{tile_name}.TIF")
+
+
         print(f"processing tile {tile_name}")
         start_time = time.time()
 
@@ -228,7 +246,7 @@ def process_laz_files(input_folder, output_folder, ndvi_threshold=0.0, resolutio
         vegetation_data = interpolation_vegetation(LasData, veg_points, 0.5)
 
         # Create the CHM and save it
-        chm_creation(LasData, vegetation_data, resolution=resolution, smooth=smooth_chm, nodata_value=-9999,
+        chm_creation(LasData, vegetation_data, output_filename, resolution=resolution, smooth=smooth_chm, nodata_value=-9999,
                      filter_size=filter_size)
 
         # Calculate time taken for current file
@@ -244,7 +262,7 @@ def process_laz_files(input_folder, output_folder, ndvi_threshold=0.0, resolutio
     print(f"\nAll files processed in {total_elapsed_time:.2f} seconds.")
 
 """
-input_folder = "data/25DN2"
-output_folder = "output/25DN2"
+input_folder = "E:/temporary_jessica/LAZ_TILES/25HN1/25HN1"
+output_folder = "E:/temporary_jessica/LAZ_TILES/25HN1/onebyone"
 process_laz_files(input_folder, output_folder)
 """

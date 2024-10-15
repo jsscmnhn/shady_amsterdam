@@ -1,7 +1,7 @@
 from src.collect_data import download_raster_tiles, download_las_tiles
 from src.create_first_chm import process_laz_files
 from src.create_first_chm_parallel import process_laz_files as process_laz_files_parallel
-from src.create_dsm_and_chm import process_all_folders as process_dsm_chm
+from src.create_dsm_and_chm_parallel import process_all_folders as process_dsm_chm
 from src.shade_parallel import process_folders as process_shade
 from src.merge_shademaps import merge_tif_files_by_time
 
