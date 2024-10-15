@@ -15,11 +15,10 @@ def optional_params(input_str):
     for param in input_str.split(","):
         try:
             key, value = param.split("=")
-            params[key.strip()] = int(value.strip())
+            params[key.strip()] = float(value.strip()) if '.' in value else int(value.strip())
         except ValueError:
             print(f"Invalid parameter format for '{param}'. Expected format: key=value.")
     return params
-
 
 def main():
     parser = argparse.ArgumentParser(description='Creating a shade map from a CHM and DSM file.')
@@ -96,8 +95,8 @@ def main():
 
         else:
             # Check if user has downloaded LAZ files and the AHN DSM and DTM
-            laz_downloaded = input("Have you already downloaded the LAZ files and do you have a merged AHN DSM and DTM? "
-                                   "(yes/no): ").strip().lower()
+            laz_downloaded = input("Have you already downloaded the LAZ files and do you have a merged DSM and DTM"
+                                   "from AHN? (yes/no): ").strip().lower()
             if laz_downloaded == 'yes':
                 laz_folder = input("Provide the path to the folder containing folders for each LAZ subtile file: ")
                 dsm_path = input("Provide the path to the merged DSM file: ")
@@ -105,34 +104,96 @@ def main():
                 buildings_path = input("Provide the path to the geopackage containing the buildings: ")
 
                 output_base_folder = input("Provide the output base folder path: ")
-                process_laz_files_parallel(laz_folder, output_base_folder, ndvi_threshold=0.0, resolution=0.5, remove=False, smooth_chm=False,
-                      filter_size=3, max_workers=4)
+                # Set default values for optional parameters
+                params = {
+                    'ndvi_threshold': 0.0,
+                    'resolution': 0.5,
+                    'remove': False,
+                    'smooth_chm': False,
+                    'filter_size': 3,
+                    'max_workers': 4
+                }
+
+                optional_input = input(
+                    "Do you want to input optional parameters for CHM processing? (yes/no): ").strip().lower()
+                if optional_input == 'yes':
+                    input_params = input(
+                        "Enter optional parameters in the format: ndvi_threshold={float}, resolution={float}, "
+                        "remove={bool}, smooth_chm={bool}, filter_size={int}, max_workers={int}: ")
+                    params.update(optional_params(input_params))
+
+                process_laz_files_parallel(
+                    laz_folder,
+                    output_base_folder,
+                    ndvi_threshold=params['ndvi_threshold'],
+                    resolution=params['resolution'],
+                    remove=params['remove'],
+                    smooth_chm=params['smooth_chm'],
+                    filter_size=params['filter_size'],
+                    max_workers=params['max_workers']
+                )
                 process_dsm_chm(output_base_folder, dtm_path, dsm_path, buildings_path, output_base_folder)
-            """
+
+
             else:
-                # Check what files are missing
-                missing_dsm_dtm = input("Is only the DSM and DTM missing? (yes/no): ").strip().lower()
+                # Ask about missing files
+                missing_dsm_dtm = input("Is the DSM and DTM missing? (yes/no): ").strip().lower()
+                missing_chm = input("Is the CHM converted from LAZ missing? (yes/no): ").strip().lower()
+                output_folder = input("Provide the output folder path: ")
+
+                # Initialize a list to hold download functions and their arguments
+                download_tasks = []
+
                 if missing_dsm_dtm == 'yes':
-                    dsm_dtm_tiles_file = input("Provide the path to the text file containing the needed tiles: ")
-                    download_raster_tiles() 
-                else:
-                    missing_chm = input("Is only the CHM converted from LAZ missing? (yes/no): ").strip().lower()
-                    if missing_chm == 'yes':
-                        chm_subtiles_file = input("Provide the path to the text file containing the needed subtiles: ")
-                        download_las_tiles()
-                        process_laz_files_parallel()
-                    else:
-                        # Both CHM and DSM/DTM are missing
-                        missing_tiles_file = input("Please provide the path to the text file containing the needed tiles: ")
-                        missing_subtiles_file = input("Please provide the path to the text file containing the needed subtiles: ")
-                        download_raster_tiles()
-                        download_las_tiles()
-                        process_laz_files_parallel(input_folder, output_folder, ndvi_threshold=0.0, resolution=0.5, remove=False, smooth_chm=False,
-                      filter_size=3, max_workers=None)
-            """
+                    # Add DSM/DTM download task
+                    dsm_dtm_tiles_file = input(
+                        "Provide the path to the text file containing the needed DSM/DTM tiles: ")
+                    name = input("Provide the common name for the merged TIF files: ")
+                    download_tasks.append((download_raster_tiles, (dsm_dtm_tiles_file, output_folder, name)))
 
+                if missing_chm == 'yes':
+                    # Add CHM download task
+                    chm_subtiles_file = input("Provide the path to the text file containing the needed CHM subtiles: ")
+                    download_tasks.append((download_las_tiles, (chm_subtiles_file, output_folder)))
 
+                    # Set default values for optional parameters
+                    params = {
+                        'ndvi_threshold': 0.0,
+                        'resolution': 0.5,
+                        'remove': False,
+                        'smooth_chm': False,
+                        'filter_size': 3,
+                        'max_workers': 4
+                    }
 
+                    # Ask if the user wants to input optional parameters
+                    optional_input = input(
+                        "Do you want to input optional parameters for CHM processing? (yes/no): ").strip().lower()
+
+                    if optional_input == 'yes':
+                        input_params = input(
+                            "Enter optional parameters in the format: ndvi_threshold={float}, resolution={float}, "
+                            "remove={bool}, smooth_chm={bool}, filter_size={int}, max_workers={int}: ")
+
+                        params.update(optional_params(input_params))
+
+                    download_tasks.append((
+                        process_laz_files_parallel,
+                        (
+                            output_folder,
+                            output_folder,
+                            params['ndvi_threshold'],
+                            params['resolution'],
+                            params['remove'],
+                            params['smooth_chm'],
+                            params['filter_size'],
+                            params['max_workers']
+                        )
+                    ))
+
+                # Run all download tasks
+                for download_func, download_args in download_tasks:
+                    download_func(*download_args)
 
 
 if __name__ == '__main__':

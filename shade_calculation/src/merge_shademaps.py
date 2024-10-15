@@ -137,3 +137,5 @@ def merge_tif_files_by_time(main_folder, output_folder, merged_name, nodata_valu
             print(f"Deleting input files for time {time}")
             for file in files:
                 os.remove(file)
+
+merge_tif_files_by_time("D:\Geomatics\output", "D:\Geomatics\correct_merged", "amsterdam")
