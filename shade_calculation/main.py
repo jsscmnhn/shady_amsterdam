@@ -1,7 +1,7 @@
 from src.collect_data import download_raster_tiles, download_las_tiles
 from src.create_first_chm import process_laz_files
 from src.create_first_chm_parallel import process_laz_files as process_laz_files_parallel
-from src.create_dsm_and_chm_parallel import process_all_folders as process_dsm_chm
+from src.create_dsm_and_chm_parallel import process_folders as process_dsm_chm_parallel
 from src.shade_parallel import process_folders as process_shade
 from src.merge_shademaps import merge_tif_files_by_time
 
@@ -91,7 +91,7 @@ def main():
             chm_folder = input("Provide the path to the folder containing the subfolders for each tile: ")
             buildings_path = input("Provide the path to the geopackage containing the buildings: ")
             output_base_folder = input("Provide the output base folder path: ")
-            process_dsm_chm(chm_folder, dtm_path, dsm_path, buildings_path, output_base_folder)
+            process_dsm_chm_parallel(chm_folder, dtm_path, dsm_path, buildings_path, output_base_folder)
 
         else:
             # Check if user has downloaded LAZ files and the AHN DSM and DTM
@@ -132,7 +132,7 @@ def main():
                     filter_size=params['filter_size'],
                     max_workers=params['max_workers']
                 )
-                process_dsm_chm(output_base_folder, dtm_path, dsm_path, buildings_path, output_base_folder)
+                process_dsm_chm_parallel(output_base_folder, dtm_path, dsm_path, buildings_path, output_base_folder)
 
 
             else:
