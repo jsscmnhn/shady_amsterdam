@@ -73,7 +73,7 @@ def crop_raster(raster_path, bbox, no_data=-9999):
         return cropped_data, src.window_transform(window), src.crs
 
 
-def extract_values_cells(cropped_data, no_data=-9999):
+def extract_center_cells(cropped_data, no_data=-9999):
     """
     Extract the values of each cell in the input data and save these with the x and y (row and col)
     indices. Thereby, make sure that the corners of the dataset are filled for a full coverage triangulation
@@ -149,7 +149,7 @@ def fill_raster(cropped_data, nodata_value, transform):
     """
 
     # creating delaunay
-    points = extract_values_cells(cropped_data, no_data=nodata_value)
+    points = extract_center_cells(cropped_data, no_data=nodata_value)
     dt = startinpy.DT()
     dt.insert(points, "BBox")
 

@@ -16,6 +16,15 @@ from concurrent.futures import ProcessPoolExecutor
 
 
 def get_bbox(raster_paths):
+    """
+    Compute the overlapping bounding box of the CHM, DSM and DTM file.
+    ----
+    Input:
+    - raster_paths (list of strings): paths to the CHM, DSM and DTM .TIF files
+
+    Output:
+    - rasterio.coords.BoundingBox(): bbox of the
+    """
     bboxes = []
     for raster_path in raster_paths:
         with rasterio.open(raster_path) as src:
@@ -29,6 +38,19 @@ def get_bbox(raster_paths):
 
 
 def crop_raster(raster_path, bbox, no_data=-9999, file_number=None, tile=None):
+    """
+    Crop the input rasters to the size of the overlapping bounding box.
+    ----
+    Input:
+    - raster_path (string): paths to the .TIF file.
+    - bbox (4-tuple): overlapping bounding box of the CHM, DSM and DTM file.
+    - no_data (int, optional): no_data value to replace source no data value with.
+
+    Output:
+    - cropped_data (2d numpy array): cropped raster data.
+    - src.window_transform(window): affine transform matrix for given window.
+    - src.crs (rasterio src): A PROJ4 dict representation of the CRS of the input raster.
+    """
     with rasterio.open(raster_path) as src:
         window = src.window(bbox.left, bbox.bottom, bbox.right, bbox.top)
 
@@ -53,6 +75,18 @@ def crop_raster(raster_path, bbox, no_data=-9999, file_number=None, tile=None):
 
 
 def extract_center_cells(cropped_data, no_data=-9999):
+    """
+    Extract the values of each cell in the input data and save these with the x and y (row and col)
+    indices. Thereby, make sure that the corners of the dataset are filled for a full coverage triangulation
+    in the next step.
+    ----
+    Input:
+    - cropped_data (2d numpy array): cropped raster data.
+    - no_data (int, optional): no_data value to replace source no data value with.
+
+    Output:
+    - xyz_filled (list): list containing x, y and z coordinates of the cells.
+    """
     # Get coordinates of center cells
     cropped_data = cropped_data[0, :, :]
 
@@ -101,6 +135,20 @@ def extract_center_cells(cropped_data, no_data=-9999):
 
 
 def fill_raster(cropped_data, nodata_value, transform):
+    """
+    Fill the no data values of a given raster using Laplace interpolation.
+    ----
+    Input:
+    - cropped_data (2d numpy array): cropped raster data.
+    - nodata_value (int): nodata value to replace NAN after interplation with.
+    - transform (rasterio transform): affine transform matrix.
+
+    Output:
+    - new_data[0, 1:-1, 1:-1] (2d numpy array): filled raster data with first and last rows and columns remove to ensure
+                                                there are no nodata values.
+    - new_transform (rasterio transform): affine transform matrix reflecting the one column one row removal shift.
+    """
+
     # creating delaunay
     points = extract_center_cells(cropped_data, no_data=nodata_value)
     dt = startinpy.DT()
@@ -136,6 +184,21 @@ def fill_raster(cropped_data, nodata_value, transform):
 
 
 def chm_finish(chm_array, dtm_array, transform):
+    """
+    Finish the CHM file by first removing the ground height. Then remove vegetation height
+    below and above a certain range to ensure effective shade and remove noise.
+    ----
+    Input:
+    - chm_array (2d numpy array):       cropped raster array of the CHM.
+    - dtm_array (2d numpy array):       cropped raster array of the filled DSM.
+    - transform (rasterio transform):   affine transform matrix.
+    - min_height (float, optional):     minimal height for vegetation to be included.
+    - max_height (float, optional):     maximum height for vegetation to be included.
+
+    Output:
+    - result_array (2d numpy array):    Array of the CHM with normalized height and min and max heights removed.
+    - new_transform (rasterio transform): affine transform matrix reflecting the one column one row removal shift.
+    """
     result_array = chm_array[0, 1:-1, 1:-1] - dtm_array
     result_array[(result_array < 2) | (result_array > 40)] = 0
 
@@ -145,6 +208,20 @@ def chm_finish(chm_array, dtm_array, transform):
 
 
 def replace_buildings(filled_dtm, dsm_buildings, buildings_geometries, transform, nodata_value=-9999):
+    """
+    Replace the values of the filled dtm with the values of the filled dsm, if there is a building.
+    ----
+    Input:
+    - filled_dtm (2d np array):         filled array of the cropped AHN dtm.
+    - dsm_buildings (2d np array):      Filled array of the cropped AHN dsm.
+    - building_geometries (list):       A list of the building geometries
+    - transform (rasterio transform):   affine transform matrix.
+
+    Output:
+    - final_dsm (2d numpy array):   a np array representing the final dsm, containing only ground and building
+                                    heights.
+
+    """
     building_mask = geometry_mask(buildings_geometries, transform=transform, invert=False, out_shape=filled_dtm.shape)
 
     # Apply the mask to the filled DTM
@@ -154,11 +231,31 @@ def replace_buildings(filled_dtm, dsm_buildings, buildings_geometries, transform
 
 
 def load_buildings(buildings_path, layer):
+    """
+    Load in the building shapes from a geopackage file.
+    ----
+    Input:
+    - buildings_path (string):   path to the geopackage file.
+    - layer (string):            (Tile) name of the layer of buildings to be used
+
+    Output:
+    - List of dictionaries: A list of geometries in GeoJSON-like dictionary format.
+      Each dictionary represents a building geometry with its spatial coordinates.
+    """
     buildings_gdf = gpd.read_file(buildings_path, layer=layer)
     return [mapping(geom) for geom in buildings_gdf.geometry]
 
 
 def extract_tilename(filename):
+    """
+    Extract the name of the AHN tile from the file name
+    ----
+    Input:
+    - filename(string): the name of the input chm.tif.
+
+    output:
+    - match.group(1):   the name of the AHN tile.
+    """
     match = re.match(r'CHM_(\w+)_\d+\.TIF', filename)
     if match:
         return match.group(1)
