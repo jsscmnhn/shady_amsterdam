@@ -9,6 +9,8 @@ from shapely.ops import unary_union
 import numpy as np
 import matplotlib.pyplot as plt
 
+pd.set_option('future.no_silent_downcasting', True)
+
 
 class CoolSpace:
     def __init__(self, data: gpd.geodataframe) -> None:
@@ -41,7 +43,7 @@ class CoolSpace:
         # Calculate area to perimeter ratio
         exploded['area'] = exploded.geometry.area
         exploded['perimeter'] = exploded.geometry.length
-        exploded['area_to_perimeter'] = exploded['area'] / exploded['perimeter']
+        exploded['area_to_perimeter'] = exploded['area'] / (exploded['perimeter'] + 0.0001)
 
         # Filter polygons based on area to perimeter ratio and area
         filtered = exploded[(exploded['area'] >= 200) & (exploded['area_to_perimeter'] >= 0.35)]
@@ -63,9 +65,11 @@ class CoolSpace:
                         ratio_thres=0.35,
                         use_clip=False) -> None:
         """
-        input a series of rasters, use previous geometries to clip the rasters, and calculate each raster's average shade, areas of shade, and shade geometries.
+        input a series of rasters, use previous geometries to clip the rasters, and calculate each
+        raster's average shade, areas of shade, and shade geometries.
 
-        - The average shade value is calculated as the average of all pixels with 0 <=shade value <= 0.5 (0 means maximum shade, 1 means sun).
+        - The average shade value is calculated as the average of all pixels with 0 <=shade value <= 0.5
+          (0 means maximum shade, 1 means sun).
         - The shade area is calculated as the area of all continuous areas larger than 200m2.
         - The shade geometry is calculated as the union of all shade polygons with area-to-perimeter ratio >= 0.35.
 
@@ -73,7 +77,8 @@ class CoolSpace:
         - The shade area will be added as a new column to "self.data" as "sdArea{raster_idx}"
         - The shade geometry will be added as a new column to "self.data" as "sdGeom{raster_idx}"
 
-        - An extra column "intervals" will be added to self (NOT "self.data"!) to indicate the number of rasters used for shade calculation.
+        - An extra column "intervals" will be added to self (NOT "self.data"!) to indicate the number of rasters
+          used for shade calculation.
 
         :param rasters: input list of rasters
         :param area_thres: minimum threshold of shade area, by default is 200m2
@@ -82,7 +87,7 @@ class CoolSpace:
         :param use_clip: use clipped geometry or not, if there is no clipped geometry, original will be used
         """
 
-        if use_clip and self.data['clipped'].any():
+        if use_clip and 'clipped' in self.data.columns and self.data['clipped'].any():
             self.data.set_geometry('clipped', inplace=True)
         else:
             print("No clipped geometry, default geometry will be used.")
@@ -117,7 +122,8 @@ class CoolSpace:
 
                     # if intersection fail (empty) or the clipped result is too small, skip it
                     if clipped_geom.is_empty or clipped_geom.area < 1e-6:
-                        print(f"Geometry {idx} is too small ({clipped_geom.area}) or empty after intersection, skipping.")
+                        print(f"Geometry {idx} is too small ({clipped_geom.area}) "
+                              f"or empty after intersection, skipping.")
                         all_shade_geoms.at[idx] = None
                         continue
                 else:
@@ -188,7 +194,10 @@ class CoolSpace:
             print(f"No shade geometry for raster {raster_idx} in data.")
             return None
 
-        output = self.data[self.data[shade_geom_col].notnull()][['id', shade_avg_col, shade_area_col,shade_geom_col]].copy()
+        output = self.data[self.data[shade_geom_col].notnull()][['id',
+                                                                 shade_avg_col,
+                                                                 shade_area_col,
+                                                                 shade_geom_col]].copy()
         output = output.set_geometry(shade_geom_col, crs=self.data.crs)
         return output
 
@@ -231,12 +240,17 @@ class CoolSpace:
             shade_geom_col = f"sdGeom{raster_idx}"
             self.data["count"] += self.data[shade_geom_col].notnull().astype(int)
 
-        if self.data[cool_geom_col].isnull().all():
+        if cool_geom_col == "clipped" and self.data[cool_geom_col].isnull().all():
             print("No clipped geometry in data, the original geometry will be returned.")
             cool_geom_col = "geometry"
 
         output = self.data[self.data["count"] > 0].copy()
         output.set_geometry(cool_geom_col, inplace=True)
+        output.drop(columns=["count"], inplace=True)
+        if cool_geom_col == "geometry" and "clipped" in output.columns:
+            output["clipped"] = output["clipped"].to_wkt()
+        elif cool_geom_col == "clipped":
+            output["geometry"] = output["geometry"].to_wkt()
 
         # transform all shade geometries into WKT and store as new columns
         for i in search_range:
@@ -246,11 +260,11 @@ class CoolSpace:
         return output
 
     def evaluate_shade_coverage(self, attri_name: str = "Query", start: int = None, end: int = None) -> None:
-        f"""
+        """
         calculate the shade coverage based on the average shade value of all rasters.
 
         - The shade coverage is classified into 4 categories: 0 (<50%), 1 (50% - 70%), 2 (70% - 90%), 3 (90% - 100%).
-        - The shade coverage will be added as a new column to "self.data" as "sc<attri_name>".
+        - The shade coverage will be added as a new column to "self.data" as "sc{attri_name}".
         """
         raster_nums = self.intervals
         if raster_nums == 0:
