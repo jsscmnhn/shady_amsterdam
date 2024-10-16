@@ -2,6 +2,12 @@ import geopandas as gpd
 
 
 class Road:
+    """
+    Note: the assign methods and the create_attribute method only works for ONE specific dataset,
+    they are only used in development. In practice, the input road dataset MUST have an attribute
+    which specify the buffer distance for different types of road, so that the create_buffer method
+    can be called.
+    """
     def __init__(self, data: gpd.geodataframe) -> None:
         self.data = data
         self.data["buffered"] = None
