@@ -249,35 +249,35 @@ def update_graph_with_shade_weight(graph, edges_gdf):
     return graph
 
 
-def compute_combined_weights(edges, user_shade_preference):
-    start_time = time.time()
-
-    # Check if 'shade_weight' exists
-    if 'shade_weight' not in edges.columns:
-        print("'shade_weight' column is missing in edges!")
-        return
-
-    # Normalize the length of each edge to be between 0 and 1
-    edges['length_weight'] = edges['length'] / edges['length'].max()
-
-    print("Length Weight Statistics (First 10 edges):", edges['length_weight'].head(10))
-    print("Length Weight Description:", edges['length_weight'].describe())
-
-    # User preference for shade (e.g., 0.7 means 70% weight on shade, 30% on distance)
-    shade_factor = user_shade_preference
-    distance_factor = 1 - shade_factor
-
-    # Calculate the combined weight using the user-defined preference
-    edges['combined_weight'] = (edges['shade_weight'] * shade_factor) + (edges['length_weight'] * distance_factor)
-
-    print("Combined Weight Statistics (First 10 edges):", edges['combined_weight'].head(10))
-    print("Combined Weight Description:", edges['combined_weight'].describe())
-
-    end_time = time.time()
-    duration = end_time - start_time
-    print(f"Combined weight calculation took {duration:.2f} seconds")
-
-    return edges
+# def compute_combined_weights(edges, user_shade_preference):
+#     start_time = time.time()
+#
+#     # Check if 'shade_weight' exists
+#     if 'shade_weight' not in edges.columns:
+#         print("'shade_weight' column is missing in edges!")
+#         return
+#
+#     # Normalize the length of each edge to be between 0 and 1
+#     edges['length_weight'] = edges['length'] / edges['length'].max()
+#
+#     print("Length Weight Statistics (First 10 edges):", edges['length_weight'].head(10))
+#     print("Length Weight Description:", edges['length_weight'].describe())
+#
+#     # User preference for shade (e.g., 0.7 means 70% weight on shade, 30% on distance)
+#     shade_factor = user_shade_preference
+#     distance_factor = 1 - shade_factor
+#
+#     # Calculate the combined weight using the user-defined preference
+#     edges['combined_weight'] = (edges['shade_weight'] * shade_factor) + (edges['length_weight'] * distance_factor)
+#
+#     print("Combined Weight Statistics (First 10 edges):", edges['combined_weight'].head(10))
+#     print("Combined Weight Description:", edges['combined_weight'].describe())
+#
+#     end_time = time.time()
+#     duration = end_time - start_time
+#     print(f"Combined weight calculation took {duration:.2f} seconds")
+#
+#     return edges
 
 
 def find_nearest_cool_place(graph, node, cool_place_nodes, max_distance):
@@ -349,38 +349,65 @@ def calculate_routes_to_cool_places(graph, start_node, cool_place_nodes, max_dis
 
     return shortest_path, shadiest_path
 
-
-def calculate_balanced_route(graph, start_node, destination_node, user_shade_preference, max_distance=1000):
-    for u, v, key, data in graph.edges(keys=True, data=True):
-        if 'shade_weight' not in data:
-            print("shade_weight is missing in the edges attribute!")
-            return
-
+def calculate_balanced_route(graph, start_node, destination_node):
     start_time = time.time()
 
-    # Get the maximum edge length for normalization
-    max_length = max(data['length'] for u, v, key, data in graph.edges(keys=True, data=True))
+    # Calculate the total sum of all lengths and shade weights in the graph
+    total_length = sum(data['length'] for u, v, key, data in graph.edges(keys=True, data=True))
+    total_shade_weight = sum(data['shade_weight'] for u, v, key, data in graph.edges(keys=True, data=True))
 
-    # Combine weights for both distance and shade according to user preference
+    # Step 1: Normalize the length and assign to "normalized_length"
     for u, v, key, data in graph.edges(keys=True, data=True):
-        length_weight = data['length'] / max_length  # Normalize length
-        shade_weight = data['shade_weight']
+        data['normalized_length'] = data['length'] / total_length
 
-        # Calculate combined weight based on user preference
-        combined_weight = (user_shade_preference * shade_weight) + ((1 - user_shade_preference) * length_weight)
-        data['combined_weight'] = combined_weight
+    # Step 2: Normalize the shade weight and assign to "normalized_shade_weight"
+    for u, v, key, data in graph.edges(keys=True, data=True):
+        data['normalized_shade_weight'] = data['shade_weight'] / total_shade_weight
 
-    # Calculate the balanced route using the combined weight
-    # balanced_route = nx.shortest_path(graph, start_node, nearest_cool_place, weight='combined_weight')
-    balanced_route = nx.shortest_path(graph, start_node, destination_node, weight='combined_weight')
+    # Step 3: Calculate the weighted sum and assign to "weighted_sum_weight"
+    for u, v, key, data in graph.edges(keys=True, data=True):
+        data['weighted_sum_weight'] = (data['normalized_length'] / 2) + (data['normalized_shade_weight'] / 2)
+
+    # Step 4: Calculate the shortest path using "weighted_sum_weight" as the weight
+    balanced_route = nx.shortest_path(graph, start_node, destination_node, weight='weighted_sum_weight')
 
     end_time = time.time()
     duration = end_time - start_time
-    print(f"Combined route calculation took {duration:.2f} seconds")
+    print(f"Balanced route calculation took {duration:.2f} seconds")
 
     return balanced_route
 
-def demo_shade_route_calculation(places, raster_path, polygon_path, user_shade_preference):
+# def calculate_balanced_route(graph, start_node, destination_node, user_shade_preference, max_distance=1000):
+#     for u, v, key, data in graph.edges(keys=True, data=True):
+#         if 'shade_weight' not in data:
+#             print("shade_weight is missing in the edges attribute!")
+#             return
+#
+#     start_time = time.time()
+#
+#     # Get the maximum edge length for normalization
+#     max_length = max(data['length'] for u, v, key, data in graph.edges(keys=True, data=True))
+#
+#     # Combine weights for both distance and shade according to user preference
+#     for u, v, key, data in graph.edges(keys=True, data=True):
+#         length_weight = data['length'] / max_length  # Normalize length
+#         shade_weight = data['shade_weight']
+#
+#         # Calculate combined weight based on user preference
+#         combined_weight = (user_shade_preference * shade_weight) + ((1 - user_shade_preference) * length_weight)
+#         data['combined_weight'] = combined_weight
+#
+#     # Calculate the balanced route using the combined weight
+#     # balanced_route = nx.shortest_path(graph, start_node, nearest_cool_place, weight='combined_weight')
+#     balanced_route = nx.shortest_path(graph, start_node, destination_node, weight='combined_weight')
+#
+#     end_time = time.time()
+#     duration = end_time - start_time
+#     print(f"Combined route calculation took {duration:.2f} seconds")
+#
+#     return balanced_route
+
+def demo_shade_route_calculation(places, raster_path, polygon_path):
     # Load graph, raster, and polygons
     # graph = load_graph_from_osm(place)
     # graph = load_graph_from_file(graph_path)
@@ -442,7 +469,8 @@ def demo_shade_route_calculation(places, raster_path, polygon_path, user_shade_p
         shadiest_route = nx.shortest_path(graph, sample_node, sample_node_destination, weight='shade_weight')
 
         # Combined route based on user preference for shade vs. distance
-        balanced_route = calculate_balanced_route(graph, sample_node, sample_node_destination, user_shade_preference)
+        balanced_route = calculate_balanced_route(graph, sample_node, sample_node_destination)
+
 
         # Plot all routes on the same graph
         fig, ax = plt.subplots(figsize=(10, 10))
@@ -470,12 +498,12 @@ def demo_shade_route_calculation(places, raster_path, polygon_path, user_shade_p
 # place = 'Amsterdam, Netherlands'
 places = ['Amsterdam, Netherlands', 'Diemen, Netherlands', 'Ouder-Amstel, Netherlands']
 graph_path = 'C:/pedestrian_demo_data/ams.graphml'
-raster_path = 'C:/pedestrian_demo_data/amsterdam_time_900.tif'
-polygon_path = 'C:/pedestrian_demo_data/public_spaces/ams_public_space.shp'
+raster_path = 'C:/Androniki/pythonProject1/amsterdam_20150701_1630.TIF'
+polygon_path = 'C:/Androniki/pythonProject1/ams_public_space.shp'
 
 # User-defined preference
-user_shade_preference = 0.5
+# user_shade_preference = 10
 
 # demo_shade_route_calculation(place, raster_path, polygon_path)
 # demo_shade_route_calculation(graph_path, raster_path, polygon_path, user_shade_preference)
-demo_shade_route_calculation(places, raster_path, polygon_path, user_shade_preference)
+demo_shade_route_calculation(places, raster_path, polygon_path)
