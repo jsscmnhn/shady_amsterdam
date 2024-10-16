@@ -9,12 +9,37 @@ import matplotlib.pyplot as plt
 from rasterio.plot import show
 import numpy as np
 from shapely.geometry import box
+import time
+from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
+
 
 def load_graph_from_osm(place):
     # Load graph from OpenStreetMap using osmnx
     graph = ox.graph_from_place(place, network_type='walk')
     return graph
 
+def load_graph_from_file(graph_file_path):
+    # Load the graph from a GraphML file
+    graph = ox.load_graphml(graph_file_path)
+    return graph
+
+
+def load_combined_graph(places):
+    # Load graph for each place and merge them
+    combined_graph = None
+
+    for place in places:
+        # Load graph for each place
+        graph = ox.graph_from_place(place, network_type='walk')
+
+        # Combine the graph with the previous one
+        if combined_graph is None:
+            combined_graph = graph
+        else:
+            combined_graph = nx.compose(combined_graph, graph)
+
+    return combined_graph
 
 def load_raster(raster_path):
     # Load the raster file
@@ -29,29 +54,38 @@ def load_cool_place_polygons(polygon_path):
 
 
 def find_cool_place_nodes(graph, cool_place_polygons):
+    start_time = time.time()
+
     # Get nodes as GeoDataFrame
-    nodes, edges = ox.graph_to_gdfs(graph)
+    nodes = ox.graph_to_gdfs(graph, nodes=True, edges=False)
 
-    print(f"Graph CRS: {edges.crs}")
-    print(f"Polygon CRS: {cool_place_polygons.crs}")
+    # Ensure that both geometries are in the same CRS (Coordinate Reference System)
+    if nodes.crs != cool_place_polygons.crs:
+        cool_place_polygons = cool_place_polygons.to_crs(nodes.crs)
 
-    fig, ax = plt.subplots(figsize=(10, 10))
-    nodes.plot(ax=ax, color='yellow', markersize=10, alpha = 0.7, label='Graph Nodes')
-    cool_place_polygons.plot(ax=ax, color='red', alpha=0.5, label='Cool Place Polygons')
+    # Use spatial indexing to find nodes within polygons
+    # First, create the spatial index for polygons
+    spatial_index = cool_place_polygons.sindex
 
-    # Create a spatial index for the nodes
-    cool_place_nodes = []
+    # Define a lambda function to check if a point is within any cool place polygon
+    def is_within_polygon(node_geometry):
+        possible_matches_index = list(spatial_index.intersection(node_geometry.bounds))
+        possible_matches = cool_place_polygons.iloc[possible_matches_index]
+        return possible_matches.contains(node_geometry).any()
 
-    for idx, node in nodes.iterrows():
-        node_point = Point(node['x'], node['y'])
-        # Check if node is within any cool place polygon
-        if cool_place_polygons.contains(node_point).any():
-            cool_place_nodes.append(idx)
+    # Apply the function to each node geometry in a vectorized way
+    cool_place_nodes = nodes[nodes['geometry'].apply(is_within_polygon)].index
 
-    return cool_place_nodes
+    end_time = time.time()
+    duration = end_time - start_time
+    print(f"Finding cool place nodes took {duration:.2f} seconds")
+
+    return cool_place_nodes.tolist()
 
 
 def compute_shade_weights(edges, raster, affine, nodata_value=None):
+    start_time = time.time()
+
     # Print the raster CRS and graph CRS for confirmation
     print(f"Graph CRS: {edges.crs}")
     print(f"Raster CRS: {raster.crs}")
@@ -91,10 +125,133 @@ def compute_shade_weights(edges, raster, affine, nodata_value=None):
     print("Shade Weight Statistics (First 10 edges):", edges['shade_weight'].head(10))
     print("Shade Weight Description:", edges['shade_weight'].describe())
 
+    end_time = time.time()
+    duration = end_time - start_time
+    print(f"Shade weight calculation took {duration:.2f} seconds")
+
+    if 'shade_weight' in edges.columns:
+        print("The 'shade_weight' column exists in the edges DataFrame.")
+    else:
+        print("The 'shade_weight' column is missing after the function.")
+
+    return edges
+
+###########################################################
+def process_zonal_stats_chunk(edges_chunk, raster_data, affine):
+    # Perform zonal stats for a chunk of edges
+    shade_stats_chunk = zonal_stats(
+        vectors=edges_chunk['geometry'],
+        raster=raster_data,
+        affine=affine,
+        stats=['sum', 'count'],
+        all_touched=True
+    )
+    return shade_stats_chunk
+
+
+def compute_shade_weights_parallel(edges, raster, affine, chunk_size=1000, nodata_value=None):
+     # Read raster data
+    raster_data = raster.read(1)
+
+    # Split edges into chunks for parallel processing
+    edges_chunks = [edges.iloc[i:i + chunk_size] for i in range(0, len(edges), chunk_size)]
+
+    # Use ThreadPoolExecutor for parallel computation
+    with ThreadPoolExecutor() as executor:
+        shade_stats_results = list(executor.map(
+            process_zonal_stats_chunk,
+            edges_chunks,
+            [raster_data] * len(edges_chunks),
+            [affine] * len(edges_chunks)
+        ))
+
+    # Flatten the results back into a single list
+    shade_stats = [item for sublist in shade_stats_results for item in sublist]
+
+    # Add the results to the edges DataFrame
+    edges['total_unshaded'] = [stat['sum'] if stat['sum'] is not None else 0 for stat in shade_stats]
+    edges['total_pixels'] = [stat['count'] if stat['count'] is not None else 1 for stat in
+                             shade_stats]  # Avoid division by zero
+
+    # Calculate the proportion of shaded pixels (0 indicates shade)
+    edges['shade_proportion'] = [(stat['count'] - stat['sum']) / stat['count'] if stat['count'] > 0 else 0 for stat in
+                                 shade_stats]
+
+    # Inverse of the shade proportion to calculate weight (more shaded = lower weight)
+    edges['shade_weight'] = [1 / (shade + 1e-5) if shade > 0 else 1000 for shade in edges['shade_proportion']]
+
     return edges
 
 
+def compute_shade_for_edges(edges, raster_path, chunk_size=1000):
+    start_time = time.time()
+    # Load raster data
+    with rasterio.open(raster_path) as raster:
+        affine = raster.transform
+
+        # Compute shade weights in parallel
+        updated_edges = compute_shade_weights_parallel(edges, raster, affine, chunk_size)
+
+    end_time = time.time()
+    duration = end_time - start_time
+    print(f"Shade weight calculation took {duration:.2f} seconds")
+
+    return updated_edges
+
+########################################################################################
+
+def add_edge_identifiers_to_gdf(graph, edges_gdf):
+    start_time = time.time()
+    # Extract edge tuples from the graph (u, v, key)
+    edge_tuples = list(graph.edges(keys=True))  # Extract all (u, v, key) tuples
+
+    # Extract u, v, and key from the edge tuples
+    u_values = [u for u, v, key in edge_tuples]
+    v_values = [v for u, v, key in edge_tuples]
+    key_values = [key for u, v, key in edge_tuples]
+
+    # Add these as new columns to the GeoDataFrame
+    edges_gdf['u'] = u_values
+    edges_gdf['v'] = v_values
+    edges_gdf['key'] = key_values
+
+    end_time = time.time()
+    duration = end_time - start_time
+    print(f"Adding edge identifiers took {duration:.2f} seconds")
+
+    return edges_gdf
+
+
+def update_graph_with_shade_weight(graph, edges_gdf):
+    start_time = time.time()
+
+    # Create a multi-index on 'u', 'v', and 'key' for faster lookups
+    edges_gdf.set_index(['u', 'v', 'key'], inplace=True)
+
+    # Create a dictionary for fast lookup of 'shade_weight'
+    shade_weight_dict = edges_gdf['shade_weight'].to_dict()
+
+    # Iterate through all edges in the graph and update 'shade_weight'
+    for u, v, key, data in graph.edges(keys=True, data=True):
+        # Create a tuple key for this edge
+        edge_key = (u, v, key)
+
+        # Lookup shade_weight in the dictionary; assign default if not found
+        data['shade_weight'] = shade_weight_dict.get(edge_key, 1000)  # Default to 1000 if not found
+
+    # Reset index on edges_gdf after we're done
+    edges_gdf.reset_index(inplace=True)
+
+    end_time = time.time()
+    duration = end_time - start_time
+    print(f"Applying shade weight to the graph edges took {duration:.2f} seconds")
+
+    return graph
+
+
 def compute_combined_weights(edges, user_shade_preference):
+    start_time = time.time()
+
     # Check if 'shade_weight' exists
     if 'shade_weight' not in edges.columns:
         print("'shade_weight' column is missing in edges!")
@@ -116,19 +273,64 @@ def compute_combined_weights(edges, user_shade_preference):
     print("Combined Weight Statistics (First 10 edges):", edges['combined_weight'].head(10))
     print("Combined Weight Description:", edges['combined_weight'].describe())
 
+    end_time = time.time()
+    duration = end_time - start_time
+    print(f"Combined weight calculation took {duration:.2f} seconds")
+
     return edges
 
 
 def find_nearest_cool_place(graph, node, cool_place_nodes, max_distance):
+    start_time = time.time()
     # Find cool place nodes within a certain distance
-    nearby_nodes = [target for target in cool_place_nodes if
-                    nx.shortest_path_length(graph, node, target) < max_distance]
+    nearby_nodes = []
+
+    for target in cool_place_nodes:
+        try:
+            # Only append target if there is a path and it is within max_distance
+            path_length = nx.shortest_path_length(graph, node, target)
+            if path_length < max_distance:
+                nearby_nodes.append(target)
+        except nx.NetworkXNoPath:
+            # If no path exists between node and target, continue
+            continue
 
     if nearby_nodes:
         # If there are nearby cool place nodes, find the closest one
         nearest_cool_place = min(nearby_nodes, key=lambda target: nx.shortest_path_length(graph, node, target))
+
+        end_time = time.time()
+        duration = end_time - start_time
+        print(f"Finding the nearest cool place took {duration:.2f} seconds")
+
         return nearest_cool_place
+
     return None
+
+
+def find_nearest_cool_place_dijkstra(graph, start_node, cool_place_nodes, max_distance):
+    start_time = time.time()
+
+    try:
+        # Perform Dijkstra search from all cool place nodes to the target (start_node)
+        distance, path = nx.multi_source_dijkstra(graph, cool_place_nodes, target=start_node, weight='length',
+                                                  cutoff=max_distance)
+
+        # Find the node in `cool_place_nodes` that was the source of the shortest path to the start_node
+        for cool_place_node in cool_place_nodes:
+            if cool_place_node in path:
+                # Return the nearest cool place node and its path
+
+                end_time = time.time()
+                duration = end_time - start_time
+                print(f"Finding the nearest cool place took {duration:.2f} seconds")
+
+                return cool_place_node
+
+    except nx.NetworkXNoPath:
+        # If no path exists between the start node and any cool place node, return None
+        return None, None
+
 
 
 def calculate_routes_to_cool_places(graph, start_node, cool_place_nodes, max_distance=1000, weight='length'):
@@ -148,13 +350,13 @@ def calculate_routes_to_cool_places(graph, start_node, cool_place_nodes, max_dis
     return shortest_path, shadiest_path
 
 
-def calculate_balanced_route(graph, start_node, cool_place_nodes, user_shade_preference, max_distance=1000):
-    # Try finding routes to nearby cool places within the max distance
-    nearest_cool_place = find_nearest_cool_place(graph, start_node, cool_place_nodes, max_distance)
+def calculate_balanced_route(graph, start_node, destination_node, user_shade_preference, max_distance=1000):
+    for u, v, key, data in graph.edges(keys=True, data=True):
+        if 'shade_weight' not in data:
+            print("shade_weight is missing in the edges attribute!")
+            return
 
-    if nearest_cool_place is None:
-        print(f"No cool places found within {max_distance} meters.")
-        return None
+    start_time = time.time()
 
     # Get the maximum edge length for normalization
     max_length = max(data['length'] for u, v, key, data in graph.edges(keys=True, data=True))
@@ -169,14 +371,20 @@ def calculate_balanced_route(graph, start_node, cool_place_nodes, user_shade_pre
         data['combined_weight'] = combined_weight
 
     # Calculate the balanced route using the combined weight
-    balanced_route = nx.shortest_path(graph, start_node, nearest_cool_place, weight='combined_weight')
+    # balanced_route = nx.shortest_path(graph, start_node, nearest_cool_place, weight='combined_weight')
+    balanced_route = nx.shortest_path(graph, start_node, destination_node, weight='combined_weight')
+
+    end_time = time.time()
+    duration = end_time - start_time
+    print(f"Combined route calculation took {duration:.2f} seconds")
 
     return balanced_route
 
-
-def demo_shade_route_calculation(place, raster_path, polygon_path, user_shade_preference):
+def demo_shade_route_calculation(places, raster_path, polygon_path, user_shade_preference):
     # Load graph, raster, and polygons
-    graph = load_graph_from_osm(place)
+    # graph = load_graph_from_osm(place)
+    # graph = load_graph_from_file(graph_path)
+    graph = load_combined_graph(places)
     raster = load_raster(raster_path)
     cool_place_polygons = load_cool_place_polygons(polygon_path)
 
@@ -189,40 +397,52 @@ def demo_shade_route_calculation(place, raster_path, polygon_path, user_shade_pr
     # Calculate shade weight for each edge
     nodes, edges = ox.graph_to_gdfs(graph)
 
-    edge_tuples = list(graph.edges(keys=True))  # Extract all (u, v, key) tuples from the graph
-    u_values = [u for u, v, key in edge_tuples]
-    v_values = [v for u, v, key in edge_tuples]
-    key_values = [key for u, v, key in edge_tuples]
-
-    edges['u'] = u_values
-    edges['v'] = v_values
-    edges['key'] = key_values
+    # edge_tuples = list(graph.edges(keys=True))  # Extract all (u, v, key) tuples from the graph
+    # u_values = [u for u, v, key in edge_tuples]
+    # v_values = [v for u, v, key in edge_tuples]
+    # key_values = [key for u, v, key in edge_tuples]
+    #
+    # edges['u'] = u_values
+    # edges['v'] = v_values
+    # edges['key'] = key_values
+    edges = add_edge_identifiers_to_gdf(graph, edges)
 
     affine = raster.transform
-    edges = compute_shade_weights(edges, raster, affine)
+    # edges = compute_shade_weights(edges, raster, affine)
+    # Test batch processing
+    edges = compute_shade_for_edges(edges, raster_path, chunk_size=1000)
 
-    # Apply the shade weight to the graph edges
-    for u, v, key, data in graph.edges(keys=True, data=True):
-        # Match the graph edges with the edges GeoDataFrame using u, v, and key
-        edge_idx = edges[(edges['u'] == u) & (edges['v'] == v) & (edges['key'] == key)].index
-        if len(edge_idx) > 0:
-            data['shade_weight'] = edges.loc[edge_idx[0], 'shade_weight']
-        else:
-            data['shade_weight'] = 1000  # Assign a large weight if no shade weight is found for safety
+    # start_time = time.time()
+    # # Apply the shade weight to the graph edges
+    # for u, v, key, data in graph.edges(keys=True, data=True):
+    #     # Match the graph edges with the edges GeoDataFrame using u, v, and key
+    #     edge_idx = edges[(edges['u'] == u) & (edges['v'] == v) & (edges['key'] == key)].index
+    #     if len(edge_idx) > 0:
+    #         data['shade_weight'] = edges.loc[edge_idx[0], 'shade_weight']
+    #     else:
+    #         data['shade_weight'] = 1000  # Assign a large weight if no shade weight is found for safety
+    # end_time = time.time()
+    # duration = end_time - start_time
+    # print(f"Applying shade weight to the graph edges took {duration:.2f} seconds")
+
+    graph = update_graph_with_shade_weight(graph, edges)
 
     # Find the shortest, shadiest, and combined routes for a sample node
-    sample_node = list(graph.nodes())[555]  # Choose a sample node as the start point
-    nearest_cool_place = find_nearest_cool_place(graph, sample_node, cool_place_nodes, 1000)
+    sample_node = list(graph.nodes())[756]  # Choose a sample node as the start point
+    # nearest_cool_place = find_nearest_cool_place(graph, sample_node, cool_place_nodes, 1000)
+    #  Use Dijkstra's algorithm to find the nearest cool place in terms of shortest path length
+    nearest_cool_place = find_nearest_cool_place_dijkstra(graph, sample_node, cool_place_nodes, 1000)
+    sample_node_destination = list(graph.nodes())[2389]
 
     if nearest_cool_place:
         # Shortest path based on distance
-        shortest_route = nx.shortest_path(graph, sample_node, nearest_cool_place, weight='length')
+        shortest_route = nx.shortest_path(graph, sample_node, sample_node_destination, weight='length')
 
         # Shadiest path based on shade weight
-        shadiest_route = nx.shortest_path(graph, sample_node, nearest_cool_place, weight='shade_weight')
+        shadiest_route = nx.shortest_path(graph, sample_node, sample_node_destination, weight='shade_weight')
 
         # Combined route based on user preference for shade vs. distance
-        balanced_route = calculate_balanced_route(graph, sample_node, cool_place_nodes, user_shade_preference)
+        balanced_route = calculate_balanced_route(graph, sample_node, sample_node_destination, user_shade_preference)
 
         # Plot all routes on the same graph
         fig, ax = plt.subplots(figsize=(10, 10))
@@ -247,12 +467,15 @@ def demo_shade_route_calculation(place, raster_path, polygon_path, user_shade_pr
         print("Could not find a nearest cool place.")
 
 
-place = 'Amsterdam, Netherlands'
+# place = 'Amsterdam, Netherlands'
+places = ['Amsterdam, Netherlands', 'Diemen, Netherlands', 'Ouder-Amstel, Netherlands']
+graph_path = 'C:/pedestrian_demo_data/ams.graphml'
 raster_path = 'C:/pedestrian_demo_data/amsterdam_time_900.tif'
 polygon_path = 'C:/pedestrian_demo_data/public_spaces/ams_public_space.shp'
 
 # User-defined preference
-user_shade_preference = 0.0
+user_shade_preference = 0.5
 
 # demo_shade_route_calculation(place, raster_path, polygon_path)
-demo_shade_route_calculation(place, raster_path, polygon_path, user_shade_preference)
+# demo_shade_route_calculation(graph_path, raster_path, polygon_path, user_shade_preference)
+demo_shade_route_calculation(places, raster_path, polygon_path, user_shade_preference)
