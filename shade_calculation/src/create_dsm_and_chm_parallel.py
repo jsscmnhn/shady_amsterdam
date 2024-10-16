@@ -12,6 +12,7 @@ import startinpy
 import time
 from rasterio import Affine
 from concurrent.futures import ProcessPoolExecutor
+from glob import glob
 import scipy.ndimage as ndimage
 
 
@@ -291,6 +292,7 @@ def extract_tilename(filename):
 def process_single_file(chm_path, dtm_path, dsm_path, building_geometries, output_base_folder, nodata_value=-9999,
                         speed_up=False, min_height=2, max_height=40):
     chm_filename = os.path.basename(chm_path)
+    print(chm_filename)
     file_number = re.search(r'_(\d+)\.TIF', chm_filename).group(1)
     tile = extract_tilename(chm_filename)
 
@@ -340,7 +342,7 @@ def process_single_file(chm_path, dtm_path, dsm_path, building_geometries, outpu
     print(f"Processed {chm_filename} and saved output to {output_dtm_filename}")
 
 
-def process_files(chm_files, dtm_path, dsm_path, buildings_path, output_base_folder, nodata_value=-9999, max_workers=4,
+def process_files(chm_folder, dtm_path, dsm_path, buildings_path, output_base_folder, nodata_value=-9999, max_workers=4,
                   speed_up=False, min_height=2, max_height=4):
     """
       Function to run the whole process of creating the final DSM and CHM.
@@ -363,12 +365,19 @@ def process_files(chm_files, dtm_path, dsm_path, buildings_path, output_base_fol
           - These files are saved in folders named after the tile in `output_base_folder`.
       """
 
-    total_start_time = time.time()
+    chm_files = glob(os.path.join(chm_folder, "*.TIF"))
+    print(chm_files)
+    if not chm_files:
+        print(f"No CHM files found in the folder: {chm_folder}")
+        return
 
-    # Load building geometries once
     first_chm_filename = os.path.basename(chm_files[0])
     tile = extract_tilename(first_chm_filename)
 
+    # output folder for tile
+    output_folder = os.path.join(output_base_folder, tile)
+    os.makedirs(output_folder, exist_ok=True)
+    total_start_time = time.time()
     if not tile:
         print(f"Skipping {first_chm_filename}, couldn't extract tile information.")
         return
@@ -386,7 +395,7 @@ def process_files(chm_files, dtm_path, dsm_path, buildings_path, output_base_fol
             [building_geometries] * len(chm_files),
             [output_base_folder] * len(chm_files),
             [nodata_value] * len(chm_files),
-            [speed_up] * len(chm_files)
+            [speed_up] * len(chm_files),
             [min_height] * len(chm_files),
             [max_height] * len(chm_files)
         ), total=len(chm_files), desc="Processing Files", unit="file"))
@@ -422,18 +431,15 @@ def process_folders(base_chm_folder, dtm_path, dsm_path, buildings_path, output_
                           max_workers=max_workers, speed_up=speed_up, min_height=min_height, max_height=max_height)
 
 
-"""
+
 if __name__ == '__main__':
-    geotiff_dtm = "data/DTM_ams.tif"
-    geotiff_dsm = "data/DSM_ams.tif"
-    buildings = "data/ams_buildings.gpkg"
+    geotiff_dtm = "E:/temporary_jessica/DTM_ams.TIF"
+    geotiff_dsm = "E:/temporary_jessica/DSM_ams.TIF"
+    buildings = "E:/temporary_jessica/ams_buildings.gpkg"
 
-    chm_folder = "E:/temporary_jessica/CHM/25HZ2"
-    output_base_folder = "E:/temporary_jessica/testdsmparallel"
+    chm_folder = "E:/temporary_jessica/CHM_smoothed"
+    output_base_folder = "E:/temporary_jessica/output_smoothed"
 
-    chm_files = glob.glob(os.path.join(chm_folder, "*.TIF"))
+    max_workers = 20
 
-    max_workers = 4
-
-    process_files(chm_files, geotiff_dtm, geotiff_dsm, buildings, output_base_folder, nodata_value=-9999, max_workers=max_workers)
-"""
+    process_folders(chm_folder, geotiff_dtm, geotiff_dsm, buildings, output_base_folder, nodata_value=-9999, max_workers=max_workers)

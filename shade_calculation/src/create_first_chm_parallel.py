@@ -187,7 +187,7 @@ def interpolation_vegetation(LasData, veg_points, resolution, no_data_value=-999
 
 
 def process_single_laz_file(file_path, output_folder, ndvi_threshold=0.0, resolution=0.5, remove=False,
-                            smooth_chm=False, filter_size=3):
+                            smooth_chm=False, filter_size=3, pre_filter=False):
     """
     Process a LAZ file to extract vegetation points and generate a CHM.
     -------
@@ -222,8 +222,11 @@ def process_single_laz_file(file_path, output_folder, ndvi_threshold=0.0, resolu
         LasData = las.read()
         print(f"Loaded {file_path} with {len(LasData.points)} points.")
 
+    # check if large tile
+    if tile_name == '25GZ2_09':
+        pre_filter = True
     # Extract vegetation points
-    veg_points = extract_vegetation_points(LasData, ndvi_threshold=ndvi_threshold)
+    veg_points = extract_vegetation_points(LasData, ndvi_threshold=ndvi_threshold, pre_filter=pre_filter)
 
     # Perform interpolation for vegetation data
     vegetation_data = interpolation_vegetation(LasData, veg_points, resolution)
@@ -251,7 +254,7 @@ def process_single_laz_file(file_path, output_folder, ndvi_threshold=0.0, resolu
     return file_path
 
 def process_laz_files(input_folder, output_folder, ndvi_threshold=0.0, resolution=0.5, remove=False, smooth_chm=False,
-                      filter_size=3, max_workers=4):
+                      filter_size=3, pre_filter=False, max_workers=4):
     """
     Process a folder of LAZ files in parallel to extract vegetation points and generate CHMs.
     """
@@ -282,7 +285,8 @@ def process_laz_files(input_folder, output_folder, ndvi_threshold=0.0, resolutio
                 [resolution] * len(laz_files),
                 [remove] * len(laz_files),
                 [smooth_chm] * len(laz_files),
-                [filter_size] * len(laz_files)
+                [filter_size] * len(laz_files),
+                [pre_filter] * len(laz_files)
             ),
             total=len(laz_files),
             desc="Processing files",
@@ -292,10 +296,10 @@ def process_laz_files(input_folder, output_folder, ndvi_threshold=0.0, resolutio
     print(f"\nAll files processed in {total_elapsed_time:.2f} seconds.")
 
 
-"""
+
 if __name__ == '__main__':
-    input_folder = "E:/temporary_jessica/LAZ_TILES/25HN1"
-    output_folder = "E:/temporary_jessica/LAZ_TILES/25HN1"
+    input_folder = "E:/temporary_jessica/missed_laz_tiles"
+    output_folder = "E:/temporary_jessica/CHM_smoothed"
     max_workers = 20
     process_laz_files(input_folder, output_folder, max_workers=max_workers)
-"""
+
