@@ -4,3 +4,5 @@ shapely
 rasterio
 matplotlib
 jupyter
+jenkspy
+rasterstats
