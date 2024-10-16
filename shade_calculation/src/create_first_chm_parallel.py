@@ -154,7 +154,7 @@ def interpolation_vegetation(LasData, veg_points, resolution, no_data_value=-999
 
     if veg_points.x.shape[0] == 0:
         print("There are no vegetation points in the current area.")
-        vege_raster = np.full((rows, cols), 0, dtype=np.float32)
+        vege_raster = np.full((rows, cols), -200, dtype=np.float32)
         return vege_raster, grid_center_xy
 
     # create the delaunay triangulation
@@ -225,6 +225,7 @@ def process_single_laz_file(file_path, output_folder, ndvi_threshold=0.0, resolu
     # check if large tile
     if tile_name == '25GZ2_09':
         pre_filter = True
+
     # Extract vegetation points
     veg_points = extract_vegetation_points(LasData, ndvi_threshold=ndvi_threshold, pre_filter=pre_filter)
 
@@ -296,10 +297,10 @@ def process_laz_files(input_folder, output_folder, ndvi_threshold=0.0, resolutio
     print(f"\nAll files processed in {total_elapsed_time:.2f} seconds.")
 
 
-
+"""
 if __name__ == '__main__':
     input_folder = "E:/temporary_jessica/missed_laz_tiles"
     output_folder = "E:/temporary_jessica/CHM_smoothed"
     max_workers = 20
     process_laz_files(input_folder, output_folder, max_workers=max_workers)
-
+"""

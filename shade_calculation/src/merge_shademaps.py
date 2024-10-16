@@ -4,8 +4,10 @@ import glob
 import rasterio
 import numpy as np
 from tqdm import tqdm
+import time
 
-def merge_tif_files_by_time(main_folder, output_folder, merged_name, nodata_value=-9999, start_time=900, end_time=2000, delete_input=False):
+def merge_tif_files_by_time(main_folder, output_folder, merged_name, start_time=900, end_time=2000, delete_input_files=False,
+                            nodata_value=-9999):
     """
     Merge multiple TIF files from specified subfolders into a single mosaic file for each specified time step.
     -------
@@ -24,9 +26,9 @@ def merge_tif_files_by_time(main_folder, output_folder, merged_name, nodata_valu
     """
     os.makedirs(output_folder, exist_ok=True)
     tile_folders = os.listdir(main_folder)
-
     # Store all files for each time
     files_by_time = {}
+    merged_files = []
 
     # Iterate through all tile folders
     for tile_folder in tqdm(tile_folders, desc="Processing Tile Folders"):
@@ -121,7 +123,7 @@ def merge_tif_files_by_time(main_folder, output_folder, merged_name, nodata_valu
             "height": mosaic.shape[1],
             "width": mosaic.shape[2],
             "transform": out_transform,
-            "count": mosaic.shape[0],  # Band count
+            "count": mosaic.shape[0],
             "nodata": nodata_value
         })
 
@@ -130,13 +132,25 @@ def merge_tif_files_by_time(main_folder, output_folder, merged_name, nodata_valu
         with rasterio.open(output_file, "w", **out_meta) as dest:
             dest.write(mosaic)
 
+        merged_files.append(os.path.basename(output_file))
         print(f"Merged {len(files)} TIF files for time {time} into {output_file}")
 
-        # Optional: delete input files
-        if delete_input:
-            print(f"Deleting input files for time {time}")
-            for file in files:
-                os.remove(file)
+        for src in src_files_to_mosaic:
+            src.close()
+
+    # Optional: delete input files
+    if delete_input_files:
+        print(f"Deleting original TIF files in {main_folder}, excluding merged files")
+        for tile_folder in tile_folders:
+            tile_path = os.path.join(main_folder, tile_folder)
+            if not os.path.isdir(tile_path):
+                continue
+
+            # Get all .TIF files in the current tile folder
+            tif_files_to_delete = glob.glob(os.path.join(tile_path, '*.TIF'))
+            for tif_file in tif_files_to_delete:
+                if os.path.basename(tif_file) not in merged_files:  # Only delete if not merged
+                    os.remove(tif_file)
 """
 merge_tif_files_by_time("D:\Geomatics\output", "D:\Geomatics\correct_merged", "amsterdam")
 """

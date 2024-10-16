@@ -152,7 +152,7 @@ def interpolation_vegetation(LasData, veg_points, resolution, no_data_value=-999
 
     if veg_points.x.shape[0] == 0:
         print("There are no vegetation points in the current area.")
-        vege_raster = np.full((rows, cols), 0, dtype=np.float32)
+        vege_raster = np.full((rows, cols), -200, dtype=np.float32)
         return vege_raster, grid_center_xy
 
     # create the delaunay triangulation
@@ -184,7 +184,8 @@ def interpolation_vegetation(LasData, veg_points, resolution, no_data_value=-999
     return interpolated_grid, grid_center_xy
 
 
-def process_laz_files(input_folder, output_folder, ndvi_threshold=0.0, resolution=0.5, remove=False, smooth_chm=False, filter_size=3):
+def process_laz_files(input_folder, output_folder, ndvi_threshold=0.0, resolution=0.5, remove=False, smooth_chm=False,
+                      filter_size=3, pre_filter=False):
     """
     Process a folder of LAZ files to extract vegetation points and generate Canopy Height Models (CHMs).
     -------
@@ -196,6 +197,8 @@ def process_laz_files(input_folder, output_folder, ndvi_threshold=0.0, resolutio
     - remove (bool):            If True, deletes the original .LAZ files after processing (default: False).
     - smooth_chm (bool):        If True, applies smoothing to the CHM using a median filter (default: False).
     - filter_size (int):        Size of the median filter to use if smoothing (default: 3).
+    - pre_filter (boolean):     If True, deletes points 1.5 m above lowest potential vegetation point before NDVI
+                                filtering (default: False).
 
     Output:
     - None: The function processes each .LAZ file, creates corresponding CHM .tif files, and saves them to the output folder.
@@ -241,7 +244,7 @@ def process_laz_files(input_folder, output_folder, ndvi_threshold=0.0, resolutio
             LasData = las.read()
 
         # Extract vegetation points
-        veg_points = extract_vegetation_points(LasData, ndvi_threshold=ndvi_threshold)
+        veg_points = extract_vegetation_points(LasData, ndvi_threshold=ndvi_threshold, pre_filter=pre_filter)
 
         vegetation_data = interpolation_vegetation(LasData, veg_points, 0.5)
 

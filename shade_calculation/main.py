@@ -38,6 +38,12 @@ def read_config(file_path):
         params['chm_max_workers'] = int(params['chm_max_workers'])
     if 'dsm_max_workers' in params:
         params['dsm_max_workers'] = int(params['dsm_max_workers'])
+    if 'min_vegetation_height' in params:
+        params['min_vegetation_height'] = float(params['min_vegetation_height'])
+    if 'max_vegetation_height' in params:
+        params['max_vegetation_height'] = float(params['max_vegetation_height'])
+    if 'max_shade_workers' in params:
+        params['max_shade_workers'] = int(params['max_shade_workers'])
     if 'start_time' in params:
         params['start_time'] = int(params['start_time'])
     if 'end_time' in params:
@@ -54,14 +60,14 @@ def read_config(file_path):
         params['files_end_time'] = int(params['files_end_time'])
     if 'date' in params:
         try:
-            params['date'] = datetime.strptime(params[key], '%Y-%m-%d')
+            params['date'] = datetime.strptime(params['date'], '%Y-%m-%d')
         except ValueError:
             raise ValueError(f"Invalid date format for {'date'}: {params['date']}")
 
     # Convert boolean strings to actual boolean values
     boolean_keys = ['download_las', 'download_dsm_dtm', 'create_chm',
                     'create_final_dsm_chm', 'create_shade', 'merge_shademaps',
-                    'remove_las', 'smooth_chm', 'speed_up', 'delete_input']
+                    'remove_las', 'smooth_chm', 'pre_filter', 'speed_up', 'delete_input_shade']
 
     for key in boolean_keys:
         if key in params:
@@ -72,11 +78,13 @@ def read_config(file_path):
 
 if __name__ == '__main__':
 
-    config_file = 'Shade_config.txt'
+    config_file = 'Shade_config_test.txt'
     if not os.path.exists(config_file):
         raise FileNotFoundError(f"Config file not found: {config_file}")
 
     params = read_config(config_file)
+    # for param in params:
+    #     print(f'{param}: {params[param]}')
 
     if params.get('download_las'):
         print("Downloading LAS tiles...")
@@ -91,7 +99,7 @@ if __name__ == '__main__':
         print("Creating first CHM files...")
         process_laz_files_parallel(params['las_output_folder'], params['chm_output_folder'], params['ndvi_threshold'],
                                    params['resolution'], params['remove_las'], params['smooth_chm'],
-                                   params['filter_size'], params['chm_max_workers'])
+                                   params['filter_size'],  params['pre_filter'], params['chm_max_workers'])
 
     if params.get('create_final_dsm_chm'):
         # First check if a merged dtm and dsm is already provided
@@ -120,6 +128,7 @@ if __name__ == '__main__':
 
     if params.get('merge_shademaps'):
         print("Merging shademaps...")
+        print(params["delete_input_shade"])
         merge_tif_files_by_time(params['output_base_shademap'], params['output_folder_merged_shademaps'],
                                 params['merged_name'], params['files_start_time'], params['files_end_time'],
                                 params['delete_input_shade'])

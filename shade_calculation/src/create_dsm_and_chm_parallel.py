@@ -68,10 +68,6 @@ def crop_raster(raster_path, bbox, no_data=-9999, file_number=None, tile=None):
         if src.nodata is not None:
             cropped_data[cropped_data == src.nodata] = no_data
 
-        # Check for specific tile conditions for cropping
-        if tile == "25DN2" and file_number in ["25", "24"]:
-            cropped_data = cropped_data[:, :2150, :]
-
         return cropped_data, src.window_transform(window), src.crs
 
 
@@ -404,7 +400,7 @@ def process_files(chm_folder, dtm_path, dsm_path, buildings_path, output_base_fo
     print(f"\nAll files processed in {total_elapsed_time:.2f} seconds.")
 
 
-def process_folders(base_chm_folder, dtm_path, dsm_path, buildings_path, output_base_folder, nodata_value=-9999,
+def process_folders(base_chm_folder, dtm_path, dsm_path, buildings_path, output_base_folder,
                     max_workers=4, speed_up=False, min_height=2, max_height=4):
     """
     Process each folder containing CHM files concurrently.
@@ -422,16 +418,18 @@ def process_folders(base_chm_folder, dtm_path, dsm_path, buildings_path, output_
     - None: The function writes output files directly to the specified `output_base_folder`.
     """
 
+    print(f'max_workers before going to seperate folders = {max_workers}')
+
     # Iterate over each folder in the base folder
     for root, dirs, files in os.walk(base_chm_folder):
         for dir_name in dirs:
             chm_folder = os.path.join(root, dir_name)
             print(f"Processing folder: {chm_folder}")
-            process_files(chm_folder, dtm_path, dsm_path, buildings_path, output_base_folder, nodata_value,
+            process_files(chm_folder, dtm_path, dsm_path, buildings_path, output_base_folder,
                           max_workers=max_workers, speed_up=speed_up, min_height=min_height, max_height=max_height)
 
 
-
+"""
 if __name__ == '__main__':
     geotiff_dtm = "E:/temporary_jessica/DTM_ams.TIF"
     geotiff_dsm = "E:/temporary_jessica/DSM_ams.TIF"
@@ -443,3 +441,4 @@ if __name__ == '__main__':
     max_workers = 20
 
     process_folders(chm_folder, geotiff_dtm, geotiff_dsm, buildings, output_base_folder, nodata_value=-9999, max_workers=max_workers)
+"""

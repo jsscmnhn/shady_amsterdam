@@ -3,9 +3,9 @@
 # ========================================================================================================
 # Downloading Las tiles
 # --------------------------------------------------------------------------------------------------------
-download_las=yes
-las_output_folder=path
-subtile_list_file=path
+download_las=no
+las_output_folder=D:/Geomatics/first_run/LAZ
+subtile_list_file=../Calculating shade/Calculating_chm_dsm/ams_subtiles_test.txt
 
 # ---------------------------------------
 # if las tile download not needed, but las needed for CHM creation step
@@ -18,9 +18,9 @@ subtile_list_file=path
 # =========================================================================================================
 # Creation of AHN geotiles, DSM and DTM dataset
 # ---------------------------------------------------------------------------------------------------------
-download_dsm_dtm=yes
-ahn_output_folder=path
-tile_list_file=path
+download_dsm_dtm=no
+ahn_output_folder=D:/Geomatics/first_run
+tile_list_file=../Calculating shade/Calculating_chm_dsm/ams_tiles_test.txt
 merged_name=name
 
 # ---------------------------------------
@@ -34,9 +34,9 @@ merged_name=name
 # ==========================================================================================================
 # Creation of first CHM file
 # ----------------------------------------------------------------------------------------------------------
-create_chm=yes
+create_chm=no
 # input parameters for chm, las_output_folder is the input folder
-chm_output_folder=path
+chm_output_folder=D:/Geomatics/first_run/chm
 
 #optional parameters for chm
 ndvi_threshold=0.0
@@ -45,7 +45,7 @@ remove_las=no
 smooth_chm=no
 filter_size=3
 pre_filter=no
-chm_max_workers=4
+chm_max_workers=1
 
 # ---------------------------------------
 # if CHM creation not needed, but folder is for next step:
@@ -56,12 +56,12 @@ chm_max_workers=4
 # ==========================================================================================================
 # Creation of final CHM and DSM with ground and buildings
 # ----------------------------------------------------------------------------------------------------------
-create_final_dsm_chm=yes
-buildings_path=path
+create_final_dsm_chm=no
+buildings_path=D:/Geomatics/data/ams_buildings.gpkg
 output_dsm_chm=path
 
 # optional parameters
-dsm_max_workers=4
+dsm_max_workers=1
 speed_up=no
 min_vegetation_height=2
 max_vegetation_height=40
@@ -76,17 +76,17 @@ max_vegetation_height=40
 # ==========================================================================================================
 # Creation of Shade maps
 # ----------------------------------------------------------------------------------------------------------
-create_shade=yes
-output_base_shademap=path
-date=YYYY-MM-DD
+create_shade=no
+output_base_shademap=D:\Geomatics\first_run\shademaps
+date=2020-07-01
 
 # optional parameters
-start_time=9
-end_time=20
+start_time=12
+end_time=14
 interval=30
 trans=10
 trunkheight=25
-max_shade_workers=4
+max_shade_workers=1
 
 # ---------------------------------------
 # if shade map creation is not needed, but folder is for the next step:
@@ -99,10 +99,10 @@ max_shade_workers=4
 # Merging of Shade maps
 # ----------------------------------------------------------------------------------------------------------
 merge_shademaps=yes
-output_folder_merged_shademaps=path
+output_folder_merged_shademaps=D:\Geomatics\first_run\shademaps
 merged_name=amsterdam
 
 #optional parameters
-files_start_time=900
-files_end_time=2000
-delete_input_shade=no
+files_start_time=1200
+files_end_time=1400
+delete_input_shade=yes
