@@ -56,7 +56,12 @@ class CoolSpace:
         self.data['clipped'] = filtered.geometry.reindex(self.data.index)
         self.data.drop(columns='orig_id', inplace=True)
 
-    def calculate_shade(self, rasters: list[rasterio.io.DatasetReader], area_thres=200, shade_thres=0.5, ratio_thres=0.35, use_clip=False) -> None:
+    def calculate_shade(self,
+                        rasters: list[rasterio.io.DatasetReader],
+                        area_thres=200,
+                        shade_thres=0.5,
+                        ratio_thres=0.35,
+                        use_clip=False) -> None:
         """
         input a series of rasters, use previous geometries to clip the rasters, and calculate each raster's average shade, areas of shade, and shade geometries.
 
@@ -141,7 +146,8 @@ class CoolSpace:
                         # use rasterio.features.shapes to transform the mask to geometry
                         for geom, value in shapes(region_mask, transform=out_transform):
                             if value == 1:  # reserve the "true" part
-                                if shape(geom).area / shape(geom).length >= ratio_thres:  # check the ratio of area to perimeter
+                                # check the ratio of area to perimeter
+                                if shape(geom).area / shape(geom).length >= ratio_thres:
                                     shade_polygons.append(shape(geom))
 
                 if shade_polygons:
@@ -212,14 +218,14 @@ class CoolSpace:
         self.data["count"] = 0
 
         if start is not None and end is not None:
-            search_range = range(start, end + 1)
+            if start < 0 or end > raster_nums - 1:
+                print(f"The search range is: {start} - {end}, which exceeds the range of"
+                      f"shade maps: 0 - {raster_nums - 1}, the shade maps range will be used.")
+                search_range = range(raster_nums)
+            else:
+                search_range = range(start, end + 1)
         else:
             search_range = range(raster_nums)
-
-        # shade_geom_col_list = [f"sdGeom{i}" for i in range(raster_nums)]
-        shade_avg_col_list = [f"sdAvg{i}" for i in search_range]
-        shade_area_col_list = [f"sdArea{i}" for i in search_range]
-        shade_geom_col_list = [f"sdGeom{i}" for i in search_range]
 
         for raster_idx in search_range:
             shade_geom_col = f"sdGeom{raster_idx}"
@@ -229,14 +235,7 @@ class CoolSpace:
             print("No clipped geometry in data, the original geometry will be returned.")
             cool_geom_col = "geometry"
 
-        columns_to_select = (['id'] +
-                             shade_area_col_list +
-                             shade_avg_col_list +
-                             shade_geom_col_list +
-                             ['sdAvgTol'] +
-                             [cool_geom_col])
-
-        output = self.data[self.data["count"] > 0][columns_to_select].copy()
+        output = self.data[self.data["count"] > 0].copy()
         output.set_geometry(cool_geom_col, inplace=True)
 
         # transform all shade geometries into WKT and store as new columns
@@ -246,12 +245,12 @@ class CoolSpace:
         self.data.drop(columns=["count"], inplace=True)
         return output
 
-    def evaluate_shade_coverage(self, start: int = None, end: int = None) -> None:
-        """
+    def evaluate_shade_coverage(self, attri_name: str = "Query", start: int = None, end: int = None) -> None:
+        f"""
         calculate the shade coverage based on the average shade value of all rasters.
 
-        - The shade coverage is classified into 4 categories: 0 (<50%), 1 (50%), 2 (70%), 3 (90%).
-        - The shade coverage will be added as a new column to "self.data" as "shadeCover".
+        - The shade coverage is classified into 4 categories: 0 (<50%), 1 (50% - 70%), 2 (70% - 90%), 3 (90% - 100%).
+        - The shade coverage will be added as a new column to "self.data" as "sc<attri_name>".
         """
         raster_nums = self.intervals
         if raster_nums == 0:
@@ -259,6 +258,15 @@ class CoolSpace:
             return None
 
         if start is not None and end is not None:
+            try:
+                if start < 0 or end > raster_nums - 1:
+                    raise ValueError(f"{attri_name}: The search range is:  "
+                                     f"[{start} - {end}], {end + 1 - start} in total, which exceeds the range of"
+                                     f"shade maps: [0 - {raster_nums - 1}], {raster_nums} in total")
+            except ValueError as e:
+                print(f"Error: {e}, this evaluation will be ignored.")
+                return None
+
             search_range = range(start, end + 1)
         else:
             search_range = range(raster_nums)
@@ -280,8 +288,6 @@ class CoolSpace:
                 return 1
             else:
                 return 0
-
-        self.data["scScore"] = self.data["tol_shade_avg"].apply(classify_shade_coverage).astype(int)
-
-        self.data["scScore"] = self.data["sdScore"].astype(int)
+        attribute_name = f"sc{attri_name}"
+        self.data[attribute_name] = self.data["tol_shade_avg"].apply(classify_shade_coverage).astype(int)
         self.data.drop(columns=["tol_shade_avg"], inplace=True)
