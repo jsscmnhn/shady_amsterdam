@@ -37,9 +37,9 @@ def compute_search_range(search_start_time: int,
     start_time_dt = convert_to_datetime(start_time)
     search_start_time_dt = convert_to_datetime(search_start_time)
     search_end_time_dt = convert_to_datetime(search_end_time)
-    print(start_time_dt)
-    print(search_start_time_dt)
-    print(search_end_time_dt)
+    # print(start_time_dt)
+    # print(search_start_time_dt)
+    # print(search_end_time_dt)
 
     # Calculate the time interval as timedelta
     interval = timedelta(minutes=time_interval)
