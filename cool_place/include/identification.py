@@ -7,7 +7,7 @@ from scipy.ndimage import label
 from shapely.geometry import shape, box
 from shapely.ops import unary_union
 import numpy as np
-import matplotlib.pyplot as plt
+from rich.progress import Progress
 
 pd.set_option('future.no_silent_downcasting', True)
 
@@ -19,44 +19,52 @@ class CoolSpace:
         self.intervals = 0
 
     def clip(self, clipper: gpd.geodataframe, how='difference', use_clip=False) -> None:
-        if how not in ['difference', 'intersection', 'union', 'symmetric_difference']:
-            raise ValueError(
-                f"Invalid 'how' parameter: {how}. Choose from "
-                f"'difference', 'intersection', 'union', 'symmetric_difference'."
-            )
-        if clipper.crs is None:
-            clipper = clipper.set_crs(self.data.crs)
-        if self.data.crs != clipper.crs:
-            clipper = clipper.to_crs(self.data.crs)
-        if use_clip and 'clipped' in self.data.columns:
-            self.data.set_geometry('clipped', inplace=True)
-        else:
-            self.data.set_geometry('geometry', inplace=True)
+        with Progress() as progress:
+            task = progress.add_task("Clipping geometries...", total=6)
+            if how not in ['difference', 'intersection', 'union', 'symmetric_difference']:
+                raise ValueError(
+                    f"Invalid 'how' parameter: {how}. Choose from "
+                    f"'difference', 'intersection', 'union', 'symmetric_difference'."
+                )
+            if clipper.crs is None:
+                clipper = clipper.set_crs(self.data.crs)
+            if self.data.crs != clipper.crs:
+                clipper = clipper.to_crs(self.data.crs)
+            progress.advance(task)
 
-        self.data['orig_id'] = self.data.index
+            if use_clip and 'clipped' in self.data.columns:
+                self.data.set_geometry('clipped', inplace=True)
+            else:
+                self.data.set_geometry('geometry', inplace=True)
+            progress.advance(task)
 
-        clipped = gpd.overlay(self.data, clipper, how=how, keep_geom_type=True)
+            self.data['orig_id'] = self.data.index
+            clipped = gpd.overlay(self.data, clipper, how=how, keep_geom_type=True)
+            progress.advance(task)
 
-        # Explode multipolygons into individual polygons
-        exploded = clipped.explode(index_parts=False).reset_index(drop=True)
+            # Explode multipolygons into individual polygons
+            exploded = clipped.explode(index_parts=False).reset_index(drop=True)
+            progress.advance(task)
 
-        # Calculate area to perimeter ratio
-        exploded['area'] = exploded.geometry.area
-        exploded['perimeter'] = exploded.geometry.length
-        exploded['area_to_perimeter'] = exploded['area'] / (exploded['perimeter'] + 0.0001)
+            # Calculate area to perimeter ratio
+            exploded['area'] = exploded.geometry.area
+            exploded['perimeter'] = exploded.geometry.length
+            exploded['area_to_perimeter'] = exploded['area'] / (exploded['perimeter'] + 0.0001)
 
-        # Filter polygons based on area to perimeter ratio and area
-        filtered = exploded[(exploded['area'] >= 200) & (exploded['area_to_perimeter'] >= 0.35)]
+            # Filter polygons based on area to perimeter ratio and area
+            filtered = exploded[(exploded['area'] >= 200) & (exploded['area_to_perimeter'] >= 0.35)]
+            progress.advance(task)
 
-        # Group by original geometry and merge polygons back to multipolygon if needed
-        filtered = filtered.dissolve(by='orig_id', as_index=False)
+            # Group by original geometry and merge polygons back to multipolygon if needed
+            filtered = filtered.dissolve(by='orig_id', as_index=False)
 
-        # Set back to original index
-        filtered.set_index('orig_id', inplace=True)
+            # Set back to original index
+            filtered.set_index('orig_id', inplace=True)
 
-        # Update self.data with the filtered multipolygon geometries
-        self.data['clipped'] = filtered.geometry.reindex(self.data.index)
-        self.data.drop(columns='orig_id', inplace=True)
+            # Update self.data with the filtered multipolygon geometries
+            self.data['clipped'] = filtered.geometry.reindex(self.data.index)
+            self.data.drop(columns='orig_id', inplace=True)
+            progress.advance(task)
 
     def calculate_shade(self,
                         rasters: list[rasterio.io.DatasetReader],
@@ -93,87 +101,81 @@ class CoolSpace:
             print("No clipped geometry, default geometry will be used.")
             self.data.set_geometry('geometry', inplace=True)
 
-        # same calculation for each raster
-        for raster_idx, raster in enumerate(rasters):
-            print(f"Processing raster {raster_idx + 1}/{len(rasters)}")
+        with Progress() as progress:
+            raster_task = progress.add_task("Processing shade maps...", total=len(rasters))
 
-            # initialize attributes for current raster
-            self.data[f"sdAvg{raster_idx}"] = None
-            self.data[f"sdArea{raster_idx}"] = None
-            self.data[f"sdGeom{raster_idx}"] = None
+            for raster_idx, raster in enumerate(rasters):
+                progress.update(raster_task, description=f"Processing shade map {raster_idx + 1}/{len(rasters)}")
 
-            minx, miny, maxx, maxy = raster.bounds
-            raster_bounds = box(minx, miny, maxx, maxy)
-            print(raster_bounds)
+                self.data[f"sdAvg{raster_idx}"] = None
+                self.data[f"sdArea{raster_idx}"] = None
+                self.data[f"sdGeom{raster_idx}"] = None
 
-            # create GeoSeries to store all the sdGeom (polygon transformed from pixels)
-            all_shade_geoms = gpd.GeoSeries(index=self.data.index)
+                minx, miny, maxx, maxy = raster.bounds
+                raster_bounds = box(minx, miny, maxx, maxy)
+                print(raster_bounds)
 
-            for idx, row in self.data.iterrows():
-                geom = row[self.data.geometry.name]
-                if geom is None:
-                    # print(f"Geometry {idx} is None, skipping.")
-                    all_shade_geoms.at[idx] = None
-                    continue
+                all_shade_geoms = gpd.GeoSeries(index=self.data.index)
 
-                # check if geometry intersects the raster or not
-                if geom.intersects(raster_bounds):
-                    clipped_geom = geom.intersection(raster_bounds)
+                geometry_task = progress.add_task(f"Processing geometries in shade map {raster_idx + 1}",
+                                                  total=len(self.data))
 
-                    # if intersection fail (empty) or the clipped result is too small, skip it
-                    if clipped_geom.is_empty or clipped_geom.area < 1e-6:
-                        print(f"Geometry {idx} is too small ({clipped_geom.area}) "
-                              f"or empty after intersection, skipping.")
+                for idx, row in self.data.iterrows():
+                    geom = row[self.data.geometry.name]
+                    if geom is None:
                         all_shade_geoms.at[idx] = None
+                        progress.advance(geometry_task)
                         continue
-                else:
-                    continue  # if geometry not intersects with raster, skip it
 
-                geom_geojson = [clipped_geom.__geo_interface__]  # transform geom to GeoJSON
-                out_image, out_transform = mask(raster, geom_geojson, crop=True)
-                out_image = out_image[0]  # assume shade value is stored in band 1
+                    if geom.intersects(raster_bounds):
+                        clipped_geom = geom.intersection(raster_bounds)
 
-                # for all the pixels have shade value <= 0.5 (0 means maximum shade, 1 means sun),
-                # calculate the continuous area
-                labeled_array, num_features = label((out_image >= 0) & (out_image <= shade_thres))
-                pixel_size = out_transform[0] * (-out_transform[4])  # area of a pixel
-                pixel_areas = []
-                shade_polygons = []
+                        if clipped_geom.is_empty or clipped_geom.area < 1e-6:
+                            print(f"Geometry {idx} is too small ({clipped_geom.area}) "
+                                  f"or empty after intersection, skipping.")
+                            all_shade_geoms.at[idx] = None
+                            progress.advance(geometry_task)
+                            continue
+                    else:
+                        progress.advance(geometry_task)
+                        continue
 
-                # only select those continuous area larger than 200m2
-                for region_label in range(1, num_features + 1):
-                    region_area = np.sum(labeled_array == region_label) * pixel_size
-                    if region_area >= area_thres:
-                        pixel_areas.append(np.round(region_area, 4))
+                    geom_geojson = [clipped_geom.__geo_interface__]
+                    out_image, out_transform = mask(raster, geom_geojson, crop=True)
+                    out_image = out_image[0]
 
-                        # create region mask (bool)
-                        region_mask = (labeled_array == region_label).astype(np.uint8)
+                    labeled_array, num_features = label((out_image >= 0) & (out_image <= shade_thres))
+                    pixel_size = out_transform[0] * (-out_transform[4])
+                    pixel_areas = []
+                    shade_polygons = []
 
-                        # use rasterio.features.shapes to transform the mask to geometry
-                        for geom, value in shapes(region_mask, transform=out_transform):
-                            if value == 1:  # reserve the "true" part
-                                # check the ratio of area to perimeter
-                                if shape(geom).area / shape(geom).length >= ratio_thres:
-                                    shade_polygons.append(shape(geom))
+                    for region_label in range(1, num_features + 1):
+                        region_area = np.sum(labeled_array == region_label) * pixel_size
+                        if region_area >= area_thres:
+                            pixel_areas.append(np.round(region_area, 4))
+                            region_mask = (labeled_array == region_label).astype(np.uint8)
 
-                if shade_polygons:
-                    merged_polygon = unary_union(shade_polygons)
-                    all_shade_geoms.at[idx] = merged_polygon
-                else:
-                    all_shade_geoms.at[idx] = None
+                            for geom, value in shapes(region_mask, transform=out_transform):
+                                if value == 1:
+                                    if shape(geom).area / shape(geom).length >= ratio_thres:
+                                        shade_polygons.append(shape(geom))
 
-                self.data.at[idx, f"sdArea{raster_idx}"] = pixel_areas
+                    if shade_polygons:
+                        merged_polygon = unary_union(shade_polygons)
+                        all_shade_geoms.at[idx] = merged_polygon
+                    else:
+                        all_shade_geoms.at[idx] = None
 
-                # calculate average shade value
-                valid_data = out_image[(out_image >= 0) & (out_image <= shade_thres)]
-                if len(pixel_areas) == 0:
-                    avg = 1
-                else:
+                    self.data.at[idx, f"sdArea{raster_idx}"] = pixel_areas
+                    valid_data = out_image[(out_image >= 0) & (out_image <= shade_thres)]
                     avg = valid_data.mean() if valid_data.size > 0 else 1
+                    self.data.at[idx, f"sdAvg{raster_idx}"] = np.float64(avg)
 
-                self.data.at[idx, f"sdAvg{raster_idx}"] = np.float64(avg)
+                    progress.advance(geometry_task)
 
-            self.data[f"sdGeom{raster_idx}"] = all_shade_geoms
+                self.data[f"sdGeom{raster_idx}"] = all_shade_geoms
+                progress.advance(raster_task)
+
             self.intervals = len(rasters)
 
     def get_shade_geometries(self, raster_idx: int) -> gpd.geodataframe:
@@ -286,9 +288,15 @@ class CoolSpace:
             search_range = range(raster_nums)
 
         self.data["tol_shade_avg"] = 0
-        for i in search_range:
-            shade_avg_col = f"sdAvg{i}"
-            self.data["tol_shade_avg"] += self.data[shade_avg_col].fillna(1)
+
+        with Progress() as progress:
+            task = progress.add_task(f"Calculating shade coverage of "
+                                     f"{attri_name} time range...", total=len(search_range))
+
+            for i in search_range:
+                shade_avg_col = f"sdAvg{i}"
+                self.data["tol_shade_avg"] += self.data[shade_avg_col].fillna(1)
+                progress.advance(task)
 
         self.data["tol_shade_avg"] /= raster_nums
         self.data["tol_shade_avg"] = self.data["tol_shade_avg"].round(4)
@@ -302,6 +310,7 @@ class CoolSpace:
                 return 1
             else:
                 return 0
+
         attribute_name = f"sc{attri_name}"
         self.data[attribute_name] = self.data["tol_shade_avg"].apply(classify_shade_coverage).astype(int)
         self.data.drop(columns=["tol_shade_avg"], inplace=True)

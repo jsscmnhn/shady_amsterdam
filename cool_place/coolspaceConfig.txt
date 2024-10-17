@@ -49,7 +49,9 @@ capacity_search_buffer=700
 [shade_info_single]
 # mandatory paramters
 
-# start time is 9:00 am, and end time is 18:00 pm
+# start time is 9:00, and end time is 18:00. The daytime range will be used for selecting corresponding
+# shade maps to perform calculation, i.e., it may not use all the input shade maps, since some of the shade maps
+# might be too late (e.g., 20:00), which is meaningless.
 single_day_time_range=[900, 1800]
 
 # each shade map is for a 30-minute interval

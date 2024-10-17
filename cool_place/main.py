@@ -4,12 +4,14 @@ from include.building import Building
 from include.evaluation import CoolEval
 from datetime import datetime, timedelta
 from shapely.geometry import base
+from rich.progress import Progress
 import geopandas as gpd
 import rasterio
 import glob
 import os
 import configparser
 import ast
+import time
 
 def read_config(filename):
     config = configparser.ConfigParser()
@@ -72,10 +74,16 @@ def identification(coolspace_file: gpd.geodataframe,
     # Read datasets
     shadows = []
     shadow_files = glob.glob(os.path.join(shademaps_path, '*.TIF'))
-    for shadow_file in shadow_files:
-        shadow_map = rasterio.open(shadow_file, crs=coolSpace.data.crs)
-        shadows.append(shadow_map)
-    shadows = shadows[0:1]  # Use for testing, this line should not be included in the final program
+    start_time = single_day_time_range[0]
+    end_time = single_day_time_range[1]
+    daytime = compute_search_range(start_time, end_time, start_time, end_time, time_interval)
+    with Progress() as progress:
+        task = progress.add_task("Loading shade maps...", total=daytime[1] + 1)
+        for shadow_file in shadow_files:
+            shadow_map = rasterio.open(shadow_file, crs=coolSpace.data.crs)
+            shadows.append(shadow_map)
+            progress.advance(task)
+    shadows = shadows[daytime[0]:daytime[1]]
 
     # Set the calculation mode.
     # For single-day, it allows query for different time-range after the calculation for the whole day
@@ -101,9 +109,7 @@ def identification(coolspace_file: gpd.geodataframe,
 
     # Evaluate the shade coverage based on different modes
     if mode == 'single-day':
-        start_time = single_day_time_range[0]
-        end_time = single_day_time_range[1]
-        coolSpace.evaluate_shade_coverage(attri_name="Day", start=0, end=len(shadows) - 1)
+        coolSpace.evaluate_shade_coverage(attri_name="Day", start=daytime[0], end=daytime[1])
 
         if search_range is not None:
             search_start_time = search_range[0]
@@ -200,43 +206,63 @@ if __name__ == '__main__':
 
     config = read_config("./coolspaceConfig.txt")
 
-    # read GeoPackage and layers
-    gpkg_file                 = config['files']['gpkg_file']
-    landuse_layer             = config['files']['landuse_file']
-    road_layer                = config['files']['road_file']
-    building_layer            = config['files']['building_file']
-    building_population_layer = config['files']['building_population_file']
-    street_furniture_layer    = config['files']['street_furniture_file']
-    heatrisk_layer            = config['files']['heatrisk_file']
-    output_layer              = config['files']['output_file']
+    # Read config
+    with Progress() as progress:
+        task = progress.add_task("Reading config parameters...", total=1)
+        # read GeoPackage and layers
+        gpkg_file                 = config['files']['gpkg_file']
+        landuse_layer             = config['files']['landuse_file']
+        road_layer                = config['files']['road_file']
+        building_layer            = config['files']['building_file']
+        building_population_layer = config['files']['building_population_file']
+        street_furniture_layer    = config['files']['street_furniture_file']
+        heatrisk_layer            = config['files']['heatrisk_file']
+        output_layer              = config['files']['output_file']
 
-    # read PET raster
-    pet_file = config['files']['pet_file']
+        # read PET raster
+        pet_file = config['files']['pet_file']
 
-    # read shape maps file path and information
-    shademaps_path         = config['files']['shademaps_path']
-    shade_calculation_mode = config['parameters']['shade_calculation_mode']
-    time_interval          = ast.literal_eval(config['shade_info_single']['time_interval'])
-    single_day_time_range  = ast.literal_eval(config['shade_info_single']['single_day_time_range'])
-    morning_range          = ast.literal_eval(config['shade_info_single']['morning_range'])
-    afternoon_range        = ast.literal_eval(config['shade_info_single']['afternoon_range'])
-    late_afternoon_range   = ast.literal_eval(config['shade_info_single']['late_afternoon_range'])
-    search_range           = ast.literal_eval(config['shade_info_single']['search_range'])
-    num_days               = ast.literal_eval(config['shade_info_multi']['num_days'])
+        # read shape maps file path and information
+        shademaps_path         = config['files']['shademaps_path']
+        shade_calculation_mode = config['parameters']['shade_calculation_mode']
+        time_interval          = ast.literal_eval(config['shade_info_single']['time_interval'])
+        single_day_time_range  = ast.literal_eval(config['shade_info_single']['single_day_time_range'])
+        morning_range          = ast.literal_eval(config['shade_info_single']['morning_range'])
+        afternoon_range        = ast.literal_eval(config['shade_info_single']['afternoon_range'])
+        late_afternoon_range   = ast.literal_eval(config['shade_info_single']['late_afternoon_range'])
+        search_range           = ast.literal_eval(config['shade_info_single']['search_range'])
+        num_days               = ast.literal_eval(config['shade_info_multi']['num_days'])
 
-    # read parameters
-    road_buffer_attribute  = config['parameters']['road_buffer_attribute']
-    output_coolspace_type  = config['parameters']['output_coolspace_type']
-    building_buffer        = ast.literal_eval(config['parameters']['building_buffer'])
-    capacity_search_buffer = ast.literal_eval(config['parameters']['capacity_search_buffer'])
+        # read parameters
+        road_buffer_attribute  = config['parameters']['road_buffer_attribute']
+        output_coolspace_type  = config['parameters']['output_coolspace_type']
+        building_buffer        = ast.literal_eval(config['parameters']['building_buffer'])
+        capacity_search_buffer = ast.literal_eval(config['parameters']['capacity_search_buffer'])
+        progress.advance(task)
 
-    landuse = gpd.read_file(gpkg_file, layer=landuse_layer)
-    road = gpd.read_file(gpkg_file, layer=road_layer)
-    building = gpd.read_file(gpkg_file, layer=building_layer)
-    building_pop = gpd.read_file(gpkg_file, layer=building_population_layer)
-    street_furniture = gpd.read_file(gpkg_file, layer=street_furniture_layer)
-    heatrisk = gpd.read_file(gpkg_file, layer=heatrisk_layer)
+    with Progress() as progress:
+        task = progress.add_task("Loading GeoPackage layers...", total=6)
 
+        # Load each layer and update the progress
+        landuse = gpd.read_file(gpkg_file, layer=landuse_layer)
+        progress.advance(task)
+
+        road = gpd.read_file(gpkg_file, layer=road_layer)
+        progress.advance(task)
+
+        building = gpd.read_file(gpkg_file, layer=building_layer)
+        progress.advance(task)
+
+        building_pop = gpd.read_file(gpkg_file, layer=building_population_layer)
+        progress.advance(task)
+
+        street_furniture = gpd.read_file(gpkg_file, layer=street_furniture_layer)
+        progress.advance(task)
+
+        heatrisk = gpd.read_file(gpkg_file, layer=heatrisk_layer)
+        progress.advance(task)
+
+    begin = time.time()
     coolspace = identification(coolspace_file=landuse,
                                road_file=road,
                                building_file=building,
@@ -250,6 +276,10 @@ if __name__ == '__main__':
                                afternoon_range=afternoon_range,
                                late_afternoon_range=late_afternoon_range,
                                output_coolspace_type=output_coolspace_type)
+    end = time.time()
+    total = end - begin
+    minutes, seconds = divmod(total, 60)
+    print(f"Total time for identification: {int(minutes)} minutes and {seconds:.2f} seconds")
 
     # coolspace_output = evaluation(coolspace_file=coolspace,
     #                               building_population_file="",
