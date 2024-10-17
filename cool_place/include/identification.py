@@ -81,9 +81,9 @@ class CoolSpace:
         - The shade area is calculated as the area of all continuous areas larger than 200m2.
         - The shade geometry is calculated as the union of all shade polygons with area-to-perimeter ratio >= 0.35.
 
-        - The average shade value will be added as a new column to "self.data" as "sdAvg{raster_idx}"
-        - The shade area will be added as a new column to "self.data" as "sdArea{raster_idx}"
-        - The shade geometry will be added as a new column to "self.data" as "sdGeom{raster_idx}"
+        - The average shade value will be added as a new column to "self.data" as "sdAvg{raster_idx}".
+        - The shade area will be added as a new column to "self.data" as "sdArea{raster_idx}".
+        - The shade geometry will be added as a new column to "self.data" as "sdGeom{raster_idx}".
 
         - An extra column "intervals" will be added to self (NOT "self.data"!) to indicate the number of rasters
           used for shade calculation.
@@ -251,14 +251,6 @@ class CoolSpace:
         output = self.data[self.data["count"] > 0].copy()
         output.set_geometry(cool_geom_col, inplace=True)
         output.drop(columns=["count"], inplace=True)
-        # if cool_geom_col == "geometry" and "clipped" in output.columns:
-        #     output["clipped"] = output["clipped"].to_wkt()
-        # elif cool_geom_col == "clipped":
-        #     output["geometry"] = output["geometry"].to_wkt()
-        #
-        # # transform all shade geometries into WKT and store as new columns
-        # for i in search_range:
-        #     output[f"sdGeom{i}"] = output[f"sdGeom{i}"].to_wkt()
 
         self.data.drop(columns=["count"], inplace=True)
         return output
@@ -289,7 +281,7 @@ class CoolSpace:
         else:
             search_range = range(raster_nums)
 
-        self.data["tol_shade_avg"] = 0
+        self.data["tol_shade_score"] = 0
 
         with Progress() as progress:
             task = progress.add_task(f"Calculating shade coverage of "
@@ -297,11 +289,13 @@ class CoolSpace:
 
             for i in search_range:
                 shade_avg_col = f"sdAvg{i}"
-                self.data["tol_shade_avg"] += self.data[shade_avg_col].fillna(1)
+                # if the shade average value is below 0.5, it means the polygon has valid shaded area --> +0
+                # otherwise, it means the polygon doesn't have any valid shaded area --> +1
+                self.data["tol_shade_score"] += self.data[shade_avg_col].fillna(1).apply(lambda x: 0 if x < 0.5 else 1)
                 progress.advance(task)
 
-        self.data["tol_shade_avg"] /= raster_nums
-        self.data["tol_shade_avg"] = self.data["tol_shade_avg"].round(4)
+        self.data["tol_shade_score"] /= raster_nums
+        self.data["tol_shade_score"] = self.data["tol_shade_score"].round(4)
 
         def classify_shade_coverage(avg) -> int:
             if 0 <= avg <= 0.1:
@@ -315,4 +309,4 @@ class CoolSpace:
 
         attribute_name = f"sc{attri_name}"
         self.data[attribute_name] = self.data["tol_shade_avg"].apply(classify_shade_coverage).astype(int)
-        self.data.drop(columns=["tol_shade_avg"], inplace=True)
+        self.data.drop(columns=["tol_shade_score"], inplace=True)
