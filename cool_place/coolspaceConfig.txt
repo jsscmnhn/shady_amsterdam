@@ -1,0 +1,75 @@
+# Config file for Cool Space Processing
+
+# ======================================================================================================================
+# Specify input file paths and output file path
+# ----------------------------------------------------------------------------------------------------------------------
+[files]
+# specify the GeoPackage file path
+gpkg_file=G:\\TUD\\Synthesis\\cool_place\\coolspace.gpkg
+
+# specify each layer name in the gpkg
+landuse_file=ams_landuse_top10NL
+road_file=ams_roads_top10NL
+building_file=ams_buildings_bagplus
+building_population_file=ams_bpop_2020
+street_furniture_file=ams_bench_osm
+heatrisk_file=ams_heatrisk_2023
+output_file=coolspace_output
+
+# read pet file path
+pet_file=G:\\TUD\\Synthesis\\cool_place\\ams_PET_average.tiff
+
+# specify the shade maps file path, which is a directory containing all shade maps tiff
+shademaps_path=G:\\TUD\\Synthesis\\cool_place\\shademaps\\
+
+# ======================================
+# ======================================================================================================================
+# Specify parameters
+# ----------------------------------------------------------------------------------------------------------------------
+[parameters]
+# attribute for creating road buffer
+road_buffer_attribute=buffer
+
+# building buffer number
+building_buffer=4
+
+# the mode for shade calculation --> 'single-day' or 'multi-days'
+shade_calculation_mode=single-day
+
+# output coolspace geometry type --> 'land-use' or 'public-space'
+output_coolspace_type=land-use
+
+# buffer used for searching a cool space's surrounding population
+capacity_search_buffer=700
+
+# ======================================
+# ======================================================================================================================
+# Specify shade maps information for "single-day" mode and "multi-days" mode
+# ----------------------------------------------------------------------------------------------------------------------
+[shade_info_single]
+# mandatory paramters
+
+# start time is 9:00 am, and end time is 18:00 pm
+single_day_time_range=[900, 1800]
+
+# each shade map is for a 30-minute interval
+time_interval=30
+
+# morning time range
+morning_range=[900, 1200]
+
+# afternoon time range
+afternoon_range=[1200, 1600]
+
+# late afternoon time range
+late_afternoon_range=[1600, 1800]
+
+# optional paramters --> if there is a certain time range that the user is interested e.g. [1000, 1200]
+search_range=None
+
+[shade_info_multi]
+# if using "multi-days" mode, specify the number of days
+num_days=2
+
+# ======================================
+# ======================================================================================================================

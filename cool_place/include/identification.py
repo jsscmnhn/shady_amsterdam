@@ -247,14 +247,14 @@ class CoolSpace:
         output = self.data[self.data["count"] > 0].copy()
         output.set_geometry(cool_geom_col, inplace=True)
         output.drop(columns=["count"], inplace=True)
-        if cool_geom_col == "geometry" and "clipped" in output.columns:
-            output["clipped"] = output["clipped"].to_wkt()
-        elif cool_geom_col == "clipped":
-            output["geometry"] = output["geometry"].to_wkt()
-
-        # transform all shade geometries into WKT and store as new columns
-        for i in search_range:
-            output[f"sdGeom{i}"] = output[f"sdGeom{i}"].to_wkt()
+        # if cool_geom_col == "geometry" and "clipped" in output.columns:
+        #     output["clipped"] = output["clipped"].to_wkt()
+        # elif cool_geom_col == "clipped":
+        #     output["geometry"] = output["geometry"].to_wkt()
+        #
+        # # transform all shade geometries into WKT and store as new columns
+        # for i in search_range:
+        #     output[f"sdGeom{i}"] = output[f"sdGeom{i}"].to_wkt()
 
         self.data.drop(columns=["count"], inplace=True)
         return output

@@ -3,14 +3,18 @@ from include.identification import CoolSpace
 from include.building import Building
 from include.evaluation import CoolEval
 from datetime import datetime, timedelta
-from typing import Union
+from shapely.geometry import base
 import geopandas as gpd
-import numpy as np
 import rasterio
-import matplotlib.pyplot as plt
 import glob
 import os
+import configparser
+import ast
 
+def read_config(filename):
+    config = configparser.ConfigParser()
+    config.read(filename)
+    return config
 
 def convert_to_datetime(time: int) -> datetime:
     hours, minutes = divmod(time, 100)
@@ -45,31 +49,33 @@ def compute_search_range(search_start_time: int,
     return [start_idx, end_idx]
 
 
-def identification(landuse_file: str,
-                   road_file: str,
-                   building_file: str,
-                   shadowmaps_file: str,
+def identification(coolspace_file: gpd.geodataframe,
+                   road_file: gpd.geodataframe,
+                   building_file: gpd.geodataframe,
+                   shademaps_path: str,
                    road_buffer_attri: str,
                    building_buffer_num: int = 4,
                    mode: str = 'single-day',
                    num_days: int = None,
-                   start_time: int = 900,
-                   end_time: int = 1800,
-                   time_interval: int = 30,
-                   search_start_time: int = 900,
-                   search_end_time: int = 1800,
+                   single_day_time_range: list = None,
+                   time_interval: int = None,
+                   search_range: list = None,
+                   morning_range: list = None,
+                   afternoon_range: list = None,
+                   late_afternoon_range: list = None,
                    output_coolspace_type: str = 'land-use') -> gpd.geodataframe:
 
+    coolSpace = CoolSpace(coolspace_file)
+    road = Road(road_file)
+    building = Building(building_file)
+
     # Read datasets
-    road = Road(gpd.read_file(road_file))
-    building = Building(gpd.read_file(building_file))
-    coolSpace = CoolSpace(gpd.read_file(landuse_file))
     shadows = []
-    shadow_files = glob.glob(os.path.join(shadowmaps_file, '*.TIF'))
+    shadow_files = glob.glob(os.path.join(shademaps_path, '*.TIF'))
     for shadow_file in shadow_files:
         shadow_map = rasterio.open(shadow_file, crs=coolSpace.data.crs)
         shadows.append(shadow_map)
-    shadows = shadows[0:3]  # Use two for testing, this line should not be included in the final program
+    shadows = shadows[0:1]  # Use for testing, this line should not be included in the final program
 
     # Set the calculation mode.
     # For single-day, it allows query for different time-range after the calculation for the whole day
@@ -95,16 +101,33 @@ def identification(landuse_file: str,
 
     # Evaluate the shade coverage based on different modes
     if mode == 'single-day':
-        search_range = compute_search_range(search_start_time, search_end_time, start_time, end_time, time_interval)
-        morning = compute_search_range(900, 1200, start_time, end_time, time_interval)
-        afternoon = compute_search_range(1200, 1600, start_time, end_time, time_interval)
-        late_aftrn = compute_search_range(1600, 1800, start_time, end_time, time_interval)
-
-        coolSpace.evaluate_shade_coverage(attri_name="Query", start=search_range[0], end=search_range[1])
-        coolSpace.evaluate_shade_coverage(attri_name="Morn", start=morning[0], end=morning[1])
-        coolSpace.evaluate_shade_coverage(attri_name="Aftrn", start=afternoon[0], end=afternoon[1])
-        coolSpace.evaluate_shade_coverage(attri_name="LtAftrn", start=late_aftrn[0], end=late_aftrn[1])
+        start_time = single_day_time_range[0]
+        end_time = single_day_time_range[1]
         coolSpace.evaluate_shade_coverage(attri_name="Day", start=0, end=len(shadows) - 1)
+
+        if search_range is not None:
+            search_start_time = search_range[0]
+            search_end_time = search_range[1]
+            search = compute_search_range(search_start_time, search_end_time, start_time, end_time, time_interval)
+            coolSpace.evaluate_shade_coverage(attri_name="Query", start=search[0], end=search[1])
+
+        if morning_range is not None:
+            m_start = morning_range[0]
+            m_end = morning_range[1]
+            morning = compute_search_range(m_start, m_end, start_time, end_time, time_interval)
+            coolSpace.evaluate_shade_coverage(attri_name="Morn", start=morning[0], end=morning[1])
+
+        if afternoon_range is not None:
+            a_start = afternoon_range[0]
+            a_end = afternoon_range[1]
+            afternoon = compute_search_range(a_start, a_end, start_time, end_time, time_interval)
+            coolSpace.evaluate_shade_coverage(attri_name="Aftrn", start=afternoon[0], end=afternoon[1])
+
+        if late_afternoon_range is not None:
+            la_start = late_afternoon_range[0]
+            la_end = late_afternoon_range[1]
+            late_aftrn = compute_search_range(la_start, la_end, start_time, end_time, time_interval)
+            coolSpace.evaluate_shade_coverage(attri_name="LtAftrn", start=late_aftrn[0], end=late_aftrn[1])
 
     elif mode == 'multi-days':
         # Shade maps number for one day, it assumes that every day has the same number of shade maps
@@ -127,13 +150,6 @@ def identification(landuse_file: str,
         output_gdf = coolSpace.get_cool_spaces(geom_type='geometry')
 
     return output_gdf
-
-
-def output(gdf: gpd.geodataframe, output_file_path: str) -> None:
-    for col in gdf.columns:
-        if gdf[col].apply(lambda x: isinstance(x, list)).any():
-            gdf[col] = gdf[col].apply(lambda x: str(x) if isinstance(x, list) else x)
-    gdf.to_file(output_file_path)
 
 
 def evaluation(coolspace_file: gpd.geodataframe,
@@ -163,31 +179,86 @@ def evaluation(coolspace_file: gpd.geodataframe,
     return cool_eval
 
 
+def list_to_string(gdf: gpd.geodataframe) -> None:
+    for col in gdf.columns:
+        if gdf[col].apply(lambda x: isinstance(x, list)).any():
+            gdf[col] = gdf[col].apply(lambda x: str(x) if isinstance(x, list) else x)
+
+
+def drop_or_wkt(gdf: gpd.geodataframe, mode='to_wkt') -> None:
+    geometry_columns = [col for col in gdf.columns if col != gdf.geometry.name]
+    for col in geometry_columns:
+        if isinstance(gdf[col].iloc[0], base.BaseGeometry):
+            if mode == 'to_wkt':
+                gdf[col] = gpd.GeoSeries(gdf[col]).to_wkt()
+            else:
+                gdf.drop(columns=col, inplace=True)
+
+
 # entry
 if __name__ == '__main__':
-    directory_mac = "/Volumes/T7 Shield/TUD/Synthesis/cool_place/"
-    directory_win = "G:\\TUD\\Synthesis\\cool_place\\"
 
-    landuse_file = directory_win + "ams_landuse_top10NL.shp"
-    road_file = directory_win + "ams_roads_top10NL.shp"
-    building_file = directory_win + "ams_buildings_bagplus.shp"
-    shadow_path = directory_win + "shademaps\\"
+    config = read_config("./coolspaceConfig.txt")
 
-    coolspace = identification(landuse_file=landuse_file,
-                               road_file=road_file,
-                               building_file=building_file,
-                               shadowmaps_file=shadow_path,
-                               road_buffer_attri='buffer',
-                               building_buffer_num=4,
-                               mode='single-day',
-                               output_coolspace_type='land-use')
+    # read GeoPackage and layers
+    gpkg_file                 = config['files']['gpkg_file']
+    landuse_layer             = config['files']['landuse_file']
+    road_layer                = config['files']['road_file']
+    building_layer            = config['files']['building_file']
+    building_population_layer = config['files']['building_population_file']
+    street_furniture_layer    = config['files']['street_furniture_file']
+    heatrisk_layer            = config['files']['heatrisk_file']
+    output_layer              = config['files']['output_file']
 
-    coolspace_output = evaluation(coolspace_file=coolspace,
-                                  building_population_file="",
-                                  bench_file="",
-                                  heatrisk_file="",
-                                  pet_file="",
-                                  search_buffer=700)
+    # read PET raster
+    pet_file = config['files']['pet_file']
 
-    output(coolspace_output, directory_win + "test.shp")
+    # read shape maps file path and information
+    shademaps_path         = config['files']['shademaps_path']
+    shade_calculation_mode = config['parameters']['shade_calculation_mode']
+    time_interval          = ast.literal_eval(config['shade_info_single']['time_interval'])
+    single_day_time_range  = ast.literal_eval(config['shade_info_single']['single_day_time_range'])
+    morning_range          = ast.literal_eval(config['shade_info_single']['morning_range'])
+    afternoon_range        = ast.literal_eval(config['shade_info_single']['afternoon_range'])
+    late_afternoon_range   = ast.literal_eval(config['shade_info_single']['late_afternoon_range'])
+    search_range           = ast.literal_eval(config['shade_info_single']['search_range'])
+    num_days               = ast.literal_eval(config['shade_info_multi']['num_days'])
+
+    # read parameters
+    road_buffer_attribute  = config['parameters']['road_buffer_attribute']
+    output_coolspace_type  = config['parameters']['output_coolspace_type']
+    building_buffer        = ast.literal_eval(config['parameters']['building_buffer'])
+    capacity_search_buffer = ast.literal_eval(config['parameters']['capacity_search_buffer'])
+
+    landuse = gpd.read_file(gpkg_file, layer=landuse_layer)
+    road = gpd.read_file(gpkg_file, layer=road_layer)
+    building = gpd.read_file(gpkg_file, layer=building_layer)
+    building_pop = gpd.read_file(gpkg_file, layer=building_population_layer)
+    street_furniture = gpd.read_file(gpkg_file, layer=street_furniture_layer)
+    heatrisk = gpd.read_file(gpkg_file, layer=heatrisk_layer)
+
+    coolspace = identification(coolspace_file=landuse,
+                               road_file=road,
+                               building_file=building,
+                               shademaps_path=shademaps_path,
+                               road_buffer_attri=road_buffer_attribute,
+                               building_buffer_num=building_buffer,
+                               mode=shade_calculation_mode,
+                               single_day_time_range=single_day_time_range,
+                               time_interval=time_interval,
+                               morning_range=morning_range,
+                               afternoon_range=afternoon_range,
+                               late_afternoon_range=late_afternoon_range,
+                               output_coolspace_type=output_coolspace_type)
+
+    # coolspace_output = evaluation(coolspace_file=coolspace,
+    #                               building_population_file="",
+    #                               bench_file="",
+    #                               heatrisk_file="",
+    #                               pet_file="",
+    #                               search_buffer=700)
+
+    list_to_string(coolspace)
+    drop_or_wkt(coolspace, mode='to_wkt')
+    coolspace.to_file(gpkg_file, layer=output_layer)
 
