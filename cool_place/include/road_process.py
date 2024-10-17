@@ -53,9 +53,9 @@ class Road:
         self.data["buffered"] = None
         self.data["buffered"] = self.data.apply(lambda row: row.geometry.buffer(row[buffer_attri]), axis=1)
         if 'buffered' in self.data.columns:
-            print("Buffered geometry column created.")
+            print("Road buffer geometries created.")
         else:
-            print("Buffered geometry column failed to be created.")
+            print("Fail to create road buffer geometries.")
 
 
 if __name__ == '__main__':

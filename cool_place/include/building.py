@@ -11,9 +11,9 @@ class Building:
         self.data["buffered"] = None
         self.data["buffered"] = self.data['geometry'].buffer(buffer_size)
         if 'buffered' in self.data.columns:
-            print("Buffered geometry column created.")
+            print("Building buffer geometries created.")
         else:
-            print("Buffered geometry column failed to be created.")
+            print("Fail to create building buffer geometries.")
 
 
 if __name__ == '__main__':
