@@ -141,7 +141,7 @@ def evaluation(coolspace_file: gpd.geodataframe,
                bench_file: str,
                heatrisk_file: str,
                pet_file: str,
-               buffer_house: int = 700) -> gpd.geodataframe:
+               search_buffer: int = 700) -> gpd.geodataframe:
 
     coolspace = coolspace_file
     building_population = gpd.read_file(building_population_file)
@@ -153,7 +153,7 @@ def evaluation(coolspace_file: gpd.geodataframe,
                          bench=bench,
                          heatrisk=heatrisk,
                          pet=pet_file,
-                         buffer_house=buffer_house)
+                         search_buffer=search_buffer)
 
     cool_eval.evaluate_capacity()
     cool_eval.evaluate_sfurniture()
@@ -187,7 +187,7 @@ if __name__ == '__main__':
                                   bench_file="",
                                   heatrisk_file="",
                                   pet_file="",
-                                  buffer_house=700)
+                                  search_buffer=700)
 
     output(coolspace_output, directory_win + "test.shp")
 

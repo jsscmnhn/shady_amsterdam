@@ -12,13 +12,13 @@ import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
 
 class CoolEval:
-    def __init__(self, cool_places: gpd.GeoDataFrame, buildings: gpd.GeoDataFrame, bench: gpd.GeoDataFrame, heatrisk: gpd.GeoDataFrame, pet, buffer_house: float) -> None:
+    def __init__(self, cool_places: gpd.GeoDataFrame, buildings: gpd.GeoDataFrame, bench: gpd.GeoDataFrame, heatrisk: gpd.GeoDataFrame, pet, search_buffer: float) -> None:
         self.cool_places = cool_places
         self.buildings = buildings
         self.bench = bench
         self.heatrisk = heatrisk
         self.pet = pet
-        self.buffer_house = buffer_house
+        self.search_buffer = search_buffer
         self.eval = None
 
     def evaluate_capacity(self) -> None:
@@ -29,7 +29,7 @@ class CoolEval:
         # Buffer the cool places
         self.cool_places['buffer'] = None
 
-        self.cool_places['buffer'] = self.cool_places.geometry.buffer(self.buffer_house)
+        self.cool_places['buffer'] = self.cool_places.geometry.buffer(self.search_buffer)
         if 'buffer' in self.cool_places.columns:
             print("Buffered geometry column created.")
         else:
