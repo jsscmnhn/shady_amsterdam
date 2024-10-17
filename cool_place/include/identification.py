@@ -113,7 +113,7 @@ class CoolSpace:
 
                 minx, miny, maxx, maxy = raster.bounds
                 raster_bounds = box(minx, miny, maxx, maxy)
-                print(raster_bounds)
+                # print(raster_bounds)
 
                 all_shade_geoms = gpd.GeoSeries(index=self.data.index)
 
@@ -148,10 +148,12 @@ class CoolSpace:
                     pixel_size = out_transform[0] * (-out_transform[4])
                     pixel_areas = []
                     shade_polygons = []
+                    valid_pixel_values = []
 
                     for region_label in range(1, num_features + 1):
                         region_area = np.sum(labeled_array == region_label) * pixel_size
                         if region_area >= area_thres:
+                            valid_pixel_values.extend(out_image[labeled_array == region_label])
                             pixel_areas.append(np.round(region_area, 4))
                             region_mask = (labeled_array == region_label).astype(np.uint8)
 
@@ -166,9 +168,9 @@ class CoolSpace:
                     else:
                         all_shade_geoms.at[idx] = None
 
+                    valid_pixel_values = np.array(valid_pixel_values)
+                    avg = valid_pixel_values.mean() if valid_pixel_values.size > 0 else 1
                     self.data.at[idx, f"sdArea{raster_idx}"] = pixel_areas
-                    valid_data = out_image[(out_image >= 0) & (out_image <= shade_thres)]
-                    avg = valid_data.mean() if valid_data.size > 0 else 1
                     self.data.at[idx, f"sdAvg{raster_idx}"] = np.float64(avg)
 
                     progress.advance(geometry_task)
@@ -230,7 +232,7 @@ class CoolSpace:
 
         if start is not None and end is not None:
             if start < 0 or end > raster_nums - 1:
-                print(f"The search range is: {start} - {end}, which exceeds the range of"
+                print(f"The search range is: {start} - {end}, which exceeds the range of "
                       f"shade maps: 0 - {raster_nums - 1}, the shade maps range will be used.")
                 search_range = range(raster_nums)
             else:

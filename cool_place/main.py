@@ -146,14 +146,17 @@ def identification(coolspace_file: gpd.geodataframe,
     # Get cool space polygons of all-daytime search range. Based on the settings, the output
     # polygons will be either land-use polygons or public space polygons. All the other geometries
     # will be transformed into WKT and stored in columns.
-    if output_coolspace_type == 'land-use':
-        output_gdf = coolSpace.get_cool_spaces(geom_type='geometry')
-    elif output_coolspace_type == 'public-space':
-        output_gdf = coolSpace.get_cool_spaces(geom_type='clipped')
-    else:
-        print(f"Invalid type {output_coolspace_type}. Expected types are 'land-use' or 'public-space', "
-              f"to continue the process, 'land-use' will be used for output.")
-        output_gdf = coolSpace.get_cool_spaces(geom_type='geometry')
+    with Progress() as progress:
+        output_task = progress.add_task("Processing output data...", total=1)
+        if output_coolspace_type == 'land-use':
+            output_gdf = coolSpace.get_cool_spaces(geom_type='geometry')
+        elif output_coolspace_type == 'public-space':
+            output_gdf = coolSpace.get_cool_spaces(geom_type='clipped')
+        else:
+            print(f"Invalid type {output_coolspace_type}. Expected types are 'land-use' or 'public-space', "
+                  f"to continue the process, 'land-use' will be used for output.")
+            output_gdf = coolSpace.get_cool_spaces(geom_type='geometry')
+        progress.advance(output_task)
 
     return output_gdf
 
