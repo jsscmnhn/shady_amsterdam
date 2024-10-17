@@ -1,17 +1,44 @@
-from gdown import download
-
 from src.collect_data import download_raster_tiles, download_las_tiles
 from src.create_first_chm_parallel import process_laz_files as process_laz_files_parallel
 from src.create_dsm_and_chm_parallel import process_folders as process_dsm_chm_parallel
 from src.shade_parallel import process_folders as process_shade
 from src.merge_shademaps import merge_tif_files_by_time
 
-import configparser
+import argparse
 import os
 from datetime import datetime
 
 def read_config(file_path):
     params = {}
+
+    # if no oprional value is given in config file, use these.
+    default_values = {
+        'ndvi_threshold': 0.0,
+        'resolution': 0.5,
+        'filter_size': 3,
+        'chm_max_workers': 4,
+        'dsm_max_workers': 4,
+        'min_vegetation_height': 2,
+        'max_vegetation_height': 40,
+        'max_shade_workers': 4,
+        'start_time': 9,
+        'end_time': 20,
+        'interval': 30,
+        'trans': 10,
+        'trunkheight': 25,
+        'files_start_time': 900,
+        'files_end_time': 2000,
+        'remove_las': False,
+        'smooth_chm': False,
+        'pre_filter': False,
+        'speed_up': False,
+        'delete_input_shade': False,
+    }
+
+    # Set parameters with standard values if not provided
+    for key, default_value in default_values.items():
+        if key not in params:
+            params[key] = default_value
 
     with open(file_path, 'r') as file:
         for line in file:
@@ -78,13 +105,21 @@ def read_config(file_path):
 
 if __name__ == '__main__':
 
-    config_file = 'Shade_config_test.txt'
+    parser = argparse.ArgumentParser(description='Creation of Canopy Height Model (CHM), Digital Surface Model '
+                                                 'with ground and buildings (DSM) and shade maps based on AHN '
+                                                 'data through a configuration file.')
+    parser.add_argument('config_file', type=str, help='Path to the configuration file')
+
+    args = parser.parse_args()
+
+    config_file = args.config_file
+
+    # Check if the config file exists
     if not os.path.exists(config_file):
         raise FileNotFoundError(f"Config file not found: {config_file}")
 
+    # Read parameters from the config file
     params = read_config(config_file)
-    # for param in params:
-    #     print(f'{param}: {params[param]}')
 
     if params.get('download_las'):
         print("Downloading LAS tiles...")
@@ -94,7 +129,6 @@ if __name__ == '__main__':
         print("Downloading and merging DSM and DTM tiles...")
         download_raster_tiles(params['tile_list_file'], params['ahn_output_folder'], params['merged_name'])
 
-    #TODO MAKE SURE THAT OPTIONAL CONFIG ARE MADE EVEN IF NOT INPUT BY USER TO MAKE SURE NO VALUE ERROR
     if params.get('create_chm'):
         print("Creating first CHM files...")
         process_laz_files_parallel(params['las_output_folder'], params['chm_output_folder'], params['ndvi_threshold'],

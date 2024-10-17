@@ -184,7 +184,7 @@ def fill_raster(cropped_data, nodata_value, transform, speed_up=False):
             region_width = region_slice[2].stop - region_slice[2].start
 
             # Check for a region that meets the size condition in either orientation
-            if (region_height >= 1100 and region_width >= 600) or (region_height >= 600 and region_width >= 1100):
+            if (region_height >= 1600 and region_width >= 800) or (region_height >= 800 and region_width >= 1600):
                 large_nodata_region = True
                 break
 

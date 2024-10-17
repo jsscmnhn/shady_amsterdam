@@ -98,7 +98,7 @@ max_shade_workers=1
 # ==========================================================================================================
 # Merging of Shade maps
 # ----------------------------------------------------------------------------------------------------------
-merge_shademaps=yes
+merge_shademaps=no
 output_folder_merged_shademaps=D:\Geomatics\first_run\shademaps
 merged_name=amsterdam
 
