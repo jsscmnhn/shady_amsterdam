@@ -6,3 +6,4 @@ matplotlib
 jupyter
 jenkspy
 rasterstats
+rich
