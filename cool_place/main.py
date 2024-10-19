@@ -31,9 +31,14 @@ def compute_search_range(search_start_time: int,
                          time_interval: int) -> list:
 
     if search_start_time < start_time or search_end_time > end_time:
-        raise ValueError(f"The search range is: {search_start_time} to {search_end_time}, "
-                         f"which exceeds the time range of"
-                         f"shade maps: {start_time} to {end_time}")
+        try:
+            raise ValueError(f"The search range is: {search_start_time} to {search_end_time}, "
+                             f"which exceeds the time range of"
+                             f"shade maps: {start_time} to {end_time}")
+        except ValueError as e:
+            print(f"Error: {e}, empty time range will be returned.")
+            return [None, None]
+
     # Convert integers to date-time format
     start_time_dt = convert_to_datetime(start_time)
     search_start_time_dt = convert_to_datetime(search_start_time)
@@ -103,7 +108,7 @@ def identification(coolspace_file: gpd.geodataframe,
 
     # Clip the input land-use data to create public space data
     coolSpace.clip(road.data, use_clip=False)
-    coolSpace.clip(building.data, use_clip=True)
+    coolSpace.clip(building.data, use_clip=True, filter_thin=True)
 
     # Perform shade calculation for ALL shade maps
     coolSpace.calculate_shade(shadows, use_clip=True)

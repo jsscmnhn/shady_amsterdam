@@ -18,7 +18,7 @@ class CoolSpace:
         self.data["clipped"] = None
         self.intervals = 0
 
-    def clip(self, clipper: gpd.geodataframe, how='difference', use_clip=False) -> None:
+    def clip(self, clipper: gpd.geodataframe, how='difference', use_clip=False, filter_thin=False) -> None:
         with Progress() as progress:
             task = progress.add_task("Clipping geometries...", total=6)
             if how not in ['difference', 'intersection', 'union', 'symmetric_difference']:
@@ -46,6 +46,14 @@ class CoolSpace:
             exploded = clipped.explode(index_parts=False).reset_index(drop=True)
             progress.advance(task)
 
+            if filter_thin:
+                # Apply the buffer operation to exploded geometries
+                # 1. First, apply an inward buffer of -2 meters
+                exploded.loc[:, exploded.geometry.name] = exploded.geometry.buffer(-2)
+
+                # 2. Then, apply an outward buffer of 2 meters to restore the original geometry shape
+                exploded.loc[:, exploded.geometry.name] = exploded.geometry.buffer(2)
+
             # Calculate area to perimeter ratio
             exploded['area'] = exploded.geometry.area
             exploded['perimeter'] = exploded.geometry.length
@@ -53,6 +61,7 @@ class CoolSpace:
 
             # Filter polygons based on area to perimeter ratio and area
             filtered = exploded[(exploded['area'] >= 200) & (exploded['area_to_perimeter'] >= 0.35)]
+
             progress.advance(task)
 
             # Group by original geometry and merge polygons back to multipolygon if needed
@@ -308,5 +317,5 @@ class CoolSpace:
                 return 0
 
         attribute_name = f"sc{attri_name}"
-        self.data[attribute_name] = self.data["tol_shade_avg"].apply(classify_shade_coverage).astype(int)
+        self.data[attribute_name] = self.data["tol_shade_score"].apply(classify_shade_coverage).astype(int)
         self.data.drop(columns=["tol_shade_score"], inplace=True)
