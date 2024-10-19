@@ -3,122 +3,109 @@ import jenkspy
 from rasterstats import zonal_stats
 import pandas as pd
 import rasterio
-from rasterio.mask import mask
-from rasterio.features import shapes
-from scipy.ndimage import label
 from shapely.geometry import shape, box
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.lines as mlines
+import fiona
+import os
+from shapely.geometry import base
+from shapely import wkt
+
 
 class CoolEval:
-    def __init__(self, cool_places: gpd.GeoDataFrame, buildings: gpd.GeoDataFrame, bench: gpd.GeoDataFrame, heatrisk: gpd.GeoDataFrame, pet, search_buffer: float) -> None:
-        self.cool_places = cool_places
+    def __init__(self, cool_places: gpd.GeoDataFrame, buildings: gpd.GeoDataFrame, bench: gpd.GeoDataFrame,
+                 heatrisk: gpd.GeoDataFrame, pet, search_buffer: float) -> None:
+        self.cool_places = cool_places  # This will hold the final output
         self.buildings = buildings
         self.bench = bench
         self.heatrisk = heatrisk
         self.pet = pet
         self.search_buffer = search_buffer
-        self.eval = None
+        self.eval_shades = []  # Collect evaluation results for each shade geometry column (sdgeom1, sdgeom2, etc.)
 
-    def evaluate_capacity(self) -> None:
+    def evaluate_capacity(self, shade: gpd.GeoDataFrame, layer_name: str) -> gpd.GeoDataFrame:
         # Ensure CRS are the same
-        if self.cool_places.crs != self.buildings.crs:
-            self.buildings = self.buildings.to_crs(self.cool_places.crs)
+        if shade.crs != self.buildings.crs:
+            self.buildings = self.buildings.to_crs(shade.crs)
 
-        # Buffer the cool places
-        self.cool_places['buffer'] = None
-
-        self.cool_places['buffer'] = self.cool_places.geometry.buffer(self.search_buffer)
-        if 'buffer' in self.cool_places.columns:
-            print("Buffered geometry column created.")
-        else:
-            print("Buffered geometry column failed to be created.")
-        buffers = self.cool_places.set_geometry('buffer')
+        # Buffer the shade geometries
+        shade['buffer'] = shade.geometry.buffer(self.search_buffer)
 
         # Spatial join to find buildings within the buffers
-        buildings_within_buffers = gpd.sjoin(self.buildings, buffers, how="inner", predicate='intersects')
+        buffers = shade.set_geometry('buffer')
+        buildings_within_buffers = gpd.sjoin(self.buildings, buffers, how='inner', predicate='intersects')
 
-        # Debugging output
-        print("Buildings within buffers:")
-        print(buildings_within_buffers[['resident']].head())
+        # Initialize columns to hold residents and area
+        shade['Area'] = shade['geometry'].area.round(2)
 
-        # Initialize a capacity status column
-        self.cool_places['capacity_status'] = "No nearest building"
-        self.cool_places['Area'] = self.cool_places['geometry'].area.round(2)
+        # Sum residents from the buildings within each buffer
+        resident_sum = buildings_within_buffers.groupby('id').agg(
+            {'resident': 'sum', 'elder_resi': 'sum', 'kid': 'sum'}).reset_index()
 
+        # Merge resident sum back to the shade geometries
+        shade = shade.merge(resident_sum, on='id', how='left', suffixes=('', f'_{layer_name}'))
 
-        # Check if there are buildings found
-        if not buildings_within_buffers.empty:
-            # Sum residents from the buildings within each buffer
-            resident_sum = buildings_within_buffers.groupby(buildings_within_buffers.index).agg(
-                {'resident': 'sum', 'elder_resi': 'sum'}).reset_index()
+        # Step: Calculate capacity per area
+        shade['Capacity per area'] = shade.apply(
+            lambda row: int(row['Area'] / 10) if row['Area'] > 0 else 0,
+            axis=1
+        )
 
-            # Rename the resident column to resident_total
-            resident_sum = resident_sum.rename(columns={'resident': 'resident_total'})
+        # Add capacity status
+        shade['Capacity status'] = shade.apply(
+            lambda row: (
+                (lambda x: f"More capacity for {x:.0f} person(s) available" if x > 0
+                else f"Require more space for {abs(x):.0f} person(s)")(
+                    row['Capacity per area'] - row['resident'])
+            ) if row['resident'] and row['Area'] > 0 else "No data",
+            axis=1
+        )
 
-            # Debugging output to check resident_sum
-            print("Resident sum after grouping:")
-            print(resident_sum)
+        # Add descriptions for residents, elderly, and children
+        shade['resident'] = shade['resident'].fillna(0).apply(
+            lambda x: f"{int(x)} residents" if x > 0 else "No nearest building"
+        )
+        shade['Elders'] = shade['elder_resi'].fillna(0).apply(
+            lambda x: f"{int(x)} elderly residents" if x > 0 else "No elderly resident"
+        )
+        shade['Children'] = shade['kid'].fillna(0).apply(
+            lambda x: f"{int(x)} children" if x > 0 else "No children"
+        )
 
-            # Reset index only if 'index' column doesn't already exist
-            if 'index' in self.cool_places.columns:
-                self.cool_places.drop(columns='index', inplace=True)
-            self.cool_places.reset_index(inplace=True)
+        return shade
 
-            if 'index' in resident_sum.columns:
-                resident_sum.drop(columns='index', inplace=True)
-            resident_sum.reset_index(inplace=True)
-            # Join the sum back to the cool places
-            self.eval = self.cool_places.join(resident_sum.set_index('index'), on='index', how='left')
+    def evaluate_sfurniture(self, shade: gpd.GeoDataFrame, layer_name: str) -> gpd.GeoDataFrame:
+        # Make sure the CRS matches
+        self.bench = self.bench.to_crs(shade.crs)
 
-            # Step: Calculate the number of residents per square meter (density)
-            self.eval['Capacity per area'] = self.eval.apply(
-                lambda row: int(row['Area'] / 10) if row['Area'] > 0 else 0,
-                axis=1
-            )
+        # Perform spatial join between benches and the shade layer
+        bench_join = gpd.sjoin(self.bench, shade, how="inner", predicate='intersects')
 
-            # Check for NaN values and update capacity status accordingly
-            self.eval['Capacity status'] = self.eval.apply(
-                lambda row: (
-                    (lambda x: f"More capacity for {x:.0f} person(s) available" if x > 0
-                    else f"Require more space for {abs(x):.0f} person(s)")(
-                         row['Capacity per area']- row['resident_total'])
-                ) if row['resident_total'] and row['Area'] > 0 else "No data",
-                axis=1
-            )
+        # Count the number of benches per shade area
+        count_benches = bench_join.groupby('id').size().reset_index(name='benches_count')
 
-            self.eval['Resident'] = self.eval['resident_total'].fillna(0).apply(
-                lambda x: f"{int(x)} residents" if x > 0 else "No nearest building"
-            )
-            self.eval['Elderly Resident'] = self.eval['elder_resi'].fillna(0).apply(
-                lambda x: f"{int(x)} elderly residents" if x > 0 else "No elderly resident"
-            )
-        else:
-            self.eval = self.cool_places.copy()  # Just keep the original cool places if no buildings
+        # Merge the bench counts back into the shade geometries
+        shade = shade.merge(count_benches, on='id', how='left')
+        shade['Benches'] = shade['benches_count'].fillna(0).apply(
+            lambda x: f"{int(x)} bench" if x > 0 else "No available bench"
+        )
+        return shade
 
-    def evaluate_sfurniture(self) -> None:
+    def evaluate_heatrisk(self, shade: gpd.GeoDataFrame, layer_name: str) -> gpd.GeoDataFrame:
+        # Spatial join between the heat risk and shade layers
+        join = gpd.sjoin(shade, self.heatrisk[['geometry', 'HI_TOTAAL_S']], how="inner", predicate='intersects')
 
-        self.bench = self.bench.to_crs(self.eval.crs)
-        bench_join = gpd.sjoin(self.bench, self.eval, how="inner", predicate='intersects')
-        # Debugging: Check the columns of the resulting join
-        print("bench_join columns:", bench_join.columns)
-        count_benches = bench_join.groupby('index_right0').size()
-        self.eval['Benches'] = self.eval.index.map(count_benches).fillna(0).astype(int)
-        self.eval['Benches'] = self.eval['Benches'].fillna(0).apply(
-                lambda x: f"{int(x)} bench" if x > 0 else "No available bench"
-            )
+        # Calculate the mean heat risk score per shade geometry
+        avg_hr = join.groupby('id').agg({'HI_TOTAAL_S': 'mean'}).reset_index()
 
-    def evaluate_heatrisk(self) -> None:
-        join = gpd.sjoin(self.eval, self.heatrisk[['geometry', 'HI_TOTAAL_S']], how="inner", predicate='intersects')
-        print("join columns:", join.columns)
-        avg_hr = join.groupby('index').agg({'HI_TOTAAL_S': 'mean'}).reset_index()
-        self.eval = self.eval.merge(avg_hr, how='left', left_index=True, right_on='index')
-        self.eval['Heat Risk Score'] = self.eval['HI_TOTAAL_S'].round(2).fillna(0)
+        # Merge heat risk score back into the shade geometries
+        shade = shade.merge(avg_hr, on='id', how='left')
+        shade['Heat Risk Score'] = shade['HI_TOTAAL_S'].round(2).fillna(0)
 
+        # Classify heat risk score
         classify_hit = jenkspy.JenksNaturalBreaks(n_classes=5)
-        classify_hit.fit(self.eval['Heat Risk Score'].dropna())
-        self.eval['Heat Risk Level'] = classify_hit.labels_
+        classify_hit.fit(shade['Heat Risk Score'].dropna())
+        shade['Heat Risk Level'] = classify_hit.labels_
+
         classify_level = {
             0: 'Lowest',
             1: 'Below Average',
@@ -126,53 +113,142 @@ class CoolEval:
             3: 'Above Average',
             4: 'Highest'
         }
-        self.eval['Heat Risk Level'] = self.eval['Heat Risk Level'].map(classify_level)
+        shade['Heat Risk Level'] = shade['Heat Risk Level'].map(classify_level)
 
-    def eval_pet(self) -> None:
+        return shade
+
+    def eval_pet(self, shade: gpd.GeoDataFrame, layer_name: str) -> gpd.GeoDataFrame:
+        # Zonal statistics for PET (mean PET per shade geometry)
         with rasterio.open(self.pet) as src:
-            stats = zonal_stats(self.eval, self.pet, stats=['mean'], affine=src.transform)
+            stats = zonal_stats(shade, self.pet, stats=['mean'], affine=src.transform)
         avg_pet = [stat['mean'] for stat in stats]
-        self.eval['PET'] = avg_pet
-        self.eval['PET'] = self.eval['PET'].round()
-    def export_eval(self, output_path: str) -> None:
-        # Specify the output path for the shapefile
-        self.eval = self.eval.drop(columns='buffer')
-        self.eval = self.eval[['geometry','Capacity per area', 'Capacity status', 'Resident', 'Elderly Resident', 'Area', 'Benches','Heat Risk Score', 'Heat Risk Level', 'PET']]
-        # Export the GeoDataFrame to a shapefile
-        self.eval.to_file(output_path, driver='ESRI Shapefile')
+        shade['PET'] = avg_pet
+        shade['PET'] = shade['PET'].round()
+        shade['PET Recom'] = shade['PET'].apply(lambda x: "not recommended" if x > 35 else "recommended")
 
-        print(f"Output shapefile saved at: {output_path}")
+        return shade
+
+    def aggregate_to_cool_places(self) -> None:
+        """
+        After evaluating the shade geometries, aggregate the results to cool places
+        based on the common 'id' field between cool places and shade geometries.
+        """
+        for i, eval_shade in enumerate(self.eval_shades):
+            # Rename columns with suffix to avoid duplication
+            eval_shade_renamed = eval_shade.add_suffix(f'_{i}')
+
+            # Ensure no duplicate column names
+            columns_to_add = []
+            for col in eval_shade_renamed.columns:
+                if col in self.cool_places.columns:
+                    # Append a unique suffix if column already exists
+                    new_col_name = f"{col}_l{i}"
+                    eval_shade_renamed = eval_shade_renamed.rename(columns={col: new_col_name})
+                    columns_to_add.append(new_col_name)
+                else:
+                    columns_to_add.append(col)
+
+            # Merge only the new/renamed columns to avoid duplicates
+            self.cool_places = self.cool_places.join(eval_shade_renamed[columns_to_add], how='left')
+
+            print(f"Processed layer {i + 1} and added columns: {columns_to_add}")
+
+    def export_eval_gpkg(self, output_gpkg_path: str, layer_name: str) -> None:
+        """
+        Export the evaluation results to a GeoPackage as a specific layer.
+        """
+        # Print the columns before any manipulation
+        print("Columns before dropping:", self.cool_places.columns.tolist())
+
+        geometry_columns = [col for col in self.cool_places.columns if col != self.cool_places.geometry.name]
+        for col in geometry_columns:
+            if isinstance(self.cool_places[col].iloc[0], base.BaseGeometry):
+                self.cool_places[col] = gpd.GeoSeries(self.cool_places[col]).to_wkt()
+
+
+
+        # Ensure the 'geometry' column is set as the active geometry
+        if 'geometry' in self.cool_places.columns:
+            self.cool_places.set_geometry('geometry', inplace=True)
+        else:
+            raise ValueError("The 'geometry' column is missing in the GeoDataFrame.")
+
+        # Print the structure of the GeoDataFrame before exporting
+        print("GeoDataFrame structure before export:")
+        print(self.cool_places.head())
+        print("Remaining columns after dropping:", self.cool_places.columns.tolist())
+
+        # Export to the GeoPackage
+        self.cool_places.to_file(output_gpkg_path, layer=layer_name, driver='GPKG')
+        print(f"Layer '{layer_name}' saved to GeoPackage: {output_gpkg_path}")
+
 
 if __name__ == '__main__':
-
-    # lu = "D:\\OneDrive - Delft University of Technology\\Synthesis project\\cool place\\datasets\\ams_landuse_top10NL.shp"
     pop = "bpop20.shp"
     bench = "D:\\OneDrive - Delft University of Technology\\Synthesis project\\cool place\\benchamsosm.shp"
-    # coolplace = "D:\\OneDrive - Delft University of Technology\\Synthesis project\\cool place\\qualified_geometriess.shp"
-    coolplace = "lu_space.shp"
+    coolplace = "D:\\OneDrive - Delft University of Technology\\Synthesis project\\cool place\\datasets\\coolspace.gpkg"
     heatrisk = "D:\\OneDrive - Delft University of Technology\\Synthesis project\\cool place\\Hitte kaarten gemeente Amsterdam\\Klimaatrisicokaarten QGIS\\Risicokaarten definitief.gdb"
     pet = "D:\\OneDrive - Delft University of Technology\\Synthesis project\\cool place\\Hitte kaarten gemeente Amsterdam\\Kaarten door TAUW ontwikkeld (2022)\\PET_average - Gemeente Amsterdam.tiff"
 
-    # Read the data
-    cool_places = gpd.read_file(coolplace)
     buildings = gpd.read_file(pop)
     bench = gpd.read_file(bench)
+    cool_places = gpd.read_file(coolplace, layer="coolspace_output")
     heatrisk = gpd.read_file(heatrisk, layer="Risico_per_buurt_20231009_enkel_thema_scores")
 
-    output_path = "D:\\OneDrive - Delft University of Technology\\Synthesis project\\cool place\\eval_cool_places20.shp"
+    # Output GeoPackage
+    output_gpkg = "D:\\OneDrive - Delft University of Technology\\Synthesis project\\cool place\\eval_cool_places.gpkg"
 
-    # Initialize the CoolEval class
-    cool_eval = CoolEval(cool_places, buildings, bench, heatrisk, pet, 700)
-    cool_eval.evaluate_capacity()
-    cool_eval.evaluate_sfurniture()
-    cool_eval.evaluate_heatrisk()
-    cool_eval.eval_pet()
-    cool_eval.export_eval(output_path)
+    # Prompt the user to specify the start and end indices for sdgeom columns
+    start_layer = int(input("Enter the starting layer index (e.g., 1 for sdgeom1): "))
+    end_layer = int(input("Enter the ending layer index (e.g., 3 for sdgeom3): "))
+
+    # Generate the WKT column names based on user input
+    wkt_columns = [f"sdGeom{i}" for i in range(start_layer, end_layer + 1)]
+
+    buffer_house = 700  # Define your buffer distance here
+
+    # Initialize the CoolEval object
+    cool_eval = CoolEval(cool_places, buildings, bench, heatrisk, pet, buffer_house)
+
+    # Iterate over each WKT column provided by the user input
+    for col in wkt_columns:
+        if col in cool_places.columns:
+            print(f"Processing {col}...")
 
 
+            # Function to safely load WKT geometries and log errors
+            def safe_load_wkt(x):
+                if pd.notnull(x) and isinstance(x, str) and x.strip():
+                    try:
+                        return wkt.loads(x)
+                    except Exception as e:
+                        print(f"Error parsing WKT: '{x}' | Error: {e}")
+                return None
 
 
+            # Convert WKT column to geometries, handling invalid or empty geometries
+            cool_places[col] = cool_places[col].apply(safe_load_wkt)
 
+            # Remove rows where geometry is None
+            valid_shade = cool_places[cool_places[col].notnull()]
 
+            shade = gpd.GeoDataFrame(valid_shade[['id', col]], geometry=col, crs=cool_places.crs)
+            shade.rename(columns={col: 'geometry'}, inplace=True)
+            shade.set_geometry('geometry', inplace=True)
 
+            # Perform the evaluations on the current shade geometry
+            shade = cool_eval.evaluate_capacity(shade, col)
+            shade = cool_eval.evaluate_sfurniture(shade, col)
+            shade = cool_eval.evaluate_heatrisk(shade, col)
+            shade = cool_eval.eval_pet(shade, col)
 
+            # Store the evaluated shade geometries for aggregation
+            cool_eval.eval_shades.append(shade)
+
+    # Aggregate results to cool places
+    cool_eval.aggregate_to_cool_places()
+
+    # Export the final results
+    cool_eval.export_eval_gpkg(output_gpkg, layer_name="eval_cool_places_wkt")
+
+    print("Processing complete!")
