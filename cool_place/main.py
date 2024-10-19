@@ -207,7 +207,7 @@ def drop_or_wkt(gdf: gpd.geodataframe, mode='to_wkt') -> None:
 # entry
 if __name__ == '__main__':
 
-    config = read_config("./coolspaceConfig.txt")
+    config = read_config("coolspaceConfig.json")
 
     # Read config
     with Progress() as progress:
