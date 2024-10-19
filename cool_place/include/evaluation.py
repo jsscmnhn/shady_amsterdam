@@ -9,6 +9,7 @@ import fiona
 import os
 from shapely.geometry import base
 from shapely import wkt
+import re
 
 
 class CoolEval:
@@ -21,6 +22,7 @@ class CoolEval:
         self.pet = pet
         self.search_buffer = search_buffer
         self.eval_shades = []  # Collect evaluation results for each shade geometry column (sdgeom1, sdgeom2, etc.)
+
 
     def evaluate_capacity(self, shade: gpd.GeoDataFrame, layer_name: str) -> gpd.GeoDataFrame:
         # Ensure CRS are the same
@@ -61,7 +63,7 @@ class CoolEval:
         )
 
         # Add descriptions for residents, elderly, and children
-        shade['resident'] = shade['resident'].fillna(0).apply(
+        shade['Residents'] = shade['resident'].fillna(0).apply(
             lambda x: f"{int(x)} residents" if x > 0 else "No nearest building"
         )
         shade['Elders'] = shade['elder_resi'].fillna(0).apply(
@@ -148,10 +150,30 @@ class CoolEval:
                 else:
                     columns_to_add.append(col)
 
+
             # Merge only the new/renamed columns to avoid duplicates
             self.cool_places = self.cool_places.join(eval_shade_renamed[columns_to_add], how='left')
 
+
+
             print(f"Processed layer {i + 1} and added columns: {columns_to_add}")
+
+        # Step 2: Identify the columns for each feature group (e.g., resident_0, resident_1, etc.)
+        columns_to_average = ['resident', 'elder_resi', 'kid', 'Capacity per area', 'benches_count',
+                                  'Heat Risk Score', 'PET']
+
+        # Iterate over each feature group and calculate the average
+        for feature in columns_to_average:
+        # Use regular expression to match columns exactly like resident_0, resident_1, etc.
+            feature_columns = [col for col in self.cool_places.columns if re.match(f'{feature}_\d+$', col)]
+
+            if feature_columns:  # Check if there are matching columns
+                # Step 3: Convert columns to numeric, replacing non-numeric values with NaN
+                self.cool_places[feature_columns] = self.cool_places[feature_columns].apply(pd.to_numeric,
+                                                                                                errors='coerce')
+
+                # Step 4: Calculate the average across these columns, ignoring NaNs
+                self.cool_places[f'{feature}_avg'] = self.cool_places[feature_columns].mean(axis=1)
 
     def export_eval_gpkg(self, output_gpkg_path: str, layer_name: str) -> None:
         """
@@ -183,72 +205,3 @@ class CoolEval:
         print(f"Layer '{layer_name}' saved to GeoPackage: {output_gpkg_path}")
 
 
-if __name__ == '__main__':
-    pop = "bpop20.shp"
-    bench = "D:\\OneDrive - Delft University of Technology\\Synthesis project\\cool place\\benchamsosm.shp"
-    coolplace = "D:\\OneDrive - Delft University of Technology\\Synthesis project\\cool place\\datasets\\coolspace.gpkg"
-    heatrisk = "D:\\OneDrive - Delft University of Technology\\Synthesis project\\cool place\\Hitte kaarten gemeente Amsterdam\\Klimaatrisicokaarten QGIS\\Risicokaarten definitief.gdb"
-    pet = "D:\\OneDrive - Delft University of Technology\\Synthesis project\\cool place\\Hitte kaarten gemeente Amsterdam\\Kaarten door TAUW ontwikkeld (2022)\\PET_average - Gemeente Amsterdam.tiff"
-
-    buildings = gpd.read_file(pop)
-    bench = gpd.read_file(bench)
-    cool_places = gpd.read_file(coolplace, layer="coolspace_output")
-    heatrisk = gpd.read_file(heatrisk, layer="Risico_per_buurt_20231009_enkel_thema_scores")
-
-    # Output GeoPackage
-    output_gpkg = "D:\\OneDrive - Delft University of Technology\\Synthesis project\\cool place\\eval_cool_places.gpkg"
-
-    # Prompt the user to specify the start and end indices for sdgeom columns
-    start_layer = int(input("Enter the starting layer index (e.g., 1 for sdgeom1): "))
-    end_layer = int(input("Enter the ending layer index (e.g., 3 for sdgeom3): "))
-
-    # Generate the WKT column names based on user input
-    wkt_columns = [f"sdGeom{i}" for i in range(start_layer, end_layer + 1)]
-
-    buffer_house = 700  # Define your buffer distance here
-
-    # Initialize the CoolEval object
-    cool_eval = CoolEval(cool_places, buildings, bench, heatrisk, pet, buffer_house)
-
-    # Iterate over each WKT column provided by the user input
-    for col in wkt_columns:
-        if col in cool_places.columns:
-            print(f"Processing {col}...")
-
-
-            # Function to safely load WKT geometries and log errors
-            def safe_load_wkt(x):
-                if pd.notnull(x) and isinstance(x, str) and x.strip():
-                    try:
-                        return wkt.loads(x)
-                    except Exception as e:
-                        print(f"Error parsing WKT: '{x}' | Error: {e}")
-                return None
-
-
-            # Convert WKT column to geometries, handling invalid or empty geometries
-            cool_places[col] = cool_places[col].apply(safe_load_wkt)
-
-            # Remove rows where geometry is None
-            valid_shade = cool_places[cool_places[col].notnull()]
-
-            shade = gpd.GeoDataFrame(valid_shade[['id', col]], geometry=col, crs=cool_places.crs)
-            shade.rename(columns={col: 'geometry'}, inplace=True)
-            shade.set_geometry('geometry', inplace=True)
-
-            # Perform the evaluations on the current shade geometry
-            shade = cool_eval.evaluate_capacity(shade, col)
-            shade = cool_eval.evaluate_sfurniture(shade, col)
-            shade = cool_eval.evaluate_heatrisk(shade, col)
-            shade = cool_eval.eval_pet(shade, col)
-
-            # Store the evaluated shade geometries for aggregation
-            cool_eval.eval_shades.append(shade)
-
-    # Aggregate results to cool places
-    cool_eval.aggregate_to_cool_places()
-
-    # Export the final results
-    cool_eval.export_eval_gpkg(output_gpkg, layer_name="eval_cool_places_wkt")
-
-    print("Processing complete!")
