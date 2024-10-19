@@ -12,10 +12,11 @@ import os
 import configparser
 import ast
 import time
+import json
 
 def read_config(filename):
-    config = configparser.ConfigParser()
-    config.read(filename)
+    with open(filename, 'r') as f:
+        config = json.load(f)
     return config
 
 def convert_to_datetime(time: int) -> datetime:
@@ -228,19 +229,19 @@ if __name__ == '__main__':
         # read shape maps file path and information
         shademaps_path         = config['files']['shademaps_path']
         shade_calculation_mode = config['parameters']['shade_calculation_mode']
-        time_interval          = ast.literal_eval(config['shade_info_single']['time_interval'])
-        single_day_time_range  = ast.literal_eval(config['shade_info_single']['single_day_time_range'])
-        morning_range          = ast.literal_eval(config['shade_info_single']['morning_range'])
-        afternoon_range        = ast.literal_eval(config['shade_info_single']['afternoon_range'])
-        late_afternoon_range   = ast.literal_eval(config['shade_info_single']['late_afternoon_range'])
-        search_range           = ast.literal_eval(config['shade_info_single']['search_range'])
-        num_days               = ast.literal_eval(config['shade_info_multi']['num_days'])
+        time_interval          = config['shade_info_single']['time_interval']
+        single_day_time_range  = config['shade_info_single']['single_day_time_range']
+        morning_range          = config['shade_info_single']['morning_range']
+        afternoon_range        = config['shade_info_single']['afternoon_range']
+        late_afternoon_range   = config['shade_info_single']['late_afternoon_range']
+        search_range           = config['shade_info_single']['search_range']
+        num_days               = config['shade_info_multi']['num_days']
 
         # read parameters
         road_buffer_attribute  = config['parameters']['road_buffer_attribute']
         output_coolspace_type  = config['parameters']['output_coolspace_type']
-        building_buffer        = ast.literal_eval(config['parameters']['building_buffer'])
-        capacity_search_buffer = ast.literal_eval(config['parameters']['capacity_search_buffer'])
+        building_buffer        = config['parameters']['building_buffer']
+        capacity_search_buffer = config['parameters']['capacity_search_buffer']
         progress.advance(task)
 
     with Progress() as progress:
