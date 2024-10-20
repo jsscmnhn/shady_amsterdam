@@ -357,7 +357,7 @@ if __name__ == '__main__':
                                   search_buffer=700)
 
     end2 = time.time()
-    total2 = end - begin
+    total2 = end2 - begin2
     minutes2, seconds2 = divmod(total2, 60)
     print(f"Total time for evaluation: {int(minutes2)} minutes and {seconds2:.2f} seconds")
 
