@@ -130,7 +130,7 @@ class CoolEval:
 
         return shade
 
-    def aggregate_to_cool_places(self) -> None:
+    def aggregate_to_coolspaces(self) -> None:
         """
         After evaluating the shade geometries, aggregate the results to cool places
         based on the common 'id' field between cool places and shade geometries.
