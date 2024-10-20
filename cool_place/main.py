@@ -4,8 +4,10 @@ from include.building import Building
 from include.evaluation import CoolEval
 from datetime import datetime, timedelta
 from shapely.geometry import base
+from shapely import wkt
 from rich.progress import Progress
 import geopandas as gpd
+import pandas as pd
 import rasterio
 import glob
 import os
@@ -168,29 +170,75 @@ def identification(coolspace_file: gpd.geodataframe,
     return output_gdf
 
 
-def evaluation(coolspace_file: gpd.geodataframe,
-               building_population_file: str,
-               bench_file: str,
-               heatrisk_file: str,
+def evaluation(coolspace: gpd.geodataframe,
+               building_population_file: gpd.geodataframe,
+               bench_file: gpd.geodataframe,
+               heatrisk_file: gpd.geodataframe,
                pet_file: str,
                search_buffer: int = 700) -> gpd.geodataframe:
 
-    coolspace = coolspace_file
-    building_population = gpd.read_file(building_population_file)
-    bench = gpd.read_file(bench_file)
-    heatrisk = gpd.read_file(heatrisk_file)
+    # coolspace = gpd.read_file(output_file)
+    # building_population = gpd.read_file(building_population_file)
+    # bench = gpd.read_file(bench_file)
+    # heatrisk = gpd.read_file(heatrisk_file)
 
+
+
+    # Prompt the user to specify the start and end indices for sdgeom columns
+    start_layer = int(input("Enter the starting layer index (e.g., 1 for sdgeom1): "))
+    end_layer = int(input("Enter the ending layer index (e.g., 3 for sdgeom3): "))
+
+    # Generate the WKT column names based on user input
+    wkt_columns = [f"sdGeom{i}" for i in range(start_layer, end_layer + 1)]
     cool_eval = CoolEval(cool_places=coolspace,
-                         buildings=building_population,
-                         bench=bench,
-                         heatrisk=heatrisk,
+                         buildings=building_population_file,
+                         bench=bench_file,
+                         heatrisk=heatrisk_file,
                          pet=pet_file,
                          search_buffer=search_buffer)
 
-    cool_eval.evaluate_capacity()
-    cool_eval.evaluate_sfurniture()
-    cool_eval.evaluate_heatrisk()
-    cool_eval.eval_pet()
+    # Iterate over each WKT column provided by the user input
+    for col in wkt_columns:
+        if col in coolspace.columns:
+            print(f"Processing {col}...")
+
+
+            # Function to safely load WKT geometries and log errors
+            def safe_load_wkt(x):
+                if pd.notnull(x) and isinstance(x, str) and x.strip():
+                    try:
+                        return wkt.loads(x)
+                    except Exception as e:
+                        print(f"Error parsing WKT: '{x}' | Error: {e}")
+                return None
+
+
+            # Convert WKT column to geometries, handling invalid or empty geometries
+            coolspace[col] = coolspace[col].apply(safe_load_wkt)
+
+            # Remove rows where geometry is None
+            valid_shade = coolspace[coolspace[col].notnull()]
+
+            shade = gpd.GeoDataFrame(valid_shade[['id', col]], geometry=col, crs=coolspace.crs)
+            shade.rename(columns={col: 'geometry'}, inplace=True)
+            shade.set_geometry('geometry', inplace=True)
+
+            # Perform the evaluations on the current shade geometry
+            shade = cool_eval.evaluate_capacity(shade, col)
+            shade = cool_eval.evaluate_sfurniture(shade, col)
+            shade = cool_eval.evaluate_heatrisk(shade, col)
+            shade = cool_eval.eval_pet(shade, col)
+
+            # Store the evaluated shade geometries for aggregation
+            cool_eval.eval_shades.append(shade)
+
+    # Aggregate results to cool places
+    cool_eval.aggregate_to_coolspaces()
+
+    # Export the final results
+    cool_eval.export_eval_gpkg(gpkg_file, layer_name="eval_cool_places_wkt_av")
+
+    print("Processing complete!")
 
     return cool_eval
 
@@ -263,6 +311,9 @@ if __name__ == '__main__':
         building = gpd.read_file(gpkg_file, layer=building_layer)
         progress.advance(task)
 
+        cs_output = gpd.read_file(gpkg_file, layer=output_layer)
+        progress.advance(task)
+
         building_pop = gpd.read_file(gpkg_file, layer=building_population_layer)
         progress.advance(task)
 
@@ -273,32 +324,32 @@ if __name__ == '__main__':
         progress.advance(task)
 
     begin = time.time()
-    coolspace = identification(coolspace_file=landuse,
-                               road_file=road,
-                               building_file=building,
-                               shademaps_path=shademaps_path,
-                               road_buffer_attri=road_buffer_attribute,
-                               building_buffer_num=building_buffer,
-                               mode=shade_calculation_mode,
-                               single_day_time_range=single_day_time_range,
-                               time_interval=time_interval,
-                               morning_range=morning_range,
-                               afternoon_range=afternoon_range,
-                               late_afternoon_range=late_afternoon_range,
-                               output_coolspace_type=output_coolspace_type)
+    # coolspace = identification(coolspace_file=landuse,
+    #                            road_file=road,
+    #                            building_file=building,
+    #                            shademaps_path=shademaps_path,
+    #                            road_buffer_attri=road_buffer_attribute,
+    #                            building_buffer_num=building_buffer,
+    #                            mode=shade_calculation_mode,
+    #                            single_day_time_range=single_day_time_range,
+    #                            time_interval=time_interval,
+    #                            morning_range=morning_range,
+    #                            afternoon_range=afternoon_range,
+    #                            late_afternoon_range=late_afternoon_range,
+    #                            output_coolspace_type=output_coolspace_type)
     end = time.time()
     total = end - begin
     minutes, seconds = divmod(total, 60)
     print(f"Total time for identification: {int(minutes)} minutes and {seconds:.2f} seconds")
 
-    # coolspace_output = evaluation(coolspace_file=coolspace,
-    #                               building_population_file="",
-    #                               bench_file="",
-    #                               heatrisk_file="",
-    #                               pet_file="",
-    #                               search_buffer=700)
+    coolspace_output = evaluation(coolspace=cs_output,
+                                  building_population_file=building_pop,
+                                  bench_file=street_furniture,
+                                  heatrisk_file=heatrisk,
+                                  pet_file=pet_file,
+                                  search_buffer=700)
 
-    list_to_string(coolspace)
-    drop_or_wkt(coolspace, mode='to_wkt')
-    coolspace.to_file(gpkg_file, layer=output_layer)
+    # list_to_string(coolspace)
+    # drop_or_wkt(coolspace, mode='to_wkt')
+    # coolspace.to_file(gpkg_file, layer=output_layer)
 
