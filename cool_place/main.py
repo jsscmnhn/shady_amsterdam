@@ -34,7 +34,7 @@ def compute_search_range(search_start_time: int,
         try:
             raise ValueError(f"The search range is: {search_start_time} to {search_end_time}, "
                              f"which exceeds the time range of"
-                             f"shade maps: {start_time} to {end_time}")
+                             f" shade maps: {start_time} to {end_time}")
         except ValueError as e:
             print(f"Error: {e}, empty time range will be returned.")
             return [None, None]
@@ -89,7 +89,8 @@ def identification(coolspace_file: gpd.geodataframe,
             shadow_map = rasterio.open(shadow_file, crs=coolSpace.data.crs)
             shadows.append(shadow_map)
             progress.advance(task)
-    shadows = shadows[daytime[0]:daytime[1]]
+    shadows = shadows[daytime[0]:daytime[1] + 1]
+    print(f"Total shade maps: {len(shadows)}")
 
     # Set the calculation mode.
     # For single-day, it allows query for different time-range after the calculation for the whole day

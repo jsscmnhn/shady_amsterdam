@@ -281,7 +281,7 @@ class CoolSpace:
                 if start < 0 or end > raster_nums - 1:
                     raise ValueError(f"{attri_name}: The search range is:  "
                                      f"[{start} - {end}], {end + 1 - start} in total, which exceeds the range of"
-                                     f"shade maps: [0 - {raster_nums - 1}], {raster_nums} in total")
+                                     f" shade maps: [0 - {raster_nums - 1}], {raster_nums} in total")
             except ValueError as e:
                 print(f"Error: {e}, this evaluation will be ignored.")
                 return None
