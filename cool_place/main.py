@@ -293,43 +293,45 @@ if __name__ == '__main__':
         num_days               = config['shade_info_multi']['num_days']
 
         # read parameters
+        hasCoolSpaceOutput     = config['parameters']['hasCoolSpaceOutput']
         road_buffer_attribute  = config['parameters']['road_buffer_attribute']
         output_coolspace_type  = config['parameters']['output_coolspace_type']
         building_buffer        = config['parameters']['building_buffer']
         capacity_search_buffer = config['parameters']['capacity_search_buffer']
         progress.advance(task)
 
-    with Progress() as progress:
-        task = progress.add_task("Loading GeoPackage layers for identification...", total=3)
+    if not hasCoolSpaceOutput:
+        with Progress() as progress:
+            task = progress.add_task("Loading GeoPackage layers for identification...", total=3)
 
-        # Load each layer and update the progress
-        landuse = gpd.read_file(gpkg_file, layer=landuse_layer)
-        progress.advance(task)
+            # Load each layer and update the progress
+            landuse = gpd.read_file(gpkg_file, layer=landuse_layer)
+            progress.advance(task)
 
-        road = gpd.read_file(gpkg_file, layer=road_layer)
-        progress.advance(task)
+            road = gpd.read_file(gpkg_file, layer=road_layer)
+            progress.advance(task)
 
-        building = gpd.read_file(gpkg_file, layer=building_layer)
-        progress.advance(task)
+            building = gpd.read_file(gpkg_file, layer=building_layer)
+            progress.advance(task)
 
-    begin = time.time()
-    coolspace = identification(coolspace_file=landuse,
-                               road_file=road,
-                               building_file=building,
-                               shademaps_path=shademaps_path,
-                               road_buffer_attri=road_buffer_attribute,
-                               building_buffer_num=building_buffer,
-                               mode=shade_calculation_mode,
-                               single_day_time_range=single_day_time_range,
-                               time_interval=time_interval,
-                               morning_range=morning_range,
-                               afternoon_range=afternoon_range,
-                               late_afternoon_range=late_afternoon_range,
-                               output_coolspace_type=output_coolspace_type)
-    end = time.time()
-    total = end - begin
-    minutes, seconds = divmod(total, 60)
-    print(f"Total time for identification: {int(minutes)} minutes and {seconds:.2f} seconds")
+        begin = time.time()
+        coolspace = identification(coolspace_file=landuse,
+                                   road_file=road,
+                                   building_file=building,
+                                   shademaps_path=shademaps_path,
+                                   road_buffer_attri=road_buffer_attribute,
+                                   building_buffer_num=building_buffer,
+                                   mode=shade_calculation_mode,
+                                   single_day_time_range=single_day_time_range,
+                                   time_interval=time_interval,
+                                   morning_range=morning_range,
+                                   afternoon_range=afternoon_range,
+                                   late_afternoon_range=late_afternoon_range,
+                                   output_coolspace_type=output_coolspace_type)
+        end = time.time()
+        total = end - begin
+        minutes, seconds = divmod(total, 60)
+        print(f"Total time for identification: {int(minutes)} minutes and {seconds:.2f} seconds")
 
     with Progress() as progress:
         task = progress.add_task("Loading GeoPackage layers for evaluation...", total=4)
@@ -353,7 +355,7 @@ if __name__ == '__main__':
                                   heatrisk_file=heatrisk,
                                   pet_file=pet_file,
                                   search_buffer=700)
-    
+
     end2 = time.time()
     total2 = end - begin
     minutes2, seconds2 = divmod(total2, 60)

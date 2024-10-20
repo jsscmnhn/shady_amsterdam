@@ -12,6 +12,7 @@
     "shademaps_path": "G:\\TUD\\Synthesis\\cool_place\\shademaps\\"
   },
   "parameters": {
+    "hasCoolSpaceOutput": false,
     "road_buffer_attribute": "buffer",
     "building_buffer": 4,
     "shade_calculation_mode": "single-day",
