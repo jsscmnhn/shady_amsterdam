@@ -249,37 +249,6 @@ def update_graph_with_shade_weight(graph, edges_gdf):
     return graph
 
 
-# def compute_combined_weights(edges, user_shade_preference):
-#     start_time = time.time()
-#
-#     # Check if 'shade_weight' exists
-#     if 'shade_weight' not in edges.columns:
-#         print("'shade_weight' column is missing in edges!")
-#         return
-#
-#     # Normalize the length of each edge to be between 0 and 1
-#     edges['length_weight'] = edges['length'] / edges['length'].max()
-#
-#     print("Length Weight Statistics (First 10 edges):", edges['length_weight'].head(10))
-#     print("Length Weight Description:", edges['length_weight'].describe())
-#
-#     # User preference for shade (e.g., 0.7 means 70% weight on shade, 30% on distance)
-#     shade_factor = user_shade_preference
-#     distance_factor = 1 - shade_factor
-#
-#     # Calculate the combined weight using the user-defined preference
-#     edges['combined_weight'] = (edges['shade_weight'] * shade_factor) + (edges['length_weight'] * distance_factor)
-#
-#     print("Combined Weight Statistics (First 10 edges):", edges['combined_weight'].head(10))
-#     print("Combined Weight Description:", edges['combined_weight'].describe())
-#
-#     end_time = time.time()
-#     duration = end_time - start_time
-#     print(f"Combined weight calculation took {duration:.2f} seconds")
-#
-#     return edges
-
-
 def find_nearest_cool_place(graph, node, cool_place_nodes, max_distance):
     start_time = time.time()
     # Find cool place nodes within a certain distance
@@ -379,37 +348,6 @@ def calculate_balanced_route(graph, start_node, destination_node):
     return balanced_route
 
 
-# def calculate_balanced_route(graph, start_node, destination_node, user_shade_preference, max_distance=1000):
-#     for u, v, key, data in graph.edges(keys=True, data=True):
-#         if 'shade_weight' not in data:
-#             print("shade_weight is missing in the edges attribute!")
-#             return
-#
-#     start_time = time.time()
-#
-#     # Get the maximum edge length for normalization
-#     max_length = max(data['length'] for u, v, key, data in graph.edges(keys=True, data=True))
-#
-#     # Combine weights for both distance and shade according to user preference
-#     for u, v, key, data in graph.edges(keys=True, data=True):
-#         length_weight = data['length'] / max_length  # Normalize length
-#         shade_weight = data['shade_weight']
-#
-#         # Calculate combined weight based on user preference
-#         combined_weight = (user_shade_preference * shade_weight) + ((1 - user_shade_preference) * length_weight)
-#         data['combined_weight'] = combined_weight
-#
-#     # Calculate the balanced route using the combined weight
-#     # balanced_route = nx.shortest_path(graph, start_node, nearest_cool_place, weight='combined_weight')
-#     balanced_route = nx.shortest_path(graph, start_node, destination_node, weight='combined_weight')
-#
-#     end_time = time.time()
-#     duration = end_time - start_time
-#     print(f"Combined route calculation took {duration:.2f} seconds")
-#
-#     return balanced_route
-
-
 # Walking shed calculation
 def load_building_polygons(place):
     # Load building polygons from OSM for the specified place
@@ -502,55 +440,55 @@ def demo_shade_route_calculation(places, raster_path, polygon_path):
     nearest_cool_place = find_nearest_cool_place_dijkstra(graph, sample_node, cool_place_nodes, 1000)
     sample_node_destination = list(graph.nodes())[2389]
 
-    start_time = time.time()
-    # Load building polygons
-    buildings = load_building_polygons('Amsterdam, Netherlands')
+    # start_time = time.time()
+    # # Load building polygons
+    # buildings = load_building_polygons('Amsterdam, Netherlands')
+    #
+    # # Calculate walking shed with different distances
+    # buildings = calculate_walking_shed(buildings, cool_place_nodes, graph)
+    #
+    # # Assign colors based on distance
+    # buildings = assign_building_colors(buildings)
+    #
+    # # Plot the buildings with walking shed colors
+    # plot_colored_walking_shed(buildings)
+    #
+    # end_time = time.time()
+    # duration = end_time - start_time
+    # print(f"Walking shed calculation took {duration:.2f} seconds")
 
-    # Calculate walking shed with different distances
-    buildings = calculate_walking_shed(buildings, cool_place_nodes, graph)
+    if nearest_cool_place:
+        # Shortest path based on distance
+        shortest_route = nx.shortest_path(graph, sample_node, sample_node_destination, weight='length')
 
-    # Assign colors based on distance
-    buildings = assign_building_colors(buildings)
+        # Shadiest path based on shade weight
+        shadiest_route = nx.shortest_path(graph, sample_node, sample_node_destination, weight='shade_weight')
 
-    # Plot the buildings with walking shed colors
-    plot_colored_walking_shed(buildings)
+        # Combined route based on user preference for shade vs. distance
+        balanced_route = calculate_balanced_route(graph, sample_node, sample_node_destination)
 
-    end_time = time.time()
-    duration = end_time - start_time
-    print(f"Walking shed calculation took {duration:.2f} seconds")
 
-    # if nearest_cool_place:
-    #     # Shortest path based on distance
-    #     shortest_route = nx.shortest_path(graph, sample_node, sample_node_destination, weight='length')
-    #
-    #     # Shadiest path based on shade weight
-    #     shadiest_route = nx.shortest_path(graph, sample_node, sample_node_destination, weight='shade_weight')
-    #
-    #     # Combined route based on user preference for shade vs. distance
-    #     balanced_route = calculate_balanced_route(graph, sample_node, sample_node_destination)
-    #
-    #
-    #     # Plot all routes on the same graph
-    #     fig, ax = plt.subplots(figsize=(10, 10))
-    #
-    #     # Plot the graph
-    #     ox.plot_graph(graph, ax=ax, show=False, close=False)
-    #
-    #     # Plot the shortest route
-    #     ox.plot_graph_route(graph, shortest_route, ax=ax, route_color='blue', route_linewidth=2,
-    #                         orig_dest_node_color='red', alpha=0.7, show=False, close=False)
-    #
-    #     # Plot the shadiest route
-    #     ox.plot_graph_route(graph, shadiest_route, ax=ax, route_color='green', route_linewidth=3,
-    #                         orig_dest_node_color='yellow', alpha=0.7, show=False, close=False)
-    #
-    #     # Plot the combined route
-    #     ox.plot_graph_route(graph, balanced_route, ax=ax, route_color='purple', route_linewidth=6,
-    #                         orig_dest_node_color='orange', alpha=0.7, show=True, close=False)
-    #
-    #     plt.title(f"Shortest (blue), Shadiest (green), and Combined (purple) Routes")
-    # else:
-    #     print("Could not find a nearest cool place.")
+        # Plot all routes on the same graph
+        fig, ax = plt.subplots(figsize=(10, 10))
+
+        # Plot the graph
+        ox.plot_graph(graph, ax=ax, show=False, close=False)
+
+        # Plot the shortest route
+        ox.plot_graph_route(graph, shortest_route, ax=ax, route_color='blue', route_linewidth=2,
+                            orig_dest_node_color='red', alpha=0.7, show=False, close=False)
+
+        # Plot the shadiest route
+        ox.plot_graph_route(graph, shadiest_route, ax=ax, route_color='green', route_linewidth=3,
+                            orig_dest_node_color='yellow', alpha=0.7, show=False, close=False)
+
+        # Plot the combined route
+        ox.plot_graph_route(graph, balanced_route, ax=ax, route_color='purple', route_linewidth=6,
+                            orig_dest_node_color='orange', alpha=0.7, show=True, close=False)
+
+        plt.title(f"Shortest (blue), Shadiest (green), and Combined (purple) Routes")
+    else:
+        print("Could not find a nearest cool place.")
 
 
 # place = 'Amsterdam, Netherlands'
