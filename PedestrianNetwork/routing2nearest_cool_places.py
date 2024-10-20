@@ -336,7 +336,7 @@ def calculate_balanced_route(graph, start_node, destination_node):
 
     # Step 3: Calculate the weighted sum and assign to "weighted_sum_weight"
     for u, v, key, data in graph.edges(keys=True, data=True):
-        data['weighted_sum_weight'] = (data['normalized_length'] / 2) + (data['normalized_shade_weight'] / 2)
+        data['weighted_sum_weight'] = (data['normalized_length'] * (30/100)) + (data['normalized_shade_weight'] * (70/100))
 
     # Step 4: Calculate the shortest path using "weighted_sum_weight" as the weight
     balanced_route = nx.shortest_path(graph, start_node, destination_node, weight='weighted_sum_weight')
@@ -494,10 +494,10 @@ def demo_shade_route_calculation(places, raster_path, polygon_path):
 # place = 'Amsterdam, Netherlands'
 places = ['Amsterdam, Netherlands', 'Diemen, Netherlands', 'Ouder-Amstel, Netherlands']
 graph_path = 'C:/pedestrian_demo_data/ams.graphml'
-# raster_path = 'C:/Androniki/pythonProject1/amsterdam_20150701_1630.TIF'
-# polygon_path = 'C:/Androniki/pythonProject1/ams_public_space.shp'
-raster_path = 'C:/pedestrian_demo_data/amsterdam_time_900.tif'
-polygon_path = 'C:/pedestrian_demo_data/public_spaces/ams_public_space.shp'
+raster_path = 'C:/Androniki/pythonProject1/amsterdam_20150701_1630.TIF'
+polygon_path = 'C:/Androniki/pythonProject1/ams_public_space.shp'
+# raster_path = 'C:/pedestrian_demo_data/amsterdam_time_900.tif'
+# polygon_path = 'C:/pedestrian_demo_data/public_spaces/ams_public_space.shp'
 
 # User-defined preference
 # user_shade_preference = 10
