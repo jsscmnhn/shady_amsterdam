@@ -328,6 +328,8 @@ if __name__ == '__main__':
                                    afternoon_range=afternoon_range,
                                    late_afternoon_range=late_afternoon_range,
                                    output_coolspace_type=output_coolspace_type)
+        
+        coolspace.to_file(gpkg_file, layer=output_layer)
         end = time.time()
         total = end - begin
         minutes, seconds = divmod(total, 60)
