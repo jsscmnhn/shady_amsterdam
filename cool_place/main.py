@@ -328,7 +328,9 @@ if __name__ == '__main__':
                                    afternoon_range=afternoon_range,
                                    late_afternoon_range=late_afternoon_range,
                                    output_coolspace_type=output_coolspace_type)
-        
+
+        list_to_string(coolspace)
+        drop_or_wkt(coolspace, mode='to_wkt')
         coolspace.to_file(gpkg_file, layer=output_layer)
         end = time.time()
         total = end - begin
