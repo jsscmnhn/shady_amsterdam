@@ -256,6 +256,8 @@ def drop_or_wkt(gdf: gpd.geodataframe, mode='to_wkt') -> None:
         if isinstance(gdf[col].iloc[0], base.BaseGeometry):
             if mode == 'to_wkt':
                 gdf[col] = gpd.GeoSeries(gdf[col]).to_wkt()
+                if col == 'geometry':
+                    gdf.rename(columns={col: 'orig_geom'}, inplace=True)
             else:
                 gdf.drop(columns=col, inplace=True)
 
@@ -278,9 +280,6 @@ if __name__ == '__main__':
         heatrisk_layer            = config['files']['heatrisk_file']
         output_layer              = config['files']['output_file']
 
-        # read PET raster
-        pet_file = config['files']['pet_file']
-
         # read shape maps file path and information
         shademaps_path         = config['files']['shademaps_path']
         shade_calculation_mode = config['parameters']['shade_calculation_mode']
@@ -293,14 +292,14 @@ if __name__ == '__main__':
         num_days               = config['shade_info_multi']['num_days']
 
         # read parameters
-        hasCoolSpaceOutput     = config['parameters']['hasCoolSpaceOutput']
-        road_buffer_attribute  = config['parameters']['road_buffer_attribute']
-        output_coolspace_type  = config['parameters']['output_coolspace_type']
-        building_buffer        = config['parameters']['building_buffer']
-        capacity_search_buffer = config['parameters']['capacity_search_buffer']
+        hasIdentificationOutput = config['parameters']['hasCoolSpaceOutput']
+        road_buffer_attribute   = config['parameters']['road_buffer_attribute']
+        output_coolspace_type   = config['parameters']['output_coolspace_type']
+        building_buffer         = config['parameters']['building_buffer']
+        capacity_search_buffer  = config['parameters']['capacity_search_buffer']
         progress.advance(task)
 
-    if not hasCoolSpaceOutput:
+    if not hasIdentificationOutput:
         with Progress() as progress:
             task = progress.add_task("Loading GeoPackage layers for identification...", total=3)
 
@@ -337,33 +336,37 @@ if __name__ == '__main__':
         minutes, seconds = divmod(total, 60)
         print(f"Total time for identification: {int(minutes)} minutes and {seconds:.2f} seconds")
 
-    with Progress() as progress:
-        task = progress.add_task("Loading GeoPackage layers for evaluation...", total=4)
-
-        cs_output = gpd.read_file(gpkg_file, layer=output_layer)
-        progress.advance(task)
-
-        building_pop = gpd.read_file(gpkg_file, layer=building_population_layer)
-        progress.advance(task)
-
-        street_furniture = gpd.read_file(gpkg_file, layer=street_furniture_layer)
-        progress.advance(task)
-
-        heatrisk = gpd.read_file(gpkg_file, layer=heatrisk_layer)
-        progress.advance(task)
-
-    begin2 = time.time()
-    coolspace_output = evaluation(coolspace=cs_output,
-                                  building_population_file=building_pop,
-                                  bench_file=street_furniture,
-                                  heatrisk_file=heatrisk,
-                                  pet_file=pet_file,
-                                  search_buffer=700)
-
-    end2 = time.time()
-    total2 = end2 - begin2
-    minutes2, seconds2 = divmod(total2, 60)
-    print(f"Total time for evaluation: {int(minutes2)} minutes and {seconds2:.2f} seconds")
+    # with Progress() as progress:
+    #     task = progress.add_task("Loading GeoPackage layers for evaluation...", total=5)
+    #
+    #     # read PET raster
+    #     pet_file = config['files']['pet_file']
+    #     progress.advance(task)
+    #
+    #     cs_output = gpd.read_file(gpkg_file, layer=output_layer)
+    #     progress.advance(task)
+    #
+    #     building_pop = gpd.read_file(gpkg_file, layer=building_population_layer)
+    #     progress.advance(task)
+    #
+    #     street_furniture = gpd.read_file(gpkg_file, layer=street_furniture_layer)
+    #     progress.advance(task)
+    #
+    #     heatrisk = gpd.read_file(gpkg_file, layer=heatrisk_layer)
+    #     progress.advance(task)
+    #
+    # begin2 = time.time()
+    # coolspace_output = evaluation(coolspace=cs_output,
+    #                               building_population_file=building_pop,
+    #                               bench_file=street_furniture,
+    #                               heatrisk_file=heatrisk,
+    #                               pet_file=pet_file,
+    #                               search_buffer=700)
+    #
+    # end2 = time.time()
+    # total2 = end2 - begin2
+    # minutes2, seconds2 = divmod(total2, 60)
+    # print(f"Total time for evaluation: {int(minutes2)} minutes and {seconds2:.2f} seconds")
 
     # list_to_string(coolspace)
     # drop_or_wkt(coolspace, mode='to_wkt')

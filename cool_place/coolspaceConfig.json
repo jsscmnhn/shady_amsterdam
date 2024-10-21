@@ -7,12 +7,12 @@
     "building_population_file": "ams_bpop_2020",
     "street_furniture_file": "ams_bench_osm",
     "heatrisk_file": "ams_heatrisk_2023",
-    "output_file": "coolspace_output_test4",
+    "output_file": "coolspace_output_test5",
     "pet_file": "G:\\TUD\\Synthesis\\cool_place\\ams_PET_average.tiff",
     "shademaps_path": "G:\\TUD\\Synthesis\\cool_place\\shademaps\\"
   },
   "parameters": {
-    "hasCoolSpaceOutput": false,
+    "hasIdentificationOutput": false,
     "road_buffer_attribute": "buffer",
     "building_buffer": 4,
     "shade_calculation_mode": "single-day",
