@@ -336,6 +336,12 @@ def process_files(chm_folder, dtm_path, dsm_path, buildings_path, output_base_fo
       - buildings_path (string):     Path to the geopackage file containing building geometries.
       - output_base_folder (string): Base path for saving the output DSM and CHM files.
       - nodata_value (int):          NoData value for raster processing (default: -9999).
+      - max_workers (int):           Number of parallel processes.
+      - speed_up (boolean):          If True, checks if there is a large nodata area in the DTM file and uses a different
+                                     interpolation method if so. Default is set to False.
+      - min_height (float, optional):     minimal height for vegetation to be included in final CHM.
+      - max_height (float, optional):     maximum height for vegetation to be included in final CHM.
+
 
       Output:
       - None: The function writes output files directly to the specified `output_base_folder`.
@@ -345,7 +351,6 @@ def process_files(chm_folder, dtm_path, dsm_path, buildings_path, output_base_fo
               - A processed CHM file: `CHM_<tile>_<subtile_number>.tif`
           - These files are saved in folders named after the tile in `output_base_folder`.
       """
-
     chm_files = glob.glob(os.path.join(chm_folder, "*.TIF"))
     if not chm_files:
         print(f"No CHM files found in the folder: {chm_folder}")
@@ -440,13 +445,3 @@ def process_folders(base_chm_folder, dtm_path, dsm_path, buildings_path, output_
             print(f"Processing folder: {chm_folder}")
             process_files(chm_folder, dtm_path, dsm_path, buildings_path, output_base_folder, nodata_value,
                           speed_up=speed_up, min_height=min_height, max_height=max_height)
-
-"""
-geotiff_dtm = "data/DTM_ams.tif"
-geotiff_dsm = "data/DSM_ams.tif"
-buildings = "data/ams_buildings.gpkg"
-chm_folder = "output/25DN2_TEST"
-output_base_folder = "final"
-
-process_files(chm_folder, geotiff_dtm, geotiff_dsm, buildings, output_base_folder)
-"""

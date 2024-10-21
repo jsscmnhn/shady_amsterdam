@@ -11,7 +11,7 @@
         "download_dsm_dtm": true,
         "download_buildings" : true,
         "buildings_name" : "ams_buildings",
-        "buildings_output_folder": "path",
+        "buildings_output_folder": "test/buildings",
         "ahn_output_folder": "test/ahn",
         "tile_list_file": "../Calculating shade/Calculating_chm_dsm/ams_tiles_test.txt",
         "merged_name": "ams",
@@ -40,7 +40,7 @@
     },
     "Creation_of_final_CHM_and_DSM_with_ground_and_buildings": {
         "create_final_dsm_chm": true,
-        "buildings_path": "C:\\Geomatics\\shady_amsterdam\\Calculating shade\\archive\\data\\ams_buildings.gpkg",
+        "buildings_path": "path",
         "output_dsm_chm": "test/dsmchm",
         "dsm_max_workers": 4,
         "speed_up": false,

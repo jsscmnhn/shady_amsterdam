@@ -199,6 +199,8 @@ def process_single_laz_file(file_path, output_folder, ndvi_threshold=0.0, resolu
     - remove (bool):            If True, deletes the original .LAZ files after processing (default: False).
     - smooth_chm (bool):        If True, applies smoothing to the CHM using a median filter (default: False).
     - filter_size (int):        Size of the median filter to use if smoothing (default: 3).
+    - prefilter (bool):         If True, applies an additional filter to remove vegetation points below a certain height
+                                threshold (1.5 meters above the lowest vegetation point).
 
     Output:
     - None: The function process a .LAZ file, creates a corresponding CHM .tif file, and saves it to the output folder.
@@ -258,6 +260,22 @@ def process_laz_files(input_folder, output_folder, ndvi_threshold=0.0, resolutio
                       filter_size=3, pre_filter=False, max_workers=4):
     """
     Process a folder of LAZ files in parallel to extract vegetation points and generate CHMs.
+     -------
+    Input:
+    - file_path (str):          The file_path containing the folders containing the input .LAZ file.
+    - output_folder (str):      The folder where the output CHM .tif files will be saved.
+    - ndvi_threshold (float):   The NDVI threshold for classifying vegetation points.
+    - resolution (float):       The resolution of the output CHM rasters, defining the size of each pixel (default: 0.5).
+    - remove (bool):            If True, deletes the original .LAZ files after processing (default: False).
+    - smooth_chm (bool):        If True, applies smoothing to the CHM using a median filter (default: False).
+    - filter_size (int):        Size of the median filter to use if smoothing (default: 3).
+    - prefilter (bool):         If True, applies an additional filter to remove vegetation points below a certain height
+                                threshold (1.5 meters above the lowest vegetation point).
+    - max_workers (int):         The number of parallel processes to process the LAZ files.
+
+    Output:
+    - None: The function process a .LAZ file, creates a corresponding CHM .tif file, and saves it to the output folder.
+            Optionally deletes the original .LAZ files if `remove` is set to True.
     """
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
@@ -275,7 +293,7 @@ def process_laz_files(input_folder, output_folder, ndvi_threshold=0.0, resolutio
 
     total_start_time = time.time()
 
-    # Use ProcessPoolExecutor for parallel processing
+    # Parallel processing
     with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
         list(tqdm(
             executor.map(
@@ -295,12 +313,3 @@ def process_laz_files(input_folder, output_folder, ndvi_threshold=0.0, resolutio
         ))
     total_elapsed_time = time.time() - total_start_time
     print(f"\nAll files processed in {total_elapsed_time:.2f} seconds.")
-
-
-"""
-if __name__ == '__main__':
-    input_folder = "E:/temporary_jessica/missed_laz_tiles"
-    output_folder = "E:/temporary_jessica/CHM_smoothed"
-    max_workers = 20
-    process_laz_files(input_folder, output_folder, max_workers=max_workers)
-"""

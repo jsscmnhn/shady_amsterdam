@@ -1,3 +1,10 @@
+"""
+This file contains the functions to create the final CHM from the first CHM (the CHM where the heights are subtracted from
+the DTM ground values, and heights below a certain value are removed (to ensure effective shade)), and to create
+the final DSM with ground and buildings. As input, the CHM calculated from the pointcloud and the AHN DSM & DTM are used.
+ The process can be run in parallel by sepcifying the amount of workers.
+"""
+
 import os
 import re
 import geopandas as gpd
@@ -38,7 +45,7 @@ def get_bbox(raster_paths):
     return rasterio.coords.BoundingBox(left, bottom, right, top)
 
 
-def crop_raster(raster_path, bbox, no_data=-9999, file_number=None, tile=None):
+def crop_raster(raster_path, bbox, no_data=-9999):
     """
     Crop the input rasters to the size of the overlapping bounding box.
     ----
@@ -57,12 +64,6 @@ def crop_raster(raster_path, bbox, no_data=-9999, file_number=None, tile=None):
 
         # Read the data for the specified window
         cropped_data = src.read(window=window)
-
-        # Ensure window attributes are integers (sometimes bbox in float)
-        row_off = int(window.row_off)
-        col_off = int(window.col_off)
-        height = int(window.height)
-        width = int(window.width)
 
         # Replace no-data values in the data
         if src.nodata is not None:
@@ -112,7 +113,6 @@ def extract_center_cells(cropped_data, no_data=-9999):
     # Check each corner for no data and interpolate if necessary
     for corner_name, (row, col) in corners.items():
         if cropped_data[row, col] == no_data:
-            # Interpolate the nearest valid value
             cropped_data[row, col] = interpolator((col, row))
 
     # Extract non-no_data and center cells again after filling corners
@@ -144,29 +144,29 @@ def fill_raster(cropped_data, nodata_value, transform, speed_up=False):
 
     Output:
     - new_data[0, 1:-1, 1:-1] (2d numpy array): filled raster data with first and last rows and columns remove to ensure
-                                                there are no nodata values.
+                                                there are no nodata values from Laplace interpolation.
     - new_transform (rasterio transform): affine transform matrix reflecting the one column one row removal shift.
     """
 
-    # creating delaunay
+    # Creating delaunay
     points = extract_center_cells(cropped_data, no_data=nodata_value)
     dt = startinpy.DT()
     dt.insert(points, "BBox")
 
-    # now interpolation
+    # Now interpolation
     new_data = np.copy(cropped_data)
 
-    # for interpolation, grid of all column and row positions, excluding the first and last rows/cols
+    # For interpolation, grid of all column and row positions, excluding the first and last rows/cols
     cols, rows = np.meshgrid(
         np.arange(1, cropped_data.shape[2] - 1),
         np.arange(1, cropped_data.shape[1] - 1)
 
     )
 
-    # flatten the grid to get a list of all (col, row) locations
+    # Flatten the grid to get a list of all (col, row) locations
     locs = np.column_stack((cols.ravel(), rows.ravel()))
 
-    # handle cases with large nodata areas if speed_up is true
+    # Handle cases with large nodata areas if speed_up is true
     large_nodata_region = False
     if speed_up:
         nodata_mask = (cropped_data == nodata_value)
@@ -287,8 +287,32 @@ def extract_tilename(filename):
 
 def process_single_file(chm_path, dtm_path, dsm_path, building_geometries, output_base_folder, nodata_value=-9999,
                         speed_up=False, min_height=2, max_height=40):
+    """
+      Function to process from one CHM file to a final DSM and CHM.
+      ----
+      Input:
+      - chm_path (string):           Path to the input CHM .tif file.
+      - dtm_path (string):           Path to the (merged DTM) .tif file.
+      - dsm_path (string):           Path to the (merged DSM) .tif file.
+      - buildings_path (string):     Path to the geopackage file containing building geometries.
+      - output_base_folder (string): Base path for saving the output DSM and CHM files.
+      - nodata_value (int):          NoData value for raster processing (default: -9999).
+      - max_workers (int):           Number of parallel processes.
+      - speed_up (boolean):          If True, checks if there is a large nodata area in the DTM file and uses a different
+                                     interpolation method if so. Default is set to False.
+     - min_height (float, optional):     minimal height for vegetation to be included in final CHM.
+     - max_height (float, optional):     maximum height for vegetation to be included in final CHM.
+
+      Output:
+      - None: The function writes output files directly to the specified `output_base_folder`.
+      - Output files:
+          - For each input CHM file, the function generates:
+              - A DSM file with building data incorporated: `DSM_<tile>_<subtile_number>.tif`
+              - A processed CHM file: `CHM_<tile>_<subtile_number>.tif`
+          - These files are saved in folders named after the tile in `output_base_folder`.
+      """
+
     chm_filename = os.path.basename(chm_path)
-    print(chm_filename)
     file_number = re.search(r'_(\d+)\.TIF', chm_filename).group(1)
     tile = extract_tilename(chm_filename)
 
@@ -351,6 +375,11 @@ def process_files(chm_folder, dtm_path, dsm_path, buildings_path, output_base_fo
       - output_base_folder (string): Base path for saving the output DSM and CHM files.
       - nodata_value (int):          NoData value for raster processing (default: -9999).
       - max_workers (int):           Number of parallel processes.
+      - speed_up (boolean):          If True, checks if there is a large nodata area in the DTM file and uses a different
+                                     interpolation method if so. Default is set to False.
+      - min_height (float, optional):     minimal height for vegetation to be included in final CHM.
+      - max_height (float, optional):     maximum height for vegetation to be included in final CHM.
+
 
       Output:
       - None: The function writes output files directly to the specified `output_base_folder`.
@@ -427,18 +456,3 @@ def process_folders(base_chm_folder, dtm_path, dsm_path, buildings_path, output_
             print(f"Processing folder: {chm_folder}")
             process_files(chm_folder, dtm_path, dsm_path, buildings_path, output_base_folder,
                           max_workers=max_workers, speed_up=speed_up, min_height=min_height, max_height=max_height)
-
-
-"""
-if __name__ == '__main__':
-    geotiff_dtm = "E:/temporary_jessica/DTM_ams.TIF"
-    geotiff_dsm = "E:/temporary_jessica/DSM_ams.TIF"
-    buildings = "E:/temporary_jessica/ams_buildings.gpkg"
-
-    chm_folder = "E:/temporary_jessica/CHM_smoothed"
-    output_base_folder = "E:/temporary_jessica/output_smoothed"
-
-    max_workers = 20
-
-    process_folders(chm_folder, geotiff_dtm, geotiff_dsm, buildings, output_base_folder, nodata_value=-9999, max_workers=max_workers)
-"""

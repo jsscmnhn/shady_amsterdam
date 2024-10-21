@@ -1,5 +1,6 @@
 """
-This file contains the functions to collect all the data needed to create the CHM and DSM.
+This file contains the functions to collect all the data needed to create the CHM and DSM: downloading the LAZ subtiles,
+downloading the AHN tiles (DTM and DSM), downloading the building geometries from 3DBAG.
 """
 
 import rasterio
@@ -289,12 +290,22 @@ def download_wfs_data(wfs_url, layer_name, bbox, gpkg_name, output_folder, tile_
         print("No features were downloaded.")
 
 def setup_WFS_download(gpkg_name, tile_bounds, output_folder):
+    """
+    Collecting the needed information for downloading the WFS data.
+    --------------
+    input:
+    -   gpkg_name (str): Name for the output GeoPackage file.
+    -   tile_bounds (list): list containing nested lists where at [0] the tile name is saved and at [1] the bounds of the tile
+    -   output_folder (str): Path to the output GeoPackage file.
+    Output:
+    -   none: saves a GeoPackage file to the given {gpkg_name} at layer {tile_name}.
+    """
     wfs_url = "https://data.3dbag.nl/api/BAG3D/wfs"
     layer_name = "BAG3D:lod13"
     for i in range(len(tile_bounds)):
         tile_name = tile_bounds[i][0]
         bbox = tile_bounds[i][1]
-        bbox_tuple = (bbox.left, bbox.bottom, bbox.right, bbox.top)
+        bbox_tuple = (bbox.left - 40, bbox.bottom - 40, bbox.right + 40, bbox.top + 40)
         print(bbox_tuple)
 
         download_wfs_data(

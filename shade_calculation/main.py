@@ -161,7 +161,6 @@ if __name__ == '__main__':
 
     if params.get('merge_shademaps'):
         print("Merging shademaps...")
-        print(params["delete_input_shade"])
         merge_tif_files_by_time(params['output_base_shademap'], params['output_folder_merged_shademaps'],
                                 params['merged_name'], params['files_start_time'], params['files_end_time'],
                                 params['delete_input_shade'])

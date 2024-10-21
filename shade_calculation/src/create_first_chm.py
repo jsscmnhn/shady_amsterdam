@@ -263,9 +263,3 @@ def process_laz_files(input_folder, output_folder, ndvi_threshold=0.0, resolutio
     # Calculate and print total processing time
     total_elapsed_time = time.time() - total_start_time
     print(f"\nAll files processed in {total_elapsed_time:.2f} seconds.")
-
-"""
-input_folder = "E:/temporary_jessica/LAZ_TILES/25HN1/25HN1"
-output_folder = "E:/temporary_jessica/LAZ_TILES/25HN1/onebyone"
-process_laz_files(input_folder, output_folder)
-"""
