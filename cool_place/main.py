@@ -89,6 +89,7 @@ def identification(coolspace_file: gpd.geodataframe,
     with Progress() as progress:
         task = progress.add_task("Loading shade maps...", total=daytime[1] + 1)
         for shadow_file in shadow_files:
+            print(f"Loading {shadow_file}...")
             shadow_map = rasterio.open(shadow_file, crs=coolSpace.data.crs)
             shadows.append(shadow_map)
             progress.advance(task)
