@@ -104,6 +104,7 @@ def merge_tif_files(input_folder, output_file, file_prefix, nodata_value=-9999):
     """
     # Find TIF files that match the given prefix
     tif_files = glob.glob(os.path.join(input_folder, f'{file_prefix}*.TIF'))
+    bounds = []
 
     if not tif_files:
         print(f"No TIF files found for prefix {file_prefix}.")
@@ -117,7 +118,7 @@ def merge_tif_files(input_folder, output_file, file_prefix, nodata_value=-9999):
 
     mosaic, out_transform = merge(src_files_to_mosaic)
 
-    # Replace existing nodata values with new nodata value if necessary
+    # Replace existing nodata values with new nodata value
     for src in src_files_to_mosaic:
         if 'nodata' in src.meta:
             mosaic[mosaic == src.nodata] = nodata_value
@@ -133,13 +134,12 @@ def merge_tif_files(input_folder, output_file, file_prefix, nodata_value=-9999):
         "nodata": nodata_value
     })
 
-    # Write the merged file to the output path
     with rasterio.open(output_file, "w", **out_meta) as dest:
         dest.write(mosaic)
 
     print(f"Merged {len(tif_files)} TIF files with prefix {file_prefix} into {output_file}")
 
-    # close & delete original TIF files
+    # close & delete original TIF files & save bounds
     for src in src_files_to_mosaic:
         src.close()
     for tif_file in tif_files:

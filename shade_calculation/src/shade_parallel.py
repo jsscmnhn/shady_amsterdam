@@ -9,7 +9,7 @@ import concurrent.futures
 import tqdm
 
 def process_chm_dsm(chm_filename, dsm_filename, folder_path, output_dir, date, start_time=10, end_time=21,
-                    interval=30, trans=10, trunkheight=25):
+                    interval=30, use_chm=True, trans=10, trunkheight=25):
     """
      Function to process a single DSM and CHM file pair.
      ----
@@ -44,7 +44,7 @@ def process_chm_dsm(chm_filename, dsm_filename, folder_path, output_dir, date, s
         filepath_save=output_dir,
         UTC=2,
         dst=1,
-        useveg=1,
+        useveg=use_chm,
         trunkheight=trunkheight,
         transmissivity=trans,
         start_time=start_time,
@@ -53,7 +53,7 @@ def process_chm_dsm(chm_filename, dsm_filename, folder_path, output_dir, date, s
 
     print(f"Completed shade calculation for: {chm_filename} and {dsm_filename}.")
 
-def run_shade_calculation(folder_path, output_base_folder, date, start_time, end_time, interval,
+def run_shade_calculation(folder_path, output_base_folder, date, start_time, end_time, interval, use_chm,
                           trans, trunkheight, max_workers=4):
     """
       Function to run shade calculations for pairs of CHM and DSM files in a specified folder.
@@ -107,7 +107,7 @@ def run_shade_calculation(folder_path, output_base_folder, date, start_time, end
     # Process files concurrently within the folder
     with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
         list(tqdm.tqdm(executor.map(
-            process_chm_dsm,  # Assuming process_chm_dsm takes the necessary arguments
+            process_chm_dsm,
             chm_files,
             dsm_files,
             [folder_path] * len(chm_files),
@@ -116,12 +116,13 @@ def run_shade_calculation(folder_path, output_base_folder, date, start_time, end
             [start_time] * len(chm_files),
             [end_time] * len(chm_files),
             [interval] * len(chm_files),
+            [use_chm] * len(chm_files),
             [trans] * len(chm_files),
             [trunkheight] * len(chm_files)
         ), total=len(chm_files), desc=f"Processing files in {folder_path}", unit="file"))
 
 
-def process_folders(base_folder, output_base_folder, date, start_time=9, end_time=20, interval=30, trans=10,
+def process_folders(base_folder, output_base_folder, date, start_time=9, end_time=20, interval=30, use_chm=True, trans=10,
                     trunkheight=25, max_workers=4):
     """
     Function to process all subfolders in a base folder for shade calculations.
@@ -147,7 +148,7 @@ def process_folders(base_folder, output_base_folder, date, start_time=9, end_tim
 
     for folder_path in tqdm.tqdm(folder_paths, desc="Processing folders"):
         print(f"Processing folder: {folder_path}")
-        run_shade_calculation(folder_path, output_base_folder, date, start_time, end_time, interval, trans,
+        run_shade_calculation(folder_path, output_base_folder, date, start_time, end_time, interval, use_chm, trans,
                               trunkheight, max_workers)
 
 

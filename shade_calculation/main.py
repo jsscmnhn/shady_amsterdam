@@ -6,12 +6,53 @@ from src.merge_shademaps import merge_tif_files_by_time
 
 import argparse
 import os
+import json
 from datetime import datetime
 
-def read_config(file_path):
-    params = {}
 
-    # if no oprional value is given in config file, use these.
+def flatten_dict(nested_dict, parent_key='', sep='_'):
+    """
+    Flatten a nested dictionary ignoring the first layer.
+    ------------------------------------------------------------------
+    Input:
+    - nested_dict (dict): The dictionary to flatten.
+    - parent_key (str): The base key string for the flattened keys.
+    - sep (str): Separator to use between concatenated keys.
+
+    Output:
+    - items: A flat dictionary.
+    """
+    items = {}
+
+    # flattening the nested dictionary without the first layers to get the required parameters
+    for key, value in nested_dict.items():
+        if isinstance(value, dict):
+            for sub_key, sub_value in flatten_dict(value, parent_key=key, sep=sep).items():
+                items[sub_key] = sub_value
+        else:
+            items[key] = value
+
+    return items
+
+def read_config(file_path):
+    """
+    Read the contents of the JSON configuration file and save them to a dictionary
+    -------------------------------------
+    Input:
+    - file_path (str): The path to the configuration file.
+    output:
+    - params (dict): The configuration dictionary with all the parameters needed.
+    """
+    # Load parameters from the JSON file
+    with open(file_path, 'r') as file:
+        data = json.load(file)
+
+        # Flatten the nested structure while ignoring the first layer
+        params = {}
+        for key in data:
+            params.update(flatten_dict(data[key]))
+
+    # Default values to use if not provided in the JSON file
     default_values = {
         'ndvi_threshold': 0.0,
         'resolution': 0.5,
@@ -32,82 +73,28 @@ def read_config(file_path):
         'smooth_chm': False,
         'pre_filter': False,
         'speed_up': False,
-        'delete_input_shade': False,
+        'use_chm' : True,
+        'delete_input_shade': False
     }
 
-    # Set parameters with standard values if not provided
+    # Set default values for missing parameters
     for key, default_value in default_values.items():
-        if key not in params:
-            params[key] = default_value
+        params.setdefault(key, default_value)
 
-    with open(file_path, 'r') as file:
-        for line in file:
-            line = line.strip()
-            if line.startswith('#') or not line:
-                continue
-
-            key_value = line.split('=', 1)
-            if len(key_value) == 2:
-                key = key_value[0].strip()
-                value = key_value[1].strip()
-
-                # Store the parameters in the dictionary
-                params[key] = value
-
-    # Convert types where necessary
-    if 'ndvi_threshold' in params:
-        params['ndvi_threshold'] = float(params['ndvi_threshold'])
-    if 'resolution' in params:
-        params['resolution'] = float(params['resolution'])
-    if 'filter_size' in params:
-        params['filter_size'] = int(params['filter_size'])
-    if 'chm_max_workers' in params:
-        params['chm_max_workers'] = int(params['chm_max_workers'])
-    if 'dsm_max_workers' in params:
-        params['dsm_max_workers'] = int(params['dsm_max_workers'])
-    if 'min_vegetation_height' in params:
-        params['min_vegetation_height'] = float(params['min_vegetation_height'])
-    if 'max_vegetation_height' in params:
-        params['max_vegetation_height'] = float(params['max_vegetation_height'])
-    if 'max_shade_workers' in params:
-        params['max_shade_workers'] = int(params['max_shade_workers'])
-    if 'start_time' in params:
-        params['start_time'] = int(params['start_time'])
-    if 'end_time' in params:
-        params['end_time'] = int(params['end_time'])
-    if 'interval' in params:
-        params['interval'] = int(params['interval'])
-    if 'trans' in params:
-        params['trans'] = int(params['trans'])
-    if 'trunkheight' in params:
-        params['trunkheight'] = int(params['trunkheight'])
-    if 'files_start_time' in params:
-        params['files_start_time'] = int(params['files_start_time'])
-    if 'files_end_time' in params:
-        params['files_end_time'] = int(params['files_end_time'])
-    if 'date' in params:
+    # Convert the 'date' parameter to a datetime object if it's provided as a string
+    if 'date' in params and isinstance(params['date'], str):
         try:
             params['date'] = datetime.strptime(params['date'], '%Y-%m-%d')
         except ValueError:
-            raise ValueError(f"Invalid date format for {'date'}: {params['date']}")
-
-    # Convert boolean strings to actual boolean values
-    boolean_keys = ['download_las', 'download_dsm_dtm', 'create_chm',
-                    'create_final_dsm_chm', 'create_shade', 'merge_shademaps',
-                    'remove_las', 'smooth_chm', 'pre_filter', 'speed_up', 'delete_input_shade']
-
-    for key in boolean_keys:
-        if key in params:
-            params[key] = params[key].lower() == 'yes'
+            raise ValueError(f"Invalid date format for 'date': {params['date']}")
 
     return params
 
 
 if __name__ == '__main__':
-
     parser = argparse.ArgumentParser(description='Creation of Canopy Height Model (CHM), Digital Surface Model '
                                                  'with ground and buildings (DSM) and shade maps based on AHN '
-                                                 'data through a configuration file.')
+                                                 'data through a configuration JSON file.')
     parser.add_argument('config_file', type=str, help='Path to the configuration file')
 
     args = parser.parse_args()
@@ -120,6 +107,9 @@ if __name__ == '__main__':
 
     # Read parameters from the config file
     params = read_config(config_file)
+    for param in params:
+        print(param + ' ' + str(params[param]))
+
 
     if params.get('download_las'):
         print("Downloading LAS tiles...")
@@ -143,9 +133,9 @@ if __name__ == '__main__':
         merged_dtm_output_file = os.path.join(output_folder, f"{name}_DTM.TIF")
         merged_dsm_output_file = os.path.join(output_folder, f"{name}_DSM.TIF")
 
-        if params.get('merged_dtm') is None:
+        if params.get('merged_dtm') is None or "path":
             params['merged_dtm'] = merged_dtm_output_file
-        if params.get('merged_dsm') is None:
+        if params.get('merged_dsm') is None or "path":
             params['merged_dsm'] = merged_dsm_output_file
 
         # Then we can start processing
@@ -157,7 +147,7 @@ if __name__ == '__main__':
     if params.get('create_shade'):
         print("Creating shade maps...")
         process_shade(params['output_dsm_chm'], params['output_base_shademap'], params['date'], params['start_time'],
-                      params['end_time'], params['interval'], params['trans'], params['trunkheight'],
+                      params['end_time'], params['interval'], params['use_chm'], params['trans'], params['trunkheight'],
                       params['max_shade_workers'])
 
     if params.get('merge_shademaps'):
