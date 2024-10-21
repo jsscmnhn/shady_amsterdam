@@ -7,10 +7,9 @@ import time
 from matplotlib.patches import Patch
 
 
-def load_building_polygons(place):
-    # Load building polygons from OSM for the specified place
-    # buildings = ox.geometries_from_place(place, tags={'building': True})
-    buildings = ox.features_from_place(place, tags={'building': True})
+def load_building_polygons(building_shapefile_path):
+    # Load building polygons from a shapefile on your local machine
+    buildings = gpd.read_file(building_shapefile_path)
     return buildings
 
 
@@ -94,7 +93,7 @@ def calculate_walking_shed(buildings, cool_place_nodes, graph, distances=[200, 3
         within_distance = buildings[buildings['distance_category'].isnull()]
         buildings_within = within_distance[within_distance.geometry.centroid.within(cool_place_buffer.unary_union)]
 
-        # Assign the distance categoryto the buildings within this buffer
+        # Assign the distance category to the buildings within this buffer
         buildings.loc[buildings_within.index, 'distance_category'] = distance
 
     return buildings
@@ -137,7 +136,7 @@ def plot_colored_walking_shed(buildings):
     plt.show()
 
 
-def walking_shed_calculation(place=None, graph_file_path=None, polygon_path=None):
+def walking_shed_calculation(place=None, graph_file_path=None, polygon_path=None, building_shapefile_path=None):
     if graph_file_path:
         # Load from a file
         graph = load_graph_from_file(graph_file_path)
@@ -157,8 +156,8 @@ def walking_shed_calculation(place=None, graph_file_path=None, polygon_path=None
     cool_place_nodes = find_cool_place_nodes(graph, cool_place_polygons)
     print(f"Found {len(cool_place_nodes)} cool place nodes on the graph.")
 
-    # Load building polygons (e.g., for Amsterdam)
-    buildings = load_building_polygons('Amsterdam, Netherlands')
+    # Load building polygons from a shapefile
+    buildings = load_building_polygons(building_shapefile_path)
 
     # Calculate walking shed with different distances
     buildings = calculate_walking_shed(buildings, cool_place_nodes, graph)
@@ -170,4 +169,11 @@ def walking_shed_calculation(place=None, graph_file_path=None, polygon_path=None
     plot_colored_walking_shed(buildings)
 
 
-walking_shed_calculation(place="Amsterdam, Netherlands", polygon_path="C:/pedestrian_demo_data/public_spaces/ams_public_space.shp")
+# Example usage
+walking_shed_calculation(
+    place="Amsterdam, Netherlands",
+    polygon_path="C:/Androniki/pythonProject1/ams_public_space.shp",
+    building_shapefile_path="C:/Androniki/pythonProject1/new_graph/ams_buildings.shp"
+)
+
+# walking_shed_calculation(place="Amsterdam, Netherlands", polygon_path="C:/pedestrian_demo_data/public_spaces/ams_public_space.shp")
