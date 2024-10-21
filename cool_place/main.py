@@ -292,7 +292,7 @@ if __name__ == '__main__':
         num_days               = config['shade_info_multi']['num_days']
 
         # read parameters
-        hasIdentificationOutput = config['parameters']['hasCoolSpaceOutput']
+        hasIdentificationOutput = config['parameters']['hasIdentificationOutput']
         road_buffer_attribute   = config['parameters']['road_buffer_attribute']
         output_coolspace_type   = config['parameters']['output_coolspace_type']
         building_buffer         = config['parameters']['building_buffer']
@@ -328,47 +328,48 @@ if __name__ == '__main__':
                                    late_afternoon_range=late_afternoon_range,
                                    output_coolspace_type=output_coolspace_type)
 
-        list_to_string(coolspace)
-        drop_or_wkt(coolspace, mode='to_wkt')
-        coolspace.to_file(gpkg_file, layer=output_layer)
+        with Progress() as progress:
+            task = progress.add_task("Processing attributes for output data...", total=3)
+            list_to_string(coolspace)
+            progress.advance(task)
+            drop_or_wkt(coolspace, mode='to_wkt')
+            progress.advance(task)
+            coolspace.to_file(gpkg_file, layer=output_layer)
+            progress.advance(task)
         end = time.time()
         total = end - begin
         minutes, seconds = divmod(total, 60)
         print(f"Total time for identification: {int(minutes)} minutes and {seconds:.2f} seconds")
 
-    # with Progress() as progress:
-    #     task = progress.add_task("Loading GeoPackage layers for evaluation...", total=5)
-    #
-    #     # read PET raster
-    #     pet_file = config['files']['pet_file']
-    #     progress.advance(task)
-    #
-    #     cs_output = gpd.read_file(gpkg_file, layer=output_layer)
-    #     progress.advance(task)
-    #
-    #     building_pop = gpd.read_file(gpkg_file, layer=building_population_layer)
-    #     progress.advance(task)
-    #
-    #     street_furniture = gpd.read_file(gpkg_file, layer=street_furniture_layer)
-    #     progress.advance(task)
-    #
-    #     heatrisk = gpd.read_file(gpkg_file, layer=heatrisk_layer)
-    #     progress.advance(task)
-    #
-    # begin2 = time.time()
-    # coolspace_output = evaluation(coolspace=cs_output,
-    #                               building_population_file=building_pop,
-    #                               bench_file=street_furniture,
-    #                               heatrisk_file=heatrisk,
-    #                               pet_file=pet_file,
-    #                               search_buffer=700)
-    #
-    # end2 = time.time()
-    # total2 = end2 - begin2
-    # minutes2, seconds2 = divmod(total2, 60)
-    # print(f"Total time for evaluation: {int(minutes2)} minutes and {seconds2:.2f} seconds")
+    with Progress() as progress:
+        task = progress.add_task("Loading GeoPackage layers for evaluation...", total=5)
 
-    # list_to_string(coolspace)
-    # drop_or_wkt(coolspace, mode='to_wkt')
-    # coolspace.to_file(gpkg_file, layer=output_layer)
+        # read PET raster
+        pet_file = config['files']['pet_file']
+        progress.advance(task)
+
+        cs_output = gpd.read_file(gpkg_file, layer=output_layer)
+        progress.advance(task)
+
+        building_pop = gpd.read_file(gpkg_file, layer=building_population_layer)
+        progress.advance(task)
+
+        street_furniture = gpd.read_file(gpkg_file, layer=street_furniture_layer)
+        progress.advance(task)
+
+        heatrisk = gpd.read_file(gpkg_file, layer=heatrisk_layer)
+        progress.advance(task)
+
+    begin2 = time.time()
+    coolspace_output = evaluation(coolspace=cs_output,
+                                  building_population_file=building_pop,
+                                  bench_file=street_furniture,
+                                  heatrisk_file=heatrisk,
+                                  pet_file=pet_file,
+                                  search_buffer=700)
+
+    end2 = time.time()
+    total2 = end2 - begin2
+    minutes2, seconds2 = divmod(total2, 60)
+    print(f"Total time for evaluation: {int(minutes2)} minutes and {seconds2:.2f} seconds")
 
