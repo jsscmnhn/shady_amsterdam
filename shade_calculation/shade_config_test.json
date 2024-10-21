@@ -9,6 +9,9 @@
     },
     "Creation_of_AHN_geotiles_DSM_and_DTM_dataset": {
         "download_dsm_dtm": true,
+        "download_buildings" : true,
+        "buildings_name" : "ams_buildings",
+        "buildings_output_folder": "path",
         "ahn_output_folder": "test/ahn",
         "tile_list_file": "../Calculating shade/Calculating_chm_dsm/ams_tiles_test.txt",
         "merged_name": "ams",

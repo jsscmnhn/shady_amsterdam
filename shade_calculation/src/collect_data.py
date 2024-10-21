@@ -8,6 +8,10 @@ import glob
 import os
 import requests
 import zipfile
+import pandas as pd
+import geopandas as gpd
+import gzip
+from io import BytesIO
 
 def download_las_tiles(tile_list_file, output_folder):
     """
@@ -89,7 +93,6 @@ def download_and_extract(url, file_path, output_folder):
             print(f"An error occurred: {e}")
 
 
-
 def merge_tif_files(input_folder, output_file, file_prefix, nodata_value=-9999):
     """Merge TIF files in a folder with a specific prefix into a single raster file.
     ------
@@ -100,11 +103,13 @@ def merge_tif_files(input_folder, output_file, file_prefix, nodata_value=-9999):
     - nodata_value (int, optional): Value to replace the nodata value. Defaults to -9999.
 
     Output:
-    - none: The function writes the merged file directly to the specified `output_file`.
+    - tile_bounds (list): List containing the name of the tile and the extent of that tile, for downloading the buidling data.
+    - The function writes the merged file directly to the specified `output_file`.
     """
     # Find TIF files that match the given prefix
     tif_files = glob.glob(os.path.join(input_folder, f'{file_prefix}*.TIF'))
-    bounds = []
+
+    tile_bounds = []
 
     if not tif_files:
         print(f"No TIF files found for prefix {file_prefix}.")
@@ -114,6 +119,12 @@ def merge_tif_files(input_folder, output_file, file_prefix, nodata_value=-9999):
 
     for tif_file in tif_files:
         src = rasterio.open(tif_file)
+
+        # Extract the tile name &
+        base_name = os.path.basename(tif_file)
+        tile_name = base_name.split('_', 1)[-1].split('.')[0]
+        tile_bounds.append([tile_name, src.bounds])
+
         src_files_to_mosaic.append(src)
 
     mosaic, out_transform = merge(src_files_to_mosaic)
@@ -146,6 +157,8 @@ def merge_tif_files(input_folder, output_file, file_prefix, nodata_value=-9999):
         os.remove(tif_file)
         print(f"Deleted original TIF file: {tif_file}")
 
+    return tile_bounds
+
 
 def download_raster_tiles(tile_list_file, output_folder, name):
     """
@@ -156,7 +169,8 @@ def download_raster_tiles(tile_list_file, output_folder, name):
     - output_folder (str): Directory where the downloaded and unzipped files will be saved.
     - name (str): Name of the output raster file.
     Output:
-    - none: The function writes output files directly to the specified `output_folder`.
+    - tile_bounds (list): List containing the name of the tile and the extent of that tile, for downloading the buidling data.
+    - The function writes output files directly to the specified `output_folder`.
     """
 
     # Base URLs for downloading DTM and DSM tiles
@@ -188,6 +202,106 @@ def download_raster_tiles(tile_list_file, output_folder, name):
 
     # Merge files starting with "M_" for DTM and "R_" for DSM
     merge_tif_files(output_folder, merged_dtm_output_file, "M_")
-    merge_tif_files(output_folder, merged_dsm_output_file, "R_")
+    tile_bounds = merge_tif_files(output_folder, merged_dsm_output_file, "R_")
 
     print(f"All DTM and DSM files processed and merged.")
+
+    return tile_bounds
+
+
+def download_wfs_data(wfs_url, layer_name, bbox, gpkg_name, output_folder, tile_name):
+    """
+    Download data from a WFS server in batches and save it to a GeoPackage.
+    -----------------------------------------------------
+    Input:
+    -   wfs_url (str): URL of the WFS service.
+    -   layer_name (str): The layer name to download.
+    -   bbox (tuple): Bounding box as (minx, miny, maxx, maxy).
+    -   gpkg_name (str): Name for the output GeoPackage file.
+    -   tile_name (str): Layer name for saving in the GeoPackage.
+    Output:
+    -   None: saves a GeoPackage file to the given {output_gpkg} at layer {tile_name}.
+    """
+    # Initialize variables for feature collection, max requestable amount from server is 10000
+    all_features = []
+    start_index = 0
+    count = 10000
+
+    while True:
+        params = {
+            "SERVICE": "WFS",
+            "REQUEST": "GetFeature",
+            "VERSION": "2.0.0",
+            "TYPENAMES": layer_name,
+            "SRSNAME": "urn:ogc:def:crs:EPSG::28992",
+            "BBOX": f"{bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]},urn:ogc:def:crs:EPSG::28992",
+            "COUNT": count,
+            "STARTINDEX": start_index
+        }
+
+        # Mimicking a QGIS request
+        headers = {
+            "User-Agent": "Mozilla/5.0 QGIS/33411/Windows 11 Version 2009"
+        }
+
+        response = requests.get(wfs_url, params=params, headers=headers)
+
+        # Check if the request was successful & donwload data
+        if response.status_code == 200:
+            if response.headers.get('Content-Encoding', '').lower() == 'gzip' and response.content[:2] == b'\x1f\x8b':
+                data = gzip.decompress(response.content)
+            else:
+                data = response.content
+
+            with BytesIO(data) as f:
+                gdf = gpd.read_file(f)
+
+            all_features.append(gdf)
+
+            # Check if the number of features retrieved is less than the requested count: then we can stop
+            if len(gdf) < count:
+                break
+
+                # Start index for next request
+            start_index += count
+
+        else:
+            print(f"Failed to download WFS data. Status code: {response.status_code}")
+            print(f"Error message: {response.text}")
+            break
+
+            # Concatenate all features into a single GeoDataFrame
+    if all_features:
+        full_gdf = gpd.GeoDataFrame(pd.concat(all_features, ignore_index=True))
+
+        os.makedirs(output_folder, exist_ok=True)
+        output_gpkg = os.path.join(output_folder, f"{gpkg_name}.gpkg")
+
+        # Save the GeoDataFrame to a GeoPackage with the specified tile name
+        full_gdf.to_file(output_gpkg, layer=tile_name, driver="GPKG")
+        print(f"Downloaded and saved layer '{tile_name}' to {output_gpkg}")
+
+        # Saving to the GeoPackage with tile name
+        os.path.join(output_folder, )
+        full_gdf.to_file(output_gpkg, layer=tile_name, driver="GPKG")
+        print(f"Downloaded and saved layer '{tile_name}' to {output_gpkg}")
+    else:
+        print("No features were downloaded.")
+
+def setup_WFS_download(gpkg_name, tile_bounds, output_folder):
+    wfs_url = "https://data.3dbag.nl/api/BAG3D/wfs"
+    layer_name = "BAG3D:lod13"
+    for i in range(len(tile_bounds)):
+        tile_name = tile_bounds[i][0]
+        bbox = tile_bounds[i][1]
+        bbox_tuple = (bbox.left, bbox.bottom, bbox.right, bbox.top)
+        print(bbox_tuple)
+
+        download_wfs_data(
+            wfs_url=wfs_url,
+            layer_name=layer_name,
+            bbox=bbox_tuple,
+            gpkg_name=gpkg_name,
+            output_folder=output_folder,
+            tile_name=tile_name
+        )

@@ -1,4 +1,4 @@
-from src.collect_data import download_raster_tiles, download_las_tiles
+from src.collect_data import download_raster_tiles, download_las_tiles, setup_WFS_download
 from src.create_first_chm_parallel import process_laz_files as process_laz_files_parallel
 from src.create_dsm_and_chm_parallel import process_folders as process_dsm_chm_parallel
 from src.shade_parallel import process_folders as process_shade
@@ -117,7 +117,10 @@ if __name__ == '__main__':
 
     if params.get('download_dsm_dtm'):
         print("Downloading and merging DSM and DTM tiles...")
-        download_raster_tiles(params['tile_list_file'], params['ahn_output_folder'], params['merged_name'])
+        tile_bounds = download_raster_tiles(params['tile_list_file'], params['ahn_output_folder'], params['merged_name'])
+        if params.get('download_buildings'):
+            print("Downloading buildings geometries...")
+            setup_WFS_download( params["buildings_name"], tile_bounds, params['buildings_output_folder'])
 
     if params.get('create_chm'):
         print("Creating first CHM files...")
@@ -126,17 +129,23 @@ if __name__ == '__main__':
                                    params['filter_size'],  params['pre_filter'], params['chm_max_workers'])
 
     if params.get('create_final_dsm_chm'):
-        # First check if a merged dtm and dsm is already provided
+        # First check if a merged dtm and dsm is already provided, and a buildings geopackage
         output_folder = params['ahn_output_folder']
         name = params['merged_name']
 
+        buildings_output_folder = params['buildings_output_folder']
+        buildings_name = params['buildings_name']
+
         merged_dtm_output_file = os.path.join(output_folder, f"{name}_DTM.TIF")
         merged_dsm_output_file = os.path.join(output_folder, f"{name}_DSM.TIF")
+        buildings_file = os.path.join(buildings_output_folder, f"{buildings_name}.gpkg")
 
         if params.get('merged_dtm') is None or "path":
             params['merged_dtm'] = merged_dtm_output_file
         if params.get('merged_dsm') is None or "path":
             params['merged_dsm'] = merged_dsm_output_file
+        if params.get('buildings_path') is None or "path":
+            params['buildings_path'] = buildings_file
 
         # Then we can start processing
         print("Creating final DSM and DTM files...")
