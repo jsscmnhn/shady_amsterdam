@@ -273,7 +273,15 @@ def drop_or_wkt(gdf: gpd.geodataframe, mode='to_wkt') -> None:
                 gdf.drop(columns=col, inplace=True)
 
 
-def output_all_shade_geoms(gdf: gpd.geodataframe, folder_path: str):
+def output_all_shade_geoms(gdf: gpd.geodataframe, folder_path: str) -> None:
+    """
+    This method is used for output all shade goemetries to a GeoPackage for routing process.
+    It filters out the 'overig' type and 'bebouwd gebied' type which are not public area, thus
+    it is a hard-coded method. Be careful when using this method.
+
+    :param gdf: Input GeoDataFrame.
+    :param folder_path: Output folder path for the GeoPackage (shadeGeoms.gpkg)
+    """
     sd_geom_cols = [col for col in gdf.columns if col.startswith('sdGeom')]
     sd_area_cols = [col for col in gdf.columns if col.startswith('sdArea')]
     sd_avg_cols = [col for col in gdf.columns if col.startswith('sdAvg')]
