@@ -12,6 +12,33 @@ def load_graph_from_osm(place):
     return graph
 
 
+def crop_graph_with_polygon(graph, polygon_gdf):
+    # Convert the graph edges to a GeoDataFrame
+    nodes, edges = ox.graph_to_gdfs(graph)
+
+    # Ensure the polygon is in the same CRS as the graph edges
+    polygon_gdf = polygon_gdf.to_crs(edges.crs)
+
+    # Ensure 'u', 'v', and 'key' columns are present in edges before intersection
+    if 'u' not in edges.columns or 'v' not in edges.columns or 'key' not in edges.columns:
+        edges = add_edge_identifiers_to_gdf(graph, edges)
+
+    # Perform spatial intersection between edges and polygon
+    cropped_edges = gpd.overlay(edges, polygon_gdf, how='intersection')
+
+    # Check if 'u', 'v', 'key' columns were lost after intersection and re-add them
+    if 'u' not in cropped_edges.columns or 'v' not in cropped_edges.columns or 'key' not in cropped_edges.columns:
+        cropped_edges = add_edge_identifiers_to_gdf(graph, cropped_edges)
+
+    # Set the MultiIndex for u, v, key on cropped edges
+    cropped_edges.set_index(['u', 'v', 'key'], inplace=True)
+
+    # Rebuild the graph from the cropped edges and original nodes
+    cropped_graph = ox.graph_from_gdfs(nodes, cropped_edges)
+
+    return cropped_graph
+
+
 def add_edge_identifiers_to_gdf(graph, edges_gdf):
     # Extract edge tuples from the graph (u, v, key)
     edge_tuples = list(graph.edges(keys=True))  # Extract all (u, v, key) tuples
@@ -88,7 +115,7 @@ def store_graph_with_shade_weights(graph, edges_gdf, output_path):
     print(f"Graph with shade weights saved to {output_path}")
 
 
-def precalculate_and_store_shade_weights(place, raster_path, output_graph_path):
+def precalculate_and_store_shade_weights(place, raster_path, polygon_path, output_graph_path):
     # Load the graph from OSM
     print("Loading graph from OSM...")
     graph = load_graph_from_osm(place)
@@ -100,6 +127,14 @@ def precalculate_and_store_shade_weights(place, raster_path, output_graph_path):
 
     # Add edge identifiers (u, v, key)
     edges = add_edge_identifiers_to_gdf(graph, edges)
+
+    # Load the polygon shapefile for cropping
+    print("Loading polygon for cropping...")
+    polygon_gdf = gpd.read_file(polygon_path)
+
+    # Crop the graph using the polygon
+    print("Cropping the graph with the polygon...")
+    graph = crop_graph_with_polygon(graph, polygon_gdf)
 
     # Load the raster for shade data
     print("Loading raster data...")
@@ -119,10 +154,11 @@ def precalculate_and_store_shade_weights(place, raster_path, output_graph_path):
     store_graph_with_shade_weights(graph, edges_with_weights, output_graph_path)
 
 
-
-place = 'Amsterdam, Netherlands'
+# place = 'Amsterdam, Netherlands'
+place = 'Metropolitan Region Amsterdam, Netherlands'
 raster_path = 'C:/pedestrian_demo_data/amsterdam_time_900.tif'
-output_graph_path = 'C:/pedestrian_demo_data/ams_graph_with_shade_900.graphml'
+polygon_path = 'C:/pedestrian_demo_data/network/testtt_polygon.shp'
+output_graph_path = 'C:/pedestrian_demo_data/ams_graph_with_shade_900_cropped.graphml'
 
 
-precalculate_and_store_shade_weights(place, raster_path, output_graph_path)
+precalculate_and_store_shade_weights(place, raster_path, polygon_path, output_graph_path)
