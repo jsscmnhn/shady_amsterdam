@@ -171,12 +171,15 @@ def identification(coolspace_file: gpd.geodataframe,
 
     return output_gdf
 
+def output_all_shade_geoms(coolspace: gpd.geodataframe):
+    pass
 
 def evaluation(coolspace: gpd.geodataframe,
                building_population_file: gpd.geodataframe,
                bench_file: gpd.geodataframe,
                heatrisk_file: gpd.geodataframe,
                pet_file: str,
+               output_layer: str,
                search_buffer: int = 700) -> gpd.geodataframe:
 
     # coolspace = gpd.read_file(output_file)
@@ -238,7 +241,7 @@ def evaluation(coolspace: gpd.geodataframe,
     cool_eval.aggregate_to_coolspaces()
 
     # Export the final results
-    cool_eval.export_eval_gpkg(gpkg_file, layer_name="eval_cool_places_wkt_av")
+    cool_eval.export_eval_gpkg(gpkg_file, layer_name=output_layer)
 
     print("Processing complete!")
 
@@ -272,14 +275,15 @@ if __name__ == '__main__':
     with Progress() as progress:
         task = progress.add_task("Reading config parameters...", total=1)
         # read GeoPackage and layers
-        gpkg_file                 = config['files']['gpkg_file']
-        landuse_layer             = config['files']['landuse_file']
-        road_layer                = config['files']['road_file']
-        building_layer            = config['files']['building_file']
-        building_population_layer = config['files']['building_population_file']
-        street_furniture_layer    = config['files']['street_furniture_file']
-        heatrisk_layer            = config['files']['heatrisk_file']
-        output_layer              = config['files']['output_file']
+        gpkg_file                   = config['files']['gpkg_file']
+        landuse_layer               = config['files']['landuse_file']
+        road_layer                  = config['files']['road_file']
+        building_layer              = config['files']['building_file']
+        building_population_layer   = config['files']['building_population_file']
+        street_furniture_layer      = config['files']['street_furniture_file']
+        heatrisk_layer              = config['files']['heatrisk_file']
+        output_identification_layer = config['files']['output_identification_file']
+        output_evaluation_layer     = config['files']['output_evaluation_file']
 
         # read shape maps file path and information
         shademaps_path         = config['files']['shademaps_path']
@@ -335,7 +339,7 @@ if __name__ == '__main__':
             progress.advance(task)
             drop_or_wkt(coolspace, mode='to_wkt')
             progress.advance(task)
-            coolspace.to_file(gpkg_file, layer=output_layer)
+            coolspace.to_file(gpkg_file, layer=output_identification_layer)
             progress.advance(task)
         end = time.time()
         total = end - begin
@@ -349,7 +353,7 @@ if __name__ == '__main__':
         pet_file = config['files']['pet_file']
         progress.advance(task)
 
-        cs_output = gpd.read_file(gpkg_file, layer=output_layer)
+        cs_output = gpd.read_file(gpkg_file, layer=output_identification_layer)
         progress.advance(task)
 
         building_pop = gpd.read_file(gpkg_file, layer=building_population_layer)
@@ -367,6 +371,7 @@ if __name__ == '__main__':
                                   bench_file=street_furniture,
                                   heatrisk_file=heatrisk,
                                   pet_file=pet_file,
+                                  output_layer=output_evaluation_layer,
                                   search_buffer=700)
 
     end2 = time.time()

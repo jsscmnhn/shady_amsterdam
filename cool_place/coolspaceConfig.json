@@ -7,7 +7,8 @@
     "building_population_file": "ams_bpop_2020",
     "street_furniture_file": "ams_bench_osm",
     "heatrisk_file": "ams_heatrisk_2023",
-    "output_file": "coolspace_identification",
+    "output_identification_file": "coolspace_identification",
+    "output_evaluation_file": "eval_cool_places_wkt_av",
     "pet_file": "G:\\TUD\\Synthesis\\cool_place\\ams_PET_average.tiff",
     "shademaps_path": "G:\\TUD\\Synthesis\\cool_place\\shademaps\\"
   },
