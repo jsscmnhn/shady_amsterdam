@@ -1,5 +1,6 @@
 {
   "files": {
+    "folder_path": "G:\\TUD\\Synthesis\\cool_place\\",
     "gpkg_file": "G:\\TUD\\Synthesis\\cool_place\\coolspace.gpkg",
     "landuse_file": "ams_landuse_top10NL",
     "road_file": "ams_roads_top10NL",
@@ -14,6 +15,8 @@
   },
   "parameters": {
     "hasIdentificationOutput": true,
+    "outputShadeGeometries": true,
+    "performEvaluation": false,
     "road_buffer_attribute": "buffer",
     "building_buffer": 4,
     "shade_calculation_mode": "single-day",

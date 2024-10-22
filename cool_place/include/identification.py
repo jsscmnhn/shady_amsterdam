@@ -54,6 +54,9 @@ class CoolSpace:
                 # 2. Then, apply an outward buffer of 2 meters to restore the original geometry shape
                 exploded.loc[:, exploded.geometry.name] = exploded.geometry.buffer(2)
 
+                # 3. Explode again
+                exploded = exploded.explode(index_parts=False).reset_index(drop=True)
+
             # Calculate area to perimeter ratio
             exploded['area'] = exploded.geometry.area
             exploded['perimeter'] = exploded.geometry.length
