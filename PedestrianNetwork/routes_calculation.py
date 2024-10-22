@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import time
 from geopy.geocoders import Nominatim  # For location name geocoding
 from pyproj import Transformer  # For coordinate transformation
-
+import pickle
 
 def load_graph_from_file(graph_file_path):
     # Load the graph from a GraphML file
@@ -71,6 +71,15 @@ def find_cool_place_nodes(graph, cool_place_polygons):
     print(f"Finding cool place nodes took {duration:.2f} seconds")
 
     return cool_place_nodes.tolist()
+
+
+def load_cool_place_nodes(pre_calculated_path):
+    # Load pre-calculated cool place nodes from a file (using pickle)
+    with open(pre_calculated_path, 'rb') as f:
+        cool_place_nodes = pickle.load(f)
+
+    print(f"Loaded {len(cool_place_nodes)} cool place nodes from {pre_calculated_path}.")
+    return cool_place_nodes
 
 
 def find_nearest_cool_place_dijkstra(graph, start_node, cool_place_nodes, max_distance):
@@ -185,18 +194,24 @@ def plot_routes(graph, shortest_route, shadiest_route, balanced_route):
     plt.show()
 
 
-def demo_shade_route_calculation(graph_file_path, polygon_path, user_input, input_type, mode="nearest_cool_place"):
+def demo_shade_route_calculation(graph_file_path, pre_calculated_nodes_path, user_input, input_type, mode="nearest_cool_place"):
     # Load precomputed graph with shade weights
     print("Loading precomputed graph with shade weights...")
     graph = load_graph_from_file(graph_file_path)
 
     graph = ox.project_graph(graph, to_crs='EPSG:28992')
 
-    # Load cool place polygons
-    cool_place_polygons = load_cool_place_polygons(polygon_path)
+    # # Load cool place polygons
+    # cool_place_polygons = load_cool_place_polygons(polygon_path)
+    #
+    # # Find cool place nodes on the fly
+    # cool_place_nodes = find_cool_place_nodes(graph, cool_place_polygons)
+    # if not cool_place_nodes:
+    #     print("No cool place nodes were found. Exiting...")
+    #     return
 
-    # Find cool place nodes on the fly
-    cool_place_nodes = find_cool_place_nodes(graph, cool_place_polygons)
+    # Load pre-calculated cool place nodes
+    cool_place_nodes = load_cool_place_nodes(pre_calculated_nodes_path)
     if not cool_place_nodes:
         print("No cool place nodes were found. Exiting...")
         return
@@ -205,8 +220,15 @@ def demo_shade_route_calculation(graph_file_path, polygon_path, user_input, inpu
 
     # Handle user input (coordinates or location name)
     if input_type == "coordinates":
-        lat, lon = user_input
-        start_node = find_nearest_node(graph, lat, lon)
+        if mode == "origin_destination":
+            # Unpack the two coordinates for origin and destination
+            origin_lat, origin_lon, dest_lat, dest_lon = user_input
+            start_node = find_nearest_node(graph, origin_lat, origin_lon)
+            end_node = find_nearest_node(graph, dest_lat, dest_lon)
+        else:
+            lat, lon = user_input
+            start_node = find_nearest_node(graph, lat, lon)
+            end_node = None
     elif input_type == "location_name":
         if mode == "origin_destination":
             origin_name, destination_name = user_input
@@ -240,13 +262,22 @@ def demo_shade_route_calculation(graph_file_path, polygon_path, user_input, inpu
 
 
 # Example Usage
-graph_file_path = 'C:/pedestrian_demo_data/ams_graph_with_shade_900.graphml'
+graph_file_path = 'C:/pedestrian_demo_data/ams_graph_with_shade_900_cropped.graphml'
 polygon_path = 'C:/pedestrian_demo_data/public_spaces/ams_public_space.shp'
+pre_calculated_nodes_path = 'C:/pedestrian_demo_data/cool_place_nodes.pkl'
 
 # # Option 1: Routes to nearest cool place with coordinates input
 # demo_shade_route_calculation(graph_file_path, polygon_path, user_input=(52.373169, 4.890660), input_type="coordinates",
 #                              mode="nearest_cool_place")
 
 # Option 2: Routes between two locations with location name input
-demo_shade_route_calculation(graph_file_path, polygon_path, user_input=("Amsterdam Central Station", "Dam Square"),
+demo_shade_route_calculation(graph_file_path, pre_calculated_nodes_path, user_input=("Amsterdam Central Station", "Dam Square"),
                              input_type="location_name", mode="origin_destination")
+
+# # Option 3: Routes to nearest cool place with location name input
+# demo_shade_route_calculation(graph_file_path, polygon_path, user_input=("Amsterdam Central Station"),
+#                              input_type="location_name", mode="nearest_cool_place")
+
+# # Option 4: Routes between two locations with coordinates input
+# demo_shade_route_calculation(graph_file_path, pre_calculated_nodes_path, user_input=((52.373169, 4.890660, 52.376522, 4.908490)), input_type="coordinates",
+#                              mode="origin_destination")
