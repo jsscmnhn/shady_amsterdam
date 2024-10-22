@@ -144,6 +144,7 @@ if __name__ == '__main__':
                                       bench_file=street_furniture,
                                       heatrisk_file=heatrisk,
                                       pet_file=pet_file,
+                                      gpkg_file=gpkg_file,
                                       output_layer=output_evaluation_layer,
                                       search_buffer=700)
 

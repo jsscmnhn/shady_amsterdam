@@ -189,13 +189,6 @@ def evaluation(coolspace: gpd.geodataframe,
                output_layer: str,
                search_buffer: int = 700) -> gpd.geodataframe:
 
-    # coolspace = gpd.read_file(output_file)
-    # building_population = gpd.read_file(building_population_file)
-    # bench = gpd.read_file(bench_file)
-    # heatrisk = gpd.read_file(heatrisk_file)
-
-
-
     # Prompt the user to specify the start and end indices for sdgeom columns
     start_layer = int(input("Enter the starting layer index (e.g., 1 for sdgeom1): "))
     end_layer = int(input("Enter the ending layer index (e.g., 3 for sdgeom3): "))
@@ -213,7 +206,6 @@ def evaluation(coolspace: gpd.geodataframe,
     for col in wkt_columns:
         if col in coolspace.columns:
             print(f"Processing {col}...")
-
 
             # Function to safely load WKT geometries and log errors
             def safe_load_wkt(x):
