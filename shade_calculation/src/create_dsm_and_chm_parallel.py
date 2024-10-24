@@ -329,12 +329,10 @@ def process_single_file(chm_path, dtm_path, dsm_path, building_geometries, outpu
     overlapping_bbox = get_bbox(raster_paths)
 
     # Cropping rasters to bbox
-    dtm_cropped, dtm_transform, dtm_crs = crop_raster(dtm_path, overlapping_bbox, no_data=nodata_value, tile=tile,
-                                                      file_number=file_number)
-    dsm_cropped, dsm_transform, dsm_crs = crop_raster(dsm_path, overlapping_bbox, no_data=nodata_value, tile=tile,
-                                                      file_number=file_number)
-    chm_cropped, chm_transform, _ = crop_raster(chm_path, overlapping_bbox, no_data=nodata_value, tile=tile,
-                                                file_number=file_number)
+    dtm_cropped, dtm_transform, dtm_crs = crop_raster(dtm_path, overlapping_bbox, no_data=nodata_value)
+    dsm_cropped, dsm_transform, dsm_crs = crop_raster(dsm_path, overlapping_bbox, no_data=nodata_value)
+
+    chm_cropped, chm_transform, _ = crop_raster(chm_path, overlapping_bbox, no_data=nodata_value)
 
     # fill no data values dtm & dsm
     filled_dtm, _ = fill_raster(dtm_cropped, nodata_value, dtm_transform, speed_up=speed_up)
@@ -363,7 +361,7 @@ def process_single_file(chm_path, dtm_path, dsm_path, building_geometries, outpu
 
 
 def process_files(chm_folder, dtm_path, dsm_path, buildings_path, output_base_folder, nodata_value=-9999, max_workers=4,
-                  speed_up=False, min_height=2, max_height=4):
+                  speed_up=False, min_height=2, max_height=40):
     """
       Function to run the whole process of creating the final DSM and CHM.
       ----
@@ -430,7 +428,7 @@ def process_files(chm_folder, dtm_path, dsm_path, buildings_path, output_base_fo
 
 
 def process_folders(base_chm_folder, dtm_path, dsm_path, buildings_path, output_base_folder,
-                    max_workers=4, speed_up=False, min_height=2, max_height=4):
+                    max_workers=4, speed_up=False, min_height=2, max_height=40):
     """
     Process each folder containing CHM files concurrently.
     -----------------

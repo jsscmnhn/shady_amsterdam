@@ -313,3 +313,8 @@ def process_laz_files(input_folder, output_folder, ndvi_threshold=0.0, resolutio
         ))
     total_elapsed_time = time.time() - total_start_time
     print(f"\nAll files processed in {total_elapsed_time:.2f} seconds.")
+
+if __name__ == '__main__':
+    input_folder = "G:/Geomatics/LAZ_TILES/rerun"
+    output_folder = "E:/temporary_jessica/missed_tile"
+    process_laz_files(input_folder, output_folder, max_workers=1, pre_filter=True)

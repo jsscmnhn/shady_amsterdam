@@ -151,6 +151,25 @@ def merge_tif_files_by_time(main_folder, output_folder, merged_name, start_time=
             for tif_file in tif_files_to_delete:
                 if os.path.basename(tif_file) not in merged_files:  # Only delete if not merged
                     os.remove(tif_file)
-"""
-merge_tif_files_by_time("D:\Geomatics\output", "D:\Geomatics\correct_merged", "amsterdam")
-"""
+
+if __name__ == '__main__':
+    main_folder = "E:/temporary_jessica/june"
+    output_folder = "E:/temporary_jessica/june_merged"
+    merged_name = "amsterdam"
+
+    merge_tif_files_by_time(main_folder, output_folder, merged_name)
+
+    main_folder = "E:/temporary_jessica/july"
+    output_folder = "E:/temporary_jessica/july_merged"
+
+    merge_tif_files_by_time(main_folder, output_folder, merged_name)
+
+    main_folder = "E:/temporary_jessica/aug"
+    output_folder = "E:/temporary_jessica/aug_merged"
+
+    merge_tif_files_by_time(main_folder, output_folder, merged_name)
+
+    main_folder = "E:/temporary_jessica/sep"
+    output_folder = "E:/temporary_jessica/sep_merged"
+
+    merge_tif_files_by_time(main_folder, output_folder, merged_name)

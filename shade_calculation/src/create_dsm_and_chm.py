@@ -61,12 +61,6 @@ def crop_raster(raster_path, bbox, no_data=-9999):
         # Read the data for the specified window
         cropped_data = src.read(window=window)
 
-        # Ensure window attributes are integers (sometimes bbox in float)
-        row_off = int(window.row_off)
-        col_off = int(window.col_off)
-        height = int(window.height)
-        width = int(window.width)
-
         # Replace no-data values in the data
         if src.nodata is not None:
             cropped_data[cropped_data == src.nodata] = no_data
@@ -379,12 +373,9 @@ def process_files(chm_folder, dtm_path, dsm_path, buildings_path, output_base_fo
         start_time = time.time()
 
         # Cropping rasters to bbox
-        dtm_cropped, dtm_transform, dtm_crs = crop_raster(dtm_path, overlapping_bbox, no_data=nodata_value, tile=tile,
-                                                          file_number=file_number)
-        dsm_cropped, dsm_transform, dsm_crs = crop_raster(dsm_path, overlapping_bbox, no_data=nodata_value, tile=tile,
-                                                          file_number=file_number)
-        chm_cropped, chm_transform, _ = crop_raster(chm_path, overlapping_bbox, no_data=nodata_value, tile=tile,
-                                                          file_number=file_number)
+        dtm_cropped, dtm_transform, dtm_crs = crop_raster(dtm_path, overlapping_bbox, no_data=nodata_value)
+        dsm_cropped, dsm_transform, dsm_crs = crop_raster(dsm_path, overlapping_bbox, no_data=nodata_value)
+        chm_cropped, chm_transform, _ = crop_raster(chm_path, overlapping_bbox, no_data=nodata_value)
 
         print(f"cropped at {(time.time() - start_time):.2f}")
 

@@ -3,7 +3,7 @@ them. The process can run in parallel."""
 from turtledemo.penrose import start
 
 from shade_calculation.extra import shade_setup as shade
-
+from datetime import datetime as date
 import os
 import concurrent.futures
 import tqdm
@@ -22,6 +22,7 @@ def process_chm_dsm(chm_filename, dsm_filename, folder_path, output_dir, date, s
      - start_time (int): Starting hour for shade calculation (default: 10).
     - end_time (int): Ending hour for shade calculation (default: 21).
     - interval (int): Time interval for the calculations (minutes) (default: 30).
+    - use_chm (bool): Use the CHM file in the shade calculation (default: True).
     - trans (int): Transmissivity value for the calculations, percentage for tree shade (default: 10).
     - trunkheight (int): Trunk height for vegetation calculations, percentage of CHM height representing trunk
                          height (default: 25).
@@ -53,19 +54,19 @@ def process_chm_dsm(chm_filename, dsm_filename, folder_path, output_dir, date, s
 
     print(f"Completed shade calculation for: {chm_filename} and {dsm_filename}.")
 
-def run_shade_calculation(folder_path, output_base_folder, date, start_time, end_time, interval, use_chm,
+def run_shade_calculation(file_pairs, output_base_folder, date, start_time, end_time, interval,
                           trans, trunkheight, max_workers=4):
     """
-      Function to run shade calculations for pairs of CHM and DSM files in a specified folder.
+     Process CHM and DSM file pairs in parallel.
       ----
       Input:
-      - folder_path (str): Path to the folder containing CHM and DSM files.
+     - file_pairs (list): List of tuples containing (CHM file, DSM file, folder_path, tile).
       - output_base_folder (str): Base path for saving the output files.
       - date (str): Date parameter used in the shade calculation.
       - max_workers (int): Maximum number of worker threads to use for concurrent processing (default: 4).
-      - start_time (int): Starting hour for shade calculation (default: 10).
-      - end_time (int): Ending hour for shade calculation (default: 21).
-      - interval (int): Time interval for the calculations (minutes) (default: 30).
+      - start_time (int): Starting hour for shade calculation.
+      - end_time (int): Ending hour for shade calculation .
+      - interval (int): Time interval for the calculations (minutes).
       - trans (int): Transmissivity value for the calculations, percentage for tree shade (default: 10).
       - trunkheight (int): Trunk height for vegetation calculations, percentage of CHM height representing trunk
                          height (default: 25).
@@ -78,51 +79,35 @@ def run_shade_calculation(folder_path, output_base_folder, date, start_time, end
     start_time += 1
     end_time += 1
 
-    chm_files = [f for f in os.listdir(folder_path) if f.startswith('CHM')]
-    dsm_files = [f for f in os.listdir(folder_path) if f.startswith('DSM')]
-
-    if not chm_files or not dsm_files:
-        print("No CHM or DSM files found in the specified folder.")
+    if not file_pairs:
+        print("No file pairs.")
         return
 
-    # Sort files
-    chm_files.sort()
-    dsm_files.sort()
+    # Create output directories for each tile
+    for _, _, folder_path, tile in file_pairs:
+        output_dir = os.path.join(output_base_folder, f'{tile}/')
 
-    if len(chm_files) != len(dsm_files):
-        print("Mismatch between the number of CHM and DSM files.")
-        return
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
 
-    first_chm_filename = chm_files[0]
-    tile = "_".join(first_chm_filename.split('_')[1:2]).replace('.TIF', '')
-
-    output_dir = os.path.join(output_base_folder, f'{tile}/')
-
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-        print(f"Created output directory: {output_dir}")
-    else:
-        print(f"Output directory already exists: {output_dir}")
-
-    # Process files concurrently within the folder
+    # Process files
     with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
         list(tqdm.tqdm(executor.map(
             process_chm_dsm,
-            chm_files,
-            dsm_files,
-            [folder_path] * len(chm_files),
-            [output_dir] * len(chm_files),
-            [date] * len(chm_files),
-            [start_time] * len(chm_files),
-            [end_time] * len(chm_files),
-            [interval] * len(chm_files),
-            [use_chm] * len(chm_files),
-            [trans] * len(chm_files),
-            [trunkheight] * len(chm_files)
-        ), total=len(chm_files), desc=f"Processing files in {folder_path}", unit="file"))
+            [chm for chm, _, _, _ in file_pairs],
+            [dsm for _, dsm, _, _ in file_pairs],
+            [folder_path for _, _, folder_path, _ in file_pairs],
+            [os.path.join(output_base_folder, f'{tile}/') for _, _, _, tile in file_pairs],
+            [date] * len(file_pairs),
+            [start_time] * len(file_pairs),
+            [end_time] * len(file_pairs),
+            [interval] * len(file_pairs),
+            [trans] * len(file_pairs),
+            [trunkheight] * len(file_pairs)
+        ), total=len(file_pairs), desc="Processing files", unit="file"))
 
 
-def process_folders(base_folder, output_base_folder, date, start_time=9, end_time=20, interval=30, use_chm=True, trans=10,
+def process_folders(base_folder, output_base_folder, date, start_time=9, end_time=20, interval=30, trans=10,
                     trunkheight=25, max_workers=4):
     """
     Function to process all subfolders in a base folder for shade calculations.
@@ -143,17 +128,31 @@ def process_folders(base_folder, output_base_folder, date, start_time=9, end_tim
     - None: This function prints messages regarding the processing status for each folder.
     """
     # Get a list of all folders in the base folder
-    folder_paths = [os.path.join(base_folder, f) for f in os.listdir(base_folder) if
-                    os.path.isdir(os.path.join(base_folder, f))]
+    file_pairs = []
 
-    for folder_path in tqdm.tqdm(folder_paths, desc="Processing folders"):
-        print(f"Processing folder: {folder_path}")
-        run_shade_calculation(folder_path, output_base_folder, date, start_time, end_time, interval, use_chm, trans,
-                              trunkheight, max_workers)
+    # Collect CHM & DSM file pairs from folders
+    for folder_path, _, files in os.walk(base_folder):
+        chm_files = [f for f in files if f.startswith('CHM') and (f.endswith('.tif') or f.endswith('.tiff'))]
+        dsm_files = [f for f in files if f.startswith('DSM') and (f.endswith('.tif') or f.endswith('.tiff'))]
 
+        # Sort to pair by file order
+        chm_files.sort()
+        dsm_files.sort()
 
-# base_folder = "G:/Geomatics/final"
-# output_base_folder = "G:/Geomatics/output"
-# date = dt.datetime(2015, 7, 1)
-#
-# process_folders(base_folder, output_base_folder, date, max_workers=50)
+        if len(chm_files) != len(dsm_files):
+            print(f"Warning: Mismatched CHM and DSM file counts in folder {folder_path}")
+            continue
+
+        # Add each pair of CHM and DSM files along with the tile name and folder path to the file_pairs list
+        for chm, dsm in zip(chm_files, dsm_files):
+            # Extract utile name from the CHM filename
+            tile = "_".join(chm.split('_')[1:2]).replace('.TIF', '').replace('.tif', '')
+
+            file_pairs.append((chm, dsm, folder_path, tile))
+
+    if file_pairs:
+        print(f"Found {len(file_pairs)} CHM/DSM file pairs to process.")
+        run_shade_calculation(file_pairs, output_base_folder, date, start_time, end_time, interval,
+                                       trans, trunkheight, max_workers)
+    else:
+        print("No CHM/DSM file pairs found.")

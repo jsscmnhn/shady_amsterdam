@@ -173,6 +173,7 @@ def shadecalculation_setup(filepath_dsm='None', filepath_veg='None', tile_no='/'
     filename = filepath_save + tile_no + savestr + timestr + '.tif'
 
     ## TODO: change to saverasternd or other function
+    print(f"saving raster {filename}")
     saveraster(gdal_dsm, filename, shfinal)
 
 
