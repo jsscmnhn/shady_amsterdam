@@ -4,6 +4,8 @@ import geopandas as gpd
 import rasterio
 from rasterstats import zonal_stats
 import time
+import os
+import re
 
 
 def load_graph_from_osm(place):
@@ -154,11 +156,42 @@ def precalculate_and_store_shade_weights(place, raster_path, polygon_path, outpu
     store_graph_with_shade_weights(graph, edges_with_weights, output_graph_path)
 
 
+def generate_graph_name_from_raster(raster_filename):
+    # Extract date and time from raster filename using regular expression
+    match = re.search(r'amsterdam_(\d{8})_(\d{3,4})', raster_filename)
+    if match:
+        date_str = match.group(1)
+        time_str = match.group(2)
+        return f'ams_graph_with_shade_{date_str}_{time_str}_cropped.graphml'
+    else:
+        raise ValueError(f"Filename {raster_filename} does not match expected pattern.")
+
+
+def process_multiple_shade_maps(place, raster_dir, polygon_path, output_dir):
+    # Get a list of all TIF files in the raster directory
+    raster_files = [f for f in os.listdir(raster_dir) if f.endswith('.TIF')]
+
+    for raster_file in raster_files:
+        # Construct full path to the raster file
+        raster_path = os.path.join(raster_dir, raster_file)
+
+        # Generate the output graph name based on the raster file name
+        output_graph_name = generate_graph_name_from_raster(raster_file)
+        output_graph_path = os.path.join(output_dir, output_graph_name)
+
+        # Process the shade map and generate the graph with shade weights
+        print(f"Processing {raster_file}...")
+        precalculate_and_store_shade_weights(place, raster_path, polygon_path, output_graph_path)
+
+
 # place = 'Amsterdam, Netherlands'
 place = 'Metropolitan Region Amsterdam, Netherlands'
-raster_path = 'C:/pedestrian_demo_data/amsterdam_time_900.tif'
+# raster_path = 'C:/pedestrian_demo_data/amsterdam_time_900.tif'
 polygon_path = 'C:/pedestrian_demo_data/network/testtt_polygon.shp'
-output_graph_path = 'C:/pedestrian_demo_data/ams_graph_with_shade_900_cropped.graphml'
+# output_graph_path = 'C:/pedestrian_demo_data/ams_graph_with_shade_900_cropped.graphml'
 
+raster_dir = 'C:/pedestrian_demo_data/shade_maps'
+output_dir = 'C:/pedestrian_demo_data/graphs_with_shade/'
 
-precalculate_and_store_shade_weights(place, raster_path, polygon_path, output_graph_path)
+# precalculate_and_store_shade_weights(place, raster_path, polygon_path, output_graph_path)
+process_multiple_shade_maps('Metropolitan Region Amsterdam, Netherlands', raster_dir, polygon_path, output_dir)
