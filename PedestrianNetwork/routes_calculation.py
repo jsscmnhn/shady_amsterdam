@@ -120,44 +120,51 @@ def calculate_routes(graph, start_node, end_node=None, cool_place_nodes=None, ma
     # Shadiest path based on shade weight
     shadiest_path = nx.shortest_path(graph, start_node, end_node, weight='shade_weight')
 
-    # Combined route (balancing length and shade)
-    balanced_route = calculate_balanced_route(graph, start_node, end_node)
+    # Combined route 1: 70/30 shade/length
+    balanced_route_1 = calculate_balanced_route(graph, start_node, end_node, shade_weight_ratio=70,
+                                                length_weight_ratio=30)
 
-    return shortest_path, shadiest_path, balanced_route
+    # Combined route 2: 30/70 shade/length
+    balanced_route_2 = calculate_balanced_route(graph, start_node, end_node, shade_weight_ratio=30,
+                                                length_weight_ratio=70)
+
+    return shortest_path, shadiest_path, balanced_route_1, balanced_route_2
 
 
-def calculate_balanced_route(graph, start_node, destination_node):
+def calculate_balanced_route(graph, start_node, destination_node, shade_weight_ratio=70, length_weight_ratio=30):
     start_time = time.time()
 
     # Calculate the total sum of all lengths and shade weights in the graph
     total_length = sum(data['length'] for u, v, key, data in graph.edges(keys=True, data=True))
     total_shade_weight = sum(data['shade_weight'] for u, v, key, data in graph.edges(keys=True, data=True))
 
-    # Step 1: Normalize the length and assign to "normalized_length"
+    # Normalize the length and assign to "normalized_length"
     for u, v, key, data in graph.edges(keys=True, data=True):
         data['normalized_length'] = data['length'] / total_length
 
-    # Step 2: Normalize the shade weight and assign to "normalized_shade_weight"
+    # Normalize the shade weight and assign to "normalized_shade_weight"
     for u, v, key, data in graph.edges(keys=True, data=True):
         data['normalized_shade_weight'] = data['shade_weight'] / total_shade_weight
 
-    # Step 3: Calculate the weighted sum and assign to "weighted_sum_weight"
+    # Calculate the weighted sum and assign to "weighted_sum_weight"
     for u, v, key, data in graph.edges(keys=True, data=True):
-        data['weighted_sum_weight'] = (data['normalized_length'] * (30 / 100)) + (data['normalized_shade_weight'] * (70 / 100))
+        # data['weighted_sum_weight'] = (data['normalized_length'] * (30 / 100)) + (data['normalized_shade_weight'] * (70 / 100))
+        data['weighted_sum_weight'] = (data['normalized_length'] * (length_weight_ratio / 100)) + \
+                                      (data['normalized_shade_weight'] * (shade_weight_ratio / 100))
 
-    # Step 4: Calculate the shortest path using "weighted_sum_weight" as the weight
+    # Calculate the shortest path using "weighted_sum_weight" as the weight
     balanced_route = nx.shortest_path(graph, start_node, destination_node, weight='weighted_sum_weight')
 
     end_time = time.time()
     duration = end_time - start_time
-    print(f"Balanced route calculation took {duration:.2f} seconds")
+    print(f"Balanced route calculation with {shade_weight_ratio}% shade and {length_weight_ratio}% length took {duration:.2f} seconds")
 
     return balanced_route
 
 
-def plot_routes(graph, shortest_route, shadiest_route, balanced_route):
+def plot_routes(graph, shortest_route, shadiest_route, balanced_route_1, balanced_route_2):
     # Extract the coordinates of all nodes involved in the routes
-    route_nodes = set(shortest_route + shadiest_route + balanced_route)
+    route_nodes = set(shortest_route + shadiest_route + balanced_route_1 + balanced_route_2)
 
     # Get the geometry of each node in the route
     node_coordinates = [(graph.nodes[node]['x'], graph.nodes[node]['y']) for node in route_nodes]
@@ -182,15 +189,33 @@ def plot_routes(graph, shortest_route, shadiest_route, balanced_route):
     ox.plot_graph_route(graph, shadiest_route, ax=ax, route_color='green', route_linewidth=3,
                         orig_dest_node_color='yellow', alpha=0.7, show=False, close=False)
 
-    # Plot the combined (balanced) route
-    ox.plot_graph_route(graph, balanced_route, ax=ax, route_color='purple', route_linewidth=6,
+    # Plot the combined (balanced) route 1: 70/30 shade/length
+    ox.plot_graph_route(graph, balanced_route_1, ax=ax, route_color='purple', route_linewidth=6,
                         orig_dest_node_color='orange', alpha=0.7, show=False, close=False)
+
+    # Plot the combined (balanced) route 2: 30/70 shade/length
+    ox.plot_graph_route(graph, balanced_route_2, ax=ax, route_color='pink', route_linewidth=4,
+                        orig_dest_node_color='cyan', alpha=0.7, show=False, close=False)
 
     # Set the plot limits to zoom in on the routes
     ax.set_xlim([x_min, x_max])
     ax.set_ylim([y_min, y_max])
 
-    plt.title(f"Shortest (blue), Shadiest (green), and Combined (purple) Routes")
+    # Create proxy artists for the legend
+    from matplotlib.lines import Line2D
+    legend_lines = [Line2D([0], [0], color='blue', lw=2),
+                    Line2D([0], [0], color='green', lw=3),
+                    Line2D([0], [0], color='purple', lw=6),
+                    Line2D([0], [0], color='pink', lw=4)]
+
+    # Add a legend
+    legend_labels = ['Shortest Route (blue)', 'Shadiest Route (green)',
+                     'Combined1 Route (70% Shade, 30% Length) (purple)',
+                     'Combined2 Route (30% Shade, 70% Length) (pink)']
+
+    ax.legend(legend_lines, legend_labels, loc='upper left')
+
+    plt.title(f"Shortest (blue), Shadiest (green), Combined1 (purple), Combined2 (pink) Routes")
     plt.show()
 
 
@@ -245,18 +270,18 @@ def demo_shade_route_calculation(graph_file_path, pre_calculated_nodes_path, use
 
     # If mode is 'nearest_cool_place', calculate routes to nearest cool place
     if mode == "nearest_cool_place":
-        shortest_route, shadiest_route, balanced_route = calculate_routes(graph, start_node,
+        shortest_route, shadiest_route, balanced_route_1, balanced_route_2 = calculate_routes(graph, start_node,
                                                                           cool_place_nodes=cool_place_nodes)
     # If mode is 'origin_destination', expect user_input to contain both origin and destination
     elif mode == "origin_destination":
-        shortest_route, shadiest_route, balanced_route = calculate_routes(graph, start_node, end_node)
+        shortest_route, shadiest_route, balanced_route_1, balanced_route_2 = calculate_routes(graph, start_node, end_node)
     else:
         raise ValueError("Invalid mode. Use 'nearest_cool_place' or 'origin_destination'.")
 
     # Plot the routes if found
-    if shortest_route and shadiest_route and balanced_route:
+    if shortest_route and shadiest_route and balanced_route_1 and balanced_route_2:
         print(f"Found routes.")
-        plot_routes(graph, shortest_route, shadiest_route, balanced_route)
+        plot_routes(graph, shortest_route, shadiest_route, balanced_route_1, balanced_route_2)
     else:
         print("Could not find any route.")
 
