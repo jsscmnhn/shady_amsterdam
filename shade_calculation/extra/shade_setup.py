@@ -12,7 +12,7 @@ import numpy as np
 
 
 def shadecalculation_setup(filepath_dsm='None', filepath_veg='None', tile_no='/', date=dt.datetime.now(),
-                           intervalTime=30, onetime=1, filepath_save='None', UTC=0, dst=1, useveg=0, trunkheight=25,
+                           intervalTime=30, onetime=1, filepath_save='None', UTC=0, dst=1, useveg=1, trunkheight=25,
                            transmissivity=20, start_time=10, end_time=21):
     '''Calculates spot, hourly and or daily shading for a DSM
     Needs:

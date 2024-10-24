@@ -32,6 +32,8 @@ def process_chm_dsm(chm_filename, dsm_filename, folder_path, output_dir, date, s
      """
     chm_path = os.path.join(folder_path, chm_filename)
     dsm_path = os.path.join(folder_path, dsm_filename)
+    print(chm_path)
+    print(dsm_path)
     title = "_".join(chm_filename.split('_')[1:3]).replace('.tif', '')
 
     # Call the shade calculation setup function
@@ -45,7 +47,7 @@ def process_chm_dsm(chm_filename, dsm_filename, folder_path, output_dir, date, s
         filepath_save=output_dir,
         UTC=2,
         dst=1,
-        useveg=use_chm,
+        useveg=1,
         trunkheight=trunkheight,
         transmissivity=trans,
         start_time=start_time,
@@ -156,3 +158,9 @@ def process_folders(base_folder, output_base_folder, date, start_time=9, end_tim
                                        trans, trunkheight, max_workers)
     else:
         print("No CHM/DSM file pairs found.")
+
+if __name__ == '__main__':
+    base_folder = "E:/temporary_jessica/final_rerun"
+    output_base_folder = "E:/temporary_jessica/__test3"
+    date = date(2023, 4, 26)
+    process_folders(base_folder, output_base_folder, date, max_workers=24)
