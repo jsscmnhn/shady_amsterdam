@@ -134,7 +134,13 @@ if __name__ == '__main__':
                                       pet_file=pet_file,
                                       gpkg_file=gpkg_file,
                                       output_layer=output_evaluation_layer,
-                                      search_buffer=700)
+                                      search_buffer=700,
+                                      single_day_time_range=single_day_time_range,
+                                      time_interval=time_interval,
+                                      morning_range=morning_range,
+                                      afternoon_range=afternoon_range,
+                                      late_afternoon_range=late_afternoon_range,
+                                      search_range=search_range)
 
         end2 = time.time()
         total2 = end2 - begin2

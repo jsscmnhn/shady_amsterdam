@@ -187,13 +187,29 @@ def evaluation(coolspace: gpd.geodataframe,
                pet_file: str,
                gpkg_file: str,
                output_layer: str,
-               search_buffer: int = 700) -> gpd.geodataframe:
+               search_buffer: int = 700,
+               single_day_time_range: list = None,
+               time_interval: int = None,
+               search_range: list = None,
+               morning_range: list = None,
+               afternoon_range: list = None,
+               late_afternoon_range: list = None,
+               ) -> gpd.geodataframe:
 
-    # Prompt the user to specify the start and end indices for sdgeom columns
-    start_layer = int(input("Enter the starting layer index (e.g., 1 for sdgeom1): "))
-    end_layer = int(input("Enter the ending layer index (e.g., 3 for sdgeom3): "))
+    start_time = single_day_time_range[0]
+    end_time = single_day_time_range[1]
 
-    # Generate the WKT column names based on user input
+    if search_range is not None:
+        search_start_time = search_range[0]
+        search_end_time = search_range[1]
+        search = compute_search_range(search_start_time, search_end_time, start_time, end_time, time_interval)
+        start_layer = search[0]
+        end_layer = search[1] - 1
+    else:
+        daytime = compute_search_range(start_time, end_time, start_time, end_time, time_interval)
+        start_layer = daytime[0]
+        end_layer = daytime[1] - 1
+
     wkt_columns = [f"sdGeom{i}" for i in range(start_layer, end_layer + 1)]
     cool_eval = CoolEval(cool_places=coolspace,
                          buildings=building_population_file,
@@ -201,13 +217,12 @@ def evaluation(coolspace: gpd.geodataframe,
                          heatrisk=heatrisk_file,
                          pet=pet_file,
                          search_buffer=search_buffer)
+    cool_eval.calculate_walking_shed()
+    cool_eval.evaluate_resident()
 
-    # Iterate over each WKT column provided by the user input
     for col in wkt_columns:
         if col in coolspace.columns:
             print(f"Processing {col}...")
-
-            # Function to safely load WKT geometries and log errors
             def safe_load_wkt(x):
                 if pd.notnull(x) and isinstance(x, str) and x.strip():
                     try:
@@ -216,36 +231,25 @@ def evaluation(coolspace: gpd.geodataframe,
                         print(f"Error parsing WKT: '{x}' | Error: {e}")
                 return None
 
-
-            # Convert WKT column to geometries, handling invalid or empty geometries
             coolspace[col] = coolspace[col].apply(safe_load_wkt)
-
-            # Remove rows where geometry is None
             valid_shade = coolspace[coolspace[col].notnull()]
 
             shade = gpd.GeoDataFrame(valid_shade[['id', col]], geometry=col, crs=coolspace.crs)
             shade.rename(columns={col: 'geometry'}, inplace=True)
             shade.set_geometry('geometry', inplace=True)
 
-            # Perform the evaluations on the current shade geometry
             shade = cool_eval.evaluate_capacity(shade, col)
             shade = cool_eval.evaluate_sfurniture(shade, col)
             shade = cool_eval.evaluate_heatrisk(shade, col)
             shade = cool_eval.eval_pet(shade, col)
 
-            # Store the evaluated shade geometries for aggregation
             cool_eval.eval_shades.append(shade)
 
-    # Aggregate results to cool places
     cool_eval.aggregate_to_coolspaces()
-
-    # Export the final results
     cool_eval.export_eval_gpkg(gpkg_file, layer_name=output_layer)
-
     print("Processing complete!")
 
     return cool_eval
-
 
 def list_to_string(gdf: gpd.geodataframe) -> None:
     for col in gdf.columns:
