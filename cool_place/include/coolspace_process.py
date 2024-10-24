@@ -86,7 +86,7 @@ def identification(coolspace_file: gpd.geodataframe,
     start_time = single_day_time_range[0]
     end_time = single_day_time_range[1]
     daytime = compute_search_range(start_time, end_time, start_time, end_time, time_interval)
-    print(f"Process range: {daytime}")
+    print(f"Process range: {daytime[0]} - {daytime[1] - 1}")
     with Progress() as progress:
         task = progress.add_task("Loading shade maps...", total=daytime[1] + 1)
         for shadow_file in shadow_files:

@@ -14,7 +14,7 @@
     "shademaps_path": "G:\\TUD\\Synthesis\\cool_place\\shademaps\\"
   },
   "parameters": {
-    "hasIdentificationOutput": true,
+    "hasIdentificationOutput": false,
     "outputShadeGeometries": true,
     "performEvaluation": false,
     "road_buffer_attribute": "buffer",
