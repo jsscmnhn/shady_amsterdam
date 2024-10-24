@@ -159,7 +159,7 @@ def identification(coolspace_file: gpd.geodataframe,
         n = len(shadows) / num_days
         for day in range(num_days):
             search_range = [int(day * n), int(day * n + n - 1)]
-            coolSpace.evaluate_shade_coverage(attri_name=f"{day}", start=search_range[0], end=search_range[1])
+            coolSpace.evaluate_shade_coverage(attri_name=f"Day{day}", start=search_range[0], end=search_range[1])
         coolSpace.evaluate_shade_coverage(attri_name='Alldays', start=0, end=len(shadows) - 1)
 
     # Get cool space polygons of all-daytime search range. Based on the settings, the output

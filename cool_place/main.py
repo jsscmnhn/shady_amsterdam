@@ -74,6 +74,7 @@ if __name__ == '__main__':
                                    road_buffer_attri=road_buffer_attribute,
                                    building_buffer_num=building_buffer,
                                    mode=shade_calculation_mode,
+                                   num_days=num_days,
                                    single_day_time_range=single_day_time_range,
                                    time_interval=time_interval,
                                    morning_range=morning_range,
