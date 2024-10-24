@@ -10,6 +10,10 @@ import os
 from shapely.geometry import base
 from shapely import wkt
 import re
+import osmnx as ox
+from shapely.geometry import Point, shape
+import time
+from rich.progress import Progress
 
 
 class CoolEval:
@@ -23,90 +27,125 @@ class CoolEval:
         self.search_buffer = search_buffer
         self.eval_shades = []  # Collect evaluation results for each shade geometry column (sdgeom1, sdgeom2, etc.)
 
+    def calculate_walking_shed(self):
+        with Progress() as progress:
+            task = progress.add_task("Calculate walking shed...", total=3)
+            start_time = time.time()
+            # Ensure buildings are in a projected CRS
+            if self.buildings.crs.is_geographic:
+                self.buildings = self.buildings.to_crs(epsg=28992)
+            if self.cool_places.crs.is_geographic:
+                self.cool_places = self.cool_places.to_crs(epsg=28992)
+
+            buildings['c_id'] = None
+            building_sindex = self.buildings.sindex
+
+            for cool_place in self.cool_places.itertuples():
+                current_buffer = cool_place.geometry.buffer(self.search_buffer)
+                possible_matches_index = list(building_sindex.intersection(current_buffer.bounds))
+                possible_matches = self.buildings.iloc[possible_matches_index]
+                buildings_within = possible_matches[possible_matches.geometry.intersects(current_buffer)]
+
+                for idx in buildings_within.index:
+                    actual_distance = self.buildings.loc[idx].geometry.distance(cool_place.geometry)
+
+                    if self.buildings.loc[idx, 'c_id'] is None or actual_distance < self.buildings.loc[idx, 'dist']:
+                        self.buildings.loc[idx, 'dist'] = actual_distance
+                        self.buildings.loc[
+                            idx, 'c_id'] = cool_place.id
+
+            missing_cool_place = buildings['c_id'].isna().sum()
+            if missing_cool_place > 0:
+                print(f"Warning: {missing_cool_place} buildings were not assigned to any cool place.")
+
+            progress.advance(task)
+            end_time = time.time()
+            duration = end_time - start_time
+            print(f"Calculating walking shed took {duration:.2f} seconds")
+            self.buildings.to_file("build_ws.shp")
+
+            return self.buildings
+
+    def evaluate_resident(self) -> gpd.GeoDataFrame:
+        with Progress() as progress:
+            task = progress.add_task("Evaluate resident...", total=4)
+            start_time = time.time()
+
+            if self.cool_places.crs != self.buildings.crs:
+                self.buildings = self.buildings.to_crs(self.cool_places.crs)
+
+            self.buildings['c_id'] = self.buildings['c_id'].fillna(0).astype(float).astype(int).astype(str).str.strip()
+            self.cool_places['id'] = self.cool_places['id'].astype(int).astype(str).str.strip()
+
+            building_grouped = self.buildings.groupby('c_id').agg({
+                'resident': 'sum',
+                'elder_resi': 'sum',
+                'kid': 'sum'
+            }).reset_index()
+            progress.advance(task)
+
+            self.cool_places = self.cool_places.merge(building_grouped, left_on='id', right_on='c_id', how='left')
+            progress.advance(task)
+
+            self.cool_places.to_file("cp_ws.shp")
+            progress.advance(task)
+
+            end_time = time.time()
+            duration = end_time - start_time
+            print(f"Calculating walking shed took {duration:.2f} seconds")
+
+            return self.cool_places
 
     def evaluate_capacity(self, shade: gpd.GeoDataFrame, layer_name: str) -> gpd.GeoDataFrame:
-        # Ensure CRS are the same
-        if shade.crs != self.buildings.crs:
-            self.buildings = self.buildings.to_crs(shade.crs)
 
-        # Buffer the shade geometries
-        shade['buffer'] = shade.geometry.buffer(self.search_buffer)
-
-        # Spatial join to find buildings within the buffers
-        buffers = shade.set_geometry('buffer')
-        buildings_within_buffers = gpd.sjoin(self.buildings, buffers, how='inner', predicate='intersects')
-
-        # Initialize columns to hold residents and area
         shade['Area'] = shade['geometry'].area.round(2)
-
-        # Sum residents from the buildings within each buffer
-        resident_sum = buildings_within_buffers.groupby('id').agg(
-            {'resident': 'sum', 'elder_resi': 'sum', 'kid': 'sum'}).reset_index()
-
-        # Merge resident sum back to the shade geometries
-        shade = shade.merge(resident_sum, on='id', how='left', suffixes=('', f'_{layer_name}'))
-
-        # Step: Calculate capacity per area
-        shade['Capacity per area'] = shade.apply(
+        shade['cap_area'] = shade.apply(
             lambda row: int(row['Area'] / 10) if row['Area'] > 0 else 0,
             axis=1
         )
-
-        # Add capacity status
-        shade['Capacity status'] = shade.apply(
-            lambda row: (
-                (lambda x: f"More capacity for {x:.0f} person(s) available" if x > 0
-                else f"Require more space for {abs(x):.0f} person(s)")(
-                    row['Capacity per area'] - row['resident'])
-            ) if row['resident'] and row['Area'] > 0 else "No data",
+        shade = gpd.sjoin(shade, self.cool_places[['geometry', 'resident']], how='left', op='intersects')
+        shade['resident'] = shade['resident'].fillna(0)
+        shade['cap_status'] = shade.apply(
+            lambda row: int(row['cap_area'] - row['resident']) if pd.notnull(row['cap_area']) and pd.notnull(
+                row['resident']) else 0,
             axis=1
         )
-
-        # Add descriptions for residents, elderly, and children
-        shade['Residents'] = shade['resident'].fillna(0).apply(
-            lambda x: f"{int(x)} residents" if x > 0 else "No nearest building"
-        )
-        shade['Elders'] = shade['elder_resi'].fillna(0).apply(
-            lambda x: f"{int(x)} elderly residents" if x > 0 else "No elderly resident"
-        )
-        shade['Children'] = shade['kid'].fillna(0).apply(
-            lambda x: f"{int(x)} children" if x > 0 else "No children"
-        )
-
+        # shade['Cap_status'] = shade.apply(
+        #     lambda row: (
+        #         (lambda x: f"More capacity for {x:.0f} person(s) available" if x > 0
+        #         else f"Require more space for {abs(x):.0f} person(s)")(
+        #             row['Cap_area'] - row['resident'])
+        #     ) if row['resident'] and row['Area'] > 0 else "No data",
+        #     axis=1
+        # )
         return shade
 
     def evaluate_sfurniture(self, shade: gpd.GeoDataFrame, layer_name: str) -> gpd.GeoDataFrame:
-        # Make sure the CRS matches
-        self.bench = self.bench.to_crs(shade.crs)
+        start_time = time.time()
 
-        # Perform spatial join between benches and the shade layer
         bench_join = gpd.sjoin(self.bench, shade, how="inner", predicate='intersects')
-
-        # Count the number of benches per shade area
         count_benches = bench_join.groupby('id').size().reset_index(name='benches_count')
-
-        # Merge the bench counts back into the shade geometries
         shade = shade.merge(count_benches, on='id', how='left')
         shade['Benches'] = shade['benches_count'].fillna(0).apply(
             lambda x: f"{int(x)} bench" if x > 0 else "No available bench"
         )
+        end_time = time.time()
+        duration = end_time - start_time
+        print(f"Calculating benches took {duration:.2f} seconds")
         return shade
 
     def evaluate_heatrisk(self, shade: gpd.GeoDataFrame, layer_name: str) -> gpd.GeoDataFrame:
-        # Spatial join between the heat risk and shade layers
+        start_time = time.time()
+
         join = gpd.sjoin(shade, self.heatrisk[['geometry', 'HI_TOTAAL_S']], how="inner", predicate='intersects')
-
-        # Calculate the mean heat risk score per shade geometry
         avg_hr = join.groupby('id').agg({'HI_TOTAAL_S': 'mean'}).reset_index()
-
-        # Merge heat risk score back into the shade geometries
         shade = shade.merge(avg_hr, on='id', how='left')
-        shade['Heat Risk Score'] = shade['HI_TOTAAL_S'].round(2).fillna(0)
+        shade['heat_rs'] = shade['HI_TOTAAL_S'].round(2).fillna(0)
 
         # Classify heat risk score
         classify_hit = jenkspy.JenksNaturalBreaks(n_classes=5)
-        classify_hit.fit(shade['Heat Risk Score'].dropna())
-        shade['Heat Risk Level'] = classify_hit.labels_
+        classify_hit.fit(shade['heat_rs'].dropna())
+        shade['heat_rlv'] = classify_hit.labels_
 
         classify_level = {
             0: 'Lowest',
@@ -115,12 +154,14 @@ class CoolEval:
             3: 'Above Average',
             4: 'Highest'
         }
-        shade['Heat Risk Level'] = shade['Heat Risk Level'].map(classify_level)
-
+        shade['heat_rlv'] = shade['heat_rlv'].map(classify_level)
+        end_time = time.time()
+        duration = end_time - start_time
+        print(f"Evaluate heatrisk took {duration:.2f} seconds")
         return shade
 
     def eval_pet(self, shade: gpd.GeoDataFrame, layer_name: str) -> gpd.GeoDataFrame:
-        # Zonal statistics for PET (mean PET per shade geometry)
+        start_time = time.time()
         with rasterio.open(self.pet) as src:
             stats = zonal_stats(shade, self.pet, stats=['mean'], affine=src.transform)
         avg_pet = [stat['mean'] for stat in stats]
@@ -128,58 +169,108 @@ class CoolEval:
         shade['PET'] = shade['PET'].round()
         shade['PET Recom'] = shade['PET'].apply(lambda x: "not recommended" if x > 35 else "recommended")
 
+        end_time = time.time()
+        duration = end_time - start_time
+        print(f"Eval pet took {duration:.2f} seconds")
         return shade
 
-    def aggregate_to_coolspaces(self) -> None:
+    def aggregate_to_cool_places(self) -> None:
         """
         After evaluating the shade geometries, aggregate the results to cool places
         based on the common 'id' field between cool places and shade geometries.
         """
+        start_time = time.time()
         for i, eval_shade in enumerate(self.eval_shades):
-            # Rename columns with suffix to avoid duplication
             eval_shade_renamed = eval_shade.add_suffix(f'_{i}')
-
-            # Ensure no duplicate column names
             columns_to_add = []
             for col in eval_shade_renamed.columns:
                 if col in self.cool_places.columns:
-                    # Append a unique suffix if column already exists
                     new_col_name = f"{col}_l{i}"
                     eval_shade_renamed = eval_shade_renamed.rename(columns={col: new_col_name})
                     columns_to_add.append(new_col_name)
                 else:
                     columns_to_add.append(col)
-
-
-            # Merge only the new/renamed columns to avoid duplicates
             self.cool_places = self.cool_places.join(eval_shade_renamed[columns_to_add], how='left')
-
-
-
             print(f"Processed layer {i + 1} and added columns: {columns_to_add}")
 
-        # Step 2: Identify the columns for each feature group (e.g., resident_0, resident_1, etc.)
-        columns_to_average = ['resident', 'elder_resi', 'kid', 'Capacity per area', 'benches_count',
-                                  'Heat Risk Score', 'PET']
+        columns_to_average = ['cap_area', 'cap_status,' 'benches_count', 'heat_rs', 'PET']
 
-        # Iterate over each feature group and calculate the average
         for feature in columns_to_average:
-        # Use regular expression to match columns exactly like resident_0, resident_1, etc.
             feature_columns = [col for col in self.cool_places.columns if re.match(f'{feature}_\d+$', col)]
-
-            if feature_columns:  # Check if there are matching columns
-                # Step 3: Convert columns to numeric, replacing non-numeric values with NaN
+            if feature_columns:
                 self.cool_places[feature_columns] = self.cool_places[feature_columns].apply(pd.to_numeric,
-                                                                                                errors='coerce')
-
-                # Step 4: Calculate the average across these columns, ignoring NaNs
+                                                                                            errors='coerce')
                 self.cool_places[f'{feature}_avg'] = self.cool_places[feature_columns].mean(axis=1)
+        end_time = time.time()
+        duration = end_time - start_time
+        print(f"Integrating attribute to cool space took {duration:.2f} seconds")
+
+    def final_recom(self):
+        w_capacity = 0.2
+        w_bench = 0.1
+        w_hr = 0.2
+        w_pet = 0.2
+        w_shade = 0.3
+
+        columns_to_fill = ['cap_status_avg', 'benches_count_avg', 'heat_rs_avg', 'PET_avg', 'scDay']
+
+        for col in columns_to_fill:
+            if col in self.cool_places.columns:
+                self.cool_places[col].fillna(0, inplace=True)
+
+        def classify_pet(pet):
+            if pet > 35:
+                return 0  # Lowest class
+            elif 30 < pet <= 35:
+                return 0.8
+            else:
+                return 1
+
+        def classify_shade(shade):
+            if shade == 1:
+                return 0.6
+            elif shade == 2:
+                return 0.8
+            elif shade == 3:
+                return 1
+            else:
+                return 0
+
+        def min_max_normalize(column):
+            if column.max() == column.min():
+                return np.zeros_like(column)
+            return (column - column.min()) / (column.max() - column.min())
+
+        self.cool_places['capst_norm'] = min_max_normalize(self.cool_places['cap_status_avg']).round(2)
+        self.cool_places['hrs_norm'] = min_max_normalize(self.cool_places['heat_rs_avg']).round(2)
+        self.cool_places['bc_norm'] = min_max_normalize(self.cool_places['benches_count_avg']).round(2)
+
+        self.cool_places['PET_c'] = self.cool_places['PET_avg'].apply(classify_pet).round(2)
+        self.cool_places['scDay_c'] = self.cool_places['scDay'].apply(classify_shade).round(2)
+
+        self.cool_places['score'] = ((self.cool_places['capst_norm'] * w_capacity) +
+                                     (self.cool_places['bc_norm'] * w_bench) +
+                                     (self.cool_places['hrs_norm'] * w_hr) +
+                                     (self.cool_places['PET_c'] * w_pet) +
+                                     (self.cool_places['scDay_c'] * w_shade)).round(2)
+
+        def classify(row):
+            if row['scDay_c'] == 0 or row['PET_c'] == 0:  # If shade is 0, automatically "Not Recommended"
+                return 'Not recommended'
+            elif row['score'] <= 0.4:
+                return 'Not recommended'
+            elif 0.4 < row['score'] <= 0.6:
+                return 'Recommended'
+            else:
+                return 'Highly Recommended'
+
+        self.cool_places['recom'] = self.cool_places.apply(classify, axis=1)
 
     def export_eval_gpkg(self, output_gpkg_path: str, layer_name: str) -> None:
         """
         Export the evaluation results to a GeoPackage as a specific layer.
         """
-        # Print the columns before any manipulation
+
         print("Columns before dropping:", self.cool_places.columns.tolist())
 
         geometry_columns = [col for col in self.cool_places.columns if col != self.cool_places.geometry.name]
@@ -187,20 +278,15 @@ class CoolEval:
             if isinstance(self.cool_places[col].iloc[0], base.BaseGeometry):
                 self.cool_places[col] = gpd.GeoSeries(self.cool_places[col]).to_wkt()
 
-
-
-        # Ensure the 'geometry' column is set as the active geometry
         if 'geometry' in self.cool_places.columns:
             self.cool_places.set_geometry('geometry', inplace=True)
         else:
             raise ValueError("The 'geometry' column is missing in the GeoDataFrame.")
 
-        # Print the structure of the GeoDataFrame before exporting
         print("GeoDataFrame structure before export:")
         print(self.cool_places.head())
         print("Remaining columns after dropping:", self.cool_places.columns.tolist())
 
-        # Export to the GeoPackage
         self.cool_places.to_file(output_gpkg_path, layer=layer_name, driver='GPKG')
         print(f"Layer '{layer_name}' saved to GeoPackage: {output_gpkg_path}")
 
