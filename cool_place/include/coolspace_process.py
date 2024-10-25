@@ -118,6 +118,17 @@ def identification(coolspace_file: gpd.geodataframe,
     # Perform shade calculation for ALL shade maps
     coolSpace.calculate_shade(shadows, use_clip=True)
 
+    # set the output geometry type
+    if output_coolspace_type == 'land-use':
+        geom_type = 'geometry'
+    elif output_coolspace_type == 'public-space':
+        geom_type = 'clipped'
+    else:
+        print(f"Invalid type {output_coolspace_type}. Expected types are 'land-use' or 'public-space', "
+              f"to continue the process, 'land-use' will be used for output.")
+        geom_type = 'clipped'
+
+
     # Evaluate the shade coverage based on different modes
     if mode == 'single-day':
         coolSpace.evaluate_shade_coverage(attri_name="Day", start=daytime[0], end=daytime[1] - 1)
@@ -128,7 +139,7 @@ def identification(coolspace_file: gpd.geodataframe,
             search = compute_search_range(search_start_time, search_end_time, start_time, end_time, time_interval)
             start = search[0]
             end = search[1] - 1 if search[1] is not None else None
-            coolSpace.evaluate_shade_coverage(attri_name="Query", start=start, end=end)
+            coolSpace.evaluate_shade_coverage(attri_name="Query", start=start, end=end, geom_type=geom_type)
 
         if morning_range is not None:
             m_start = morning_range[0]
@@ -136,7 +147,7 @@ def identification(coolspace_file: gpd.geodataframe,
             morning = compute_search_range(m_start, m_end, start_time, end_time, time_interval)
             start = morning[0]
             end = morning[1] - 1 if morning[1] is not None else None
-            coolSpace.evaluate_shade_coverage(attri_name="Morn", start=start, end=end)
+            coolSpace.evaluate_shade_coverage(attri_name="Morn", start=start, end=end, geom_type=geom_type)
 
         if afternoon_range is not None:
             a_start = afternoon_range[0]
@@ -144,7 +155,7 @@ def identification(coolspace_file: gpd.geodataframe,
             afternoon = compute_search_range(a_start, a_end, start_time, end_time, time_interval)
             start = afternoon[0]
             end = afternoon[1] - 1 if afternoon[1] is not None else None
-            coolSpace.evaluate_shade_coverage(attri_name="Aftrn", start=start, end=end)
+            coolSpace.evaluate_shade_coverage(attri_name="Aftrn", start=start, end=end, geom_type=geom_type)
 
         if late_afternoon_range is not None:
             la_start = late_afternoon_range[0]
@@ -152,7 +163,7 @@ def identification(coolspace_file: gpd.geodataframe,
             late_aftrn = compute_search_range(la_start, la_end, start_time, end_time, time_interval)
             start = late_aftrn[0]
             end = late_aftrn[1] - 1 if late_aftrn[1] is not None else None
-            coolSpace.evaluate_shade_coverage(attri_name="LtAftrn", start=start, end=end)
+            coolSpace.evaluate_shade_coverage(attri_name="LtAftrn", start=start, end=end, geom_type=geom_type)
 
     elif mode == 'multi-days':
         # Shade maps number for one day, it assumes that every day has the same number of shade maps
@@ -160,21 +171,14 @@ def identification(coolspace_file: gpd.geodataframe,
         for day in range(num_days):
             search_range = [int(day * n), int(day * n + n - 1)]
             coolSpace.evaluate_shade_coverage(attri_name=f"Day{day}", start=search_range[0], end=search_range[1])
-        coolSpace.evaluate_shade_coverage(attri_name='Alldays', start=0, end=len(shadows) - 1)
+        coolSpace.evaluate_shade_coverage(attri_name='Alldays', start=0, end=len(shadows) - 1, geom_type=geom_type)
 
     # Get cool space polygons of all-daytime search range. Based on the settings, the output
     # polygons will be either land-use polygons or public space polygons. All the other geometries
     # will be transformed into WKT and stored in columns.
     with Progress() as progress:
         output_task = progress.add_task("Processing output data...", total=1)
-        if output_coolspace_type == 'land-use':
-            output_gdf = coolSpace.get_cool_spaces(geom_type='geometry')
-        elif output_coolspace_type == 'public-space':
-            output_gdf = coolSpace.get_cool_spaces(geom_type='clipped')
-        else:
-            print(f"Invalid type {output_coolspace_type}. Expected types are 'land-use' or 'public-space', "
-                  f"to continue the process, 'land-use' will be used for output.")
-            output_gdf = coolSpace.get_cool_spaces(geom_type='geometry')
+        output_gdf = coolSpace.get_cool_spaces(geom_type=geom_type)
         progress.advance(output_task)
 
     return output_gdf
@@ -245,7 +249,7 @@ def evaluation(coolspace: gpd.geodataframe,
 
             cool_eval.eval_shades.append(shade)
 
-    cool_eval.aggregate_to_coolspaces()
+    cool_eval.aggregate_to_cool_places()
     cool_eval.export_eval_gpkg(gpkg_file, layer_name=output_layer)
     print("Processing complete!")
 
