@@ -146,7 +146,7 @@ class CoolEval:
         GeoDataFrame: Cool places dataset with added columns for residents, elderly residents, and children.
         """
         with Progress() as progress:
-            task = progress.add_task("Evaluate resident...", total=4)
+            task = progress.add_task("Evaluate resident...", total=2)
             start_time = time.time()
 
             if self.cool_places.crs != self.buildings.crs:
@@ -168,7 +168,7 @@ class CoolEval:
 
             end_time = time.time()
             duration = end_time - start_time
-            print(f"Calculating walking shed took {duration:.2f} seconds")
+            print(f"Evaluate residents took {duration:.2f} seconds")
 
             return self.cool_places
 
