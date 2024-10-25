@@ -37,7 +37,7 @@ class CoolEval:
         self.search_buffer = search_buffer
         self.eval_shades = []
 
-    def calculate_walking_shed(self):
+    def calculate_walking_shed_origin(self):
         """
         Assign each building to the nearest cool place within a specified buffer distance.
 
@@ -48,7 +48,7 @@ class CoolEval:
         GeoDataFrame: Updated buildings dataset with the assigned cool place ID.
         """
         with Progress() as progress:
-            task = progress.add_task("Calculate walking shed...", total=3)
+            task = progress.add_task("Calculate walking shed...", total=len(self.cool_places))
             start_time = time.time()
             # Ensure buildings are in a projected CRS
             if self.buildings.crs.is_geographic:
@@ -72,12 +72,63 @@ class CoolEval:
                         self.buildings.loc[idx, 'dist'] = actual_distance
                         self.buildings.loc[
                             idx, 'c_id'] = cool_place.id
+                progress.advance(task)
 
             missing_cool_place = self.buildings['c_id'].isna().sum()
             if missing_cool_place > 0:
                 print(f"Warning: {missing_cool_place} buildings were not assigned to any cool place.")
 
-            progress.advance(task)
+            end_time = time.time()
+            duration = end_time - start_time
+            print(f"Calculating walking shed took {duration:.2f} seconds")
+
+            return self.buildings
+
+
+    def calculate_walking_shed(self, batch_size=100):
+        with Progress() as progress:
+            task = progress.add_task("Calculate walking shed...", total=len(self.cool_places))
+            start_time = time.time()
+
+            if self.buildings.crs.is_geographic:
+                self.buildings = self.buildings.to_crs(epsg=28992)
+            if self.cool_places.crs.is_geographic:
+                self.cool_places = self.cool_places.to_crs(epsg=28992)
+
+            self.buildings['c_id'] = None
+            self.buildings['dist'] = float('inf')
+
+            cool_places_geom = self.cool_places[['geometry']].copy()
+
+            min_distances = {}
+            num_batches = (len(cool_places_geom) // batch_size) + 1
+
+            for i in range(num_batches):
+                cool_places_batch = cool_places_geom.iloc[i * batch_size:(i + 1) * batch_size].copy()
+                cool_places_batch['buffered'] = cool_places_batch.geometry.buffer(self.search_buffer)
+
+                buildings_within = gpd.sjoin(self.buildings, cool_places_batch.set_geometry('buffered'),
+                                             predicate='intersects', how='inner')
+
+                for _, row in buildings_within.iterrows():
+                    building_idx = row.name
+                    cool_place_idx = row['index_right']
+                    distance = row['geometry_left'].distance(row['geometry_right'])
+
+                    if building_idx not in min_distances or distance < min_distances[building_idx][0]:
+                        min_distances[building_idx] = (distance, self.cool_places.loc[cool_place_idx].id)
+
+                progress.advance(task, advance=batch_size)
+
+            self.buildings['c_id'] = self.buildings.index.map(
+                lambda idx: min_distances[idx][1] if idx in min_distances else None)
+            self.buildings['dist'] = self.buildings.index.map(
+                lambda idx: min_distances[idx][0] if idx in min_distances else float('inf'))
+
+            missing_cool_place = self.buildings['c_id'].isna().sum()
+            if missing_cool_place > 0:
+                print(f"Warning: {missing_cool_place} buildings were not assigned to any cool place.")
+
             end_time = time.time()
             duration = end_time - start_time
             print(f"Calculating walking shed took {duration:.2f} seconds")
@@ -120,6 +171,7 @@ class CoolEval:
             print(f"Calculating walking shed took {duration:.2f} seconds")
 
             return self.cool_places
+
     def evaluate_capacity(self, shade: gpd.GeoDataFrame, layer_name: str) -> gpd.GeoDataFrame:
         """
         Evaluate the capacity of shaded areas based on their size and nearby residents.
