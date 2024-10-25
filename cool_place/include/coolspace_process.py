@@ -245,7 +245,8 @@ def evaluation(coolspace: gpd.geodataframe,
 
             cool_eval.eval_shades.append(shade)
 
-    cool_eval.aggregate_to_coolspaces()
+    cool_eval.aggregate_to_cool_places()
+    cool_eval.final_recom()
     cool_eval.export_eval_gpkg(gpkg_file, layer_name=output_layer)
     print("Processing complete!")
 
