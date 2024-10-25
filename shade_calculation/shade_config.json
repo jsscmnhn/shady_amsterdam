@@ -54,6 +54,7 @@
         "start_time": 9,
         "end_time": 20,
         "interval": 30,
+        "use_chm": true,
         "trans": 10,
         "trunkheight": 25,
         "max_shade_workers": 4,

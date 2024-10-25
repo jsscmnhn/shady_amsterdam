@@ -47,7 +47,7 @@ def process_chm_dsm(chm_filename, dsm_filename, folder_path, output_dir, date, s
         filepath_save=output_dir,
         UTC=2,
         dst=1,
-        useveg=1,
+        useveg=use_chm,
         trunkheight=trunkheight,
         transmissivity=trans,
         start_time=start_time,
@@ -57,7 +57,7 @@ def process_chm_dsm(chm_filename, dsm_filename, folder_path, output_dir, date, s
     print(f"Completed shade calculation for: {chm_filename} and {dsm_filename}.")
 
 def run_shade_calculation(file_pairs, output_base_folder, date, start_time, end_time, interval,
-                          trans, trunkheight, max_workers=4):
+                          use_chm=True, trans=10, trunkheight=25, max_workers=4):
     """
      Process CHM and DSM file pairs in parallel.
       ----
@@ -104,12 +104,13 @@ def run_shade_calculation(file_pairs, output_base_folder, date, start_time, end_
             [start_time] * len(file_pairs),
             [end_time] * len(file_pairs),
             [interval] * len(file_pairs),
+            [use_chm] * len(file_pairs),
             [trans] * len(file_pairs),
             [trunkheight] * len(file_pairs)
         ), total=len(file_pairs), desc="Processing files", unit="file"))
 
 
-def process_folders(base_folder, output_base_folder, date, start_time=9, end_time=20, interval=30, trans=10,
+def process_folders(base_folder, output_base_folder, date, start_time=9, end_time=20, interval=30, use_chm=True, trans=10,
                     trunkheight=25, max_workers=4):
     """
     Function to process all subfolders in a base folder for shade calculations.
@@ -155,12 +156,12 @@ def process_folders(base_folder, output_base_folder, date, start_time=9, end_tim
     if file_pairs:
         print(f"Found {len(file_pairs)} CHM/DSM file pairs to process.")
         run_shade_calculation(file_pairs, output_base_folder, date, start_time, end_time, interval,
-                                       trans, trunkheight, max_workers)
+                                       use_chm, trans, trunkheight, max_workers)
     else:
         print("No CHM/DSM file pairs found.")
 
 if __name__ == '__main__':
-    base_folder = "E:/temporary_jessica/final_rerun"
-    output_base_folder = "E:/temporary_jessica/__test3"
+    base_folder = "C:\Geomatics\shady_amsterdam\shade_calculation/test\dsmchm"
+    output_base_folder ="C:\Geomatics\shady_amsterdam\shade_calculation/test/test2"
     date = date(2023, 4, 26)
-    process_folders(base_folder, output_base_folder, date, max_workers=24)
+    process_folders(base_folder, output_base_folder, date, max_workers=2)
