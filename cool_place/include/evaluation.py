@@ -13,6 +13,7 @@ import re
 from shapely.geometry import Point, shape
 import time
 from rich.progress import Progress
+from concurrent.futures import ThreadPoolExecutor
 
 class CoolEval:
     def __init__(self, cool_places: gpd.GeoDataFrame, buildings: gpd.GeoDataFrame, bench: gpd.GeoDataFrame,
@@ -139,7 +140,7 @@ class CoolEval:
             lambda row: int(row['Area'] / 10) if row['Area'] > 0 else 0,
             axis=1
         )
-        shade = gpd.sjoin(shade, self.cool_places[['geometry', 'resident']], how='left', op='intersects')
+        shade = gpd.sjoin(shade, self.cool_places[['geometry', 'resident']], how='left', predicate='intersects')
         shade['resident'] = shade['resident'].fillna(0)
         shade['cap_status'] = shade.apply(
             lambda row: int(row['cap_area'] - row['resident']) if pd.notnull(row['cap_area']) and pd.notnull(
