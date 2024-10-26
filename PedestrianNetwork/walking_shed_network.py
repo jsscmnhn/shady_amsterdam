@@ -135,6 +135,31 @@ def assign_buildings_to_distance_category(buildings, graph, distance_nodes):
     return buildings
 
 
+def assign_buildings_to_distance_category_with_precomputed(buildings, graph, distance_nodes):
+    start_time = time.time()
+    print("Starting to assign distance categories to buildings...")
+
+    # Find nearest nodes for all building centroids
+    building_centroids = buildings.geometry.centroid
+    nearest_nodes = ox.distance.nearest_nodes(graph, X=building_centroids.x, Y=building_centroids.y)
+    buildings['nearest_node'] = nearest_nodes
+
+    # Assign distance category based on precomputed distance nodes
+    def get_distance_category(node_id):
+        for distance in sorted(distance_nodes.keys()):
+            if node_id in distance_nodes[distance]:
+                return distance
+        return '>500m'  # If the node isn't within the maximum distance, assign ">500m"
+
+    buildings['distance_category'] = buildings['nearest_node'].apply(get_distance_category)
+
+    end_time = time.time()
+    duration = end_time - start_time
+    print(f"Assigning buildings to distance category took {duration:.2f} seconds")
+
+    return buildings
+
+
 def assign_building_distance_category(building, graph, distance_nodes):
     # Calculate the nearest node for the building and assign the distance category
     building_centroid = building.geometry.centroid
@@ -190,7 +215,8 @@ def calculate_walking_shed_with_distance_categories(buildings, cool_place_nodes,
 
     # Assign distance category to buildings based on proximity to cool place nodes
     # buildings = assign_buildings_to_distance_category(buildings, graph, distance_nodes)
-    buildings  = parallel_assign_buildings_to_distance_category(buildings, graph, distance_nodes)
+    # buildings  = parallel_assign_buildings_to_distance_category(buildings, graph, distance_nodes)
+    buildings = assign_buildings_to_distance_category_with_precomputed(buildings, graph, distance_nodes)
 
     return buildings
 
