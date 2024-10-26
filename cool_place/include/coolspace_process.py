@@ -74,7 +74,8 @@ def identification(coolspace_file: gpd.geodataframe,
                    morning_range: list = None,
                    afternoon_range: list = None,
                    late_afternoon_range: list = None,
-                   output_coolspace_type: str = 'land-use') -> gpd.geodataframe:
+                   output_coolspace_type: str = 'land-use',
+                   useMutiProcessing: bool = False) -> gpd.geodataframe:
 
     coolSpace = CoolSpace(coolspace_file)
     road = Road(road_file)
@@ -90,8 +91,11 @@ def identification(coolspace_file: gpd.geodataframe,
     with Progress() as progress:
         task = progress.add_task("Loading shade maps...", total=daytime[1] + 1)
         for shadow_file in shadow_files:
-            shadow_map = rasterio.open(shadow_file, crs=coolSpace.data.crs)
-            shadows.append(shadow_map)
+            if not useMutiProcessing:
+                shadow_map = rasterio.open(shadow_file, crs=coolSpace.data.crs)
+                shadows.append(shadow_map)
+            else:
+                shadows.append(shadow_file)
             progress.advance(task)
     shadows = shadows[daytime[0]:daytime[1]]
     print(f"Total shade maps: {len(shadows)}")
@@ -116,7 +120,10 @@ def identification(coolspace_file: gpd.geodataframe,
     coolSpace.clip(building.data, use_clip=True, filter_thin=True)
 
     # Perform shade calculation for ALL shade maps
-    coolSpace.calculate_shade(shadows, use_clip=True)
+    if not useMutiProcessing:
+        coolSpace.calculate_shade(shadows, use_clip=True)
+    else:
+        coolSpace.calculate_shade_multi(shadows, use_clip=True)
 
     # set the output geometry type
     if output_coolspace_type == 'land-use':

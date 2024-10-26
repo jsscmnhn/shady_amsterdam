@@ -40,6 +40,7 @@ if __name__ == '__main__':
         num_days               = config['shade_info_multi']['num_days']
 
         # read parameters
+        useMutiProcessing       = config['parameters']['useMutiProcessing']
         hasIdentificationOutput = config['parameters']['hasIdentificationOutput']
         outputShadeGeometries   = config['parameters']['outputShadeGeometries']
         performEvaluation       = config['parameters']['performEvaluation']
@@ -80,7 +81,8 @@ if __name__ == '__main__':
                                    morning_range=morning_range,
                                    afternoon_range=afternoon_range,
                                    late_afternoon_range=late_afternoon_range,
-                                   output_coolspace_type=output_coolspace_type)
+                                   output_coolspace_type=output_coolspace_type,
+                                   useMutiProcessing=useMutiProcessing)
 
         with Progress() as progress:
             task = progress.add_task("Processing attributes for output data...", total=3)

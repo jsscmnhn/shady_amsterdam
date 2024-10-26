@@ -8,6 +8,7 @@ from shapely.geometry import shape, box
 from shapely.ops import unary_union
 import numpy as np
 from rich.progress import Progress
+from multiprocessing import Pool, Manager, cpu_count
 
 pd.set_option('future.no_silent_downcasting', True)
 
@@ -296,7 +297,7 @@ class CoolSpace:
 
         self.data["tol_shade_score"] = 0
         self.data["tol_shade_area_percent"] = 0
-        self.data["geom_area"] = self.data[geom_type].apply(lambda geom: geom.area)
+        self.data["geom_area"] = self.data[geom_type].apply(lambda geom: geom.area if geom is not None else 0)
 
         with Progress() as progress:
             task = progress.add_task(f"Calculating shade coverage of "
@@ -308,7 +309,7 @@ class CoolSpace:
                 # if the shade average value is below 0.5, it means the polygon has valid shaded area --> +0
                 # otherwise, it means the polygon doesn't have any valid shaded area --> +1
                 self.data["tol_shade_score"] += self.data[shade_avg_col].fillna(1).apply(lambda x: 0 if x < 0.5 else 1)
-                self.data["tol_shade_area_percent"] += self.data[shade_area_col].apply(lambda areas: sum(areas)) / self.data["geom_area"]
+                self.data["tol_shade_area_percent"] += self.data[shade_area_col].apply(lambda areas: sum(areas) if areas is not None else 0) / self.data["geom_area"]
                 progress.advance(task)
 
         self.data["tol_shade_score"] /= raster_nums
@@ -341,3 +342,94 @@ class CoolSpace:
         self.data.drop(columns=["tol_shade_score"], inplace=True)
         self.data.drop(columns=["tol_shade_area_percent"], inplace=True)
         self.data.drop(columns=["geom_area"], inplace=True)
+
+    def calculate_shade_for_raster(self, raster_idx, raster, area_thres, shade_thres, ratio_thres):
+        """
+        This is the method for processing a single raster, which is used for "calculate_shade_multi" method.
+        """
+        raster = rasterio.open(raster, crs=self.data.crs)
+        minx, miny, maxx, maxy = raster.bounds
+        raster_bounds = box(minx, miny, maxx, maxy)
+
+        shade_averages = []
+        shade_areas = []
+        shade_geometries = []
+
+        for idx, row in self.data.iterrows():
+            geom = row[self.data.geometry.name]
+            if geom is None or not geom.intersects(raster_bounds):
+                shade_averages.append(None)
+                shade_areas.append(None)
+                shade_geometries.append(None)
+                continue
+
+            clipped_geom = geom.intersection(raster_bounds)
+            if clipped_geom.is_empty or clipped_geom.area < 1e-6:
+                shade_averages.append(None)
+                shade_areas.append(None)
+                shade_geometries.append(None)
+                continue
+
+            geom_geojson = [clipped_geom.__geo_interface__]
+            out_image, out_transform = mask(raster, geom_geojson, crop=True)
+            out_image = out_image[0]
+
+            labeled_array, num_features = label((out_image >= 0) & (out_image <= shade_thres))
+            pixel_size = out_transform[0] * (-out_transform[4])
+            pixel_areas, shade_polygons, valid_pixel_values = [], [], []
+
+            for region_label in range(1, num_features + 1):
+                region_area = np.sum(labeled_array == region_label) * pixel_size
+                if region_area >= area_thres:
+                    valid_pixel_values.extend(out_image[labeled_array == region_label])
+                    pixel_areas.append(np.round(region_area, 4))
+                    region_mask = (labeled_array == region_label).astype(np.uint8)
+
+                    for geom, value in shapes(region_mask, transform=out_transform):
+                        if value == 1 and shape(geom).area / shape(geom).length >= ratio_thres:
+                            shade_polygons.append(shape(geom))
+
+            merged_polygon = unary_union(shade_polygons) if shade_polygons else None
+            shade_geometries.append(merged_polygon)
+            valid_pixel_values = np.array(valid_pixel_values)
+            avg = valid_pixel_values.mean() if valid_pixel_values.size > 0 else 1
+
+            shade_averages.append(avg)
+            shade_areas.append(pixel_areas)
+
+        return raster_idx, shade_averages, shade_areas, shade_geometries
+
+    def calculate_shade_multi(self, rasters, area_thres=200, shade_thres=0.5, ratio_thres=0.35, use_clip=False):
+        """
+        This is the multi-processing version of the method "calculate_shade".
+        """
+        if use_clip and 'clipped' in self.data.columns and self.data['clipped'].any():
+            self.data.set_geometry('clipped', inplace=True)
+        else:
+            print("No clipped geometry, default geometry will be used.")
+            self.data.set_geometry('geometry', inplace=True)
+
+        with Progress() as progress:
+            raster_task = progress.add_task("Processing shade maps...", total=len(rasters))
+
+            # create pools
+            num_processes = max(1, cpu_count() - 2)  # reserve 2 CPUs if possible
+            with Pool(num_processes) as pool:
+                # submit tasks and collect results
+                results = [
+                    pool.apply_async(
+                        self.calculate_shade_for_raster,
+                        args=(raster_idx, raster, area_thres, shade_thres, ratio_thres)
+                    )
+                    for raster_idx, raster in enumerate(rasters)
+                ]
+
+                # get result from every task and add them into self.data
+                for result in results:
+                    raster_idx, shade_averages, shade_areas, shade_geometries = result.get()
+                    self.data[f"sdAvg{raster_idx}"] = shade_averages
+                    self.data[f"sdArea{raster_idx}"] = shade_areas
+                    self.data[f"sdGeom{raster_idx}"] = shade_geometries
+                    progress.update(raster_task, advance=1)
+
+        self.intervals = len(rasters)
