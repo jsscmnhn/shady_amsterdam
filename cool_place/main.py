@@ -27,6 +27,7 @@ if __name__ == '__main__':
         heatrisk_layer              = config['files']['heatrisk_file']
         output_identification_layer = config['files']['output_identification_file']
         output_evaluation_layer     = config['files']['output_evaluation_file']
+        output_shadeGeometry_gpkg   = config['files']['output_shadeGeometry_gpkg']
 
         # read shape maps file path and information
         shademaps_path         = config['files']['shademaps_path']
@@ -104,7 +105,7 @@ if __name__ == '__main__':
     if outputShadeGeometries:
         progress.add_task("Outputing shade geometries...", total=1)
         coolspace_output = gpd.read_file(gpkg_file, layer=output_identification_layer)
-        output_all_shade_geoms(coolspace_output, folder_path)
+        output_all_shade_geoms(coolspace_output, folder_path, output_shadeGeometry_gpkg)
 # ======================================================================================================================
 
 

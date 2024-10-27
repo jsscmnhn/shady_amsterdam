@@ -288,7 +288,7 @@ def drop_or_wkt(gdf: gpd.geodataframe, mode='to_wkt') -> None:
                 gdf.drop(columns=col, inplace=True)
 
 
-def output_all_shade_geoms(gdf: gpd.geodataframe, folder_path: str) -> None:
+def output_all_shade_geoms(gdf: gpd.geodataframe, folder_path: str, output_gpkg: str) -> None:
     """
     This method is used for output all shade goemetries to a GeoPackage for routing process.
     It filters out the 'overig' type and 'bebouwd gebied' type which are not public area, thus
@@ -310,7 +310,7 @@ def output_all_shade_geoms(gdf: gpd.geodataframe, folder_path: str) -> None:
             single_layer_gdf = gpd.GeoDataFrame(single_layer_df, geometry=col1, crs=gdf.crs)
 
             if single_layer_gdf[col1].notna().any():
-                output_gpkg = folder_path + "shadeGeoms.gpkg"
-                single_layer_gdf.to_file(output_gpkg, layer=col1, driver="GPKG")
+                output = folder_path + output_gpkg
+                single_layer_gdf.to_file(output, layer=col1, driver="GPKG")
 
             progress.advance(task)
