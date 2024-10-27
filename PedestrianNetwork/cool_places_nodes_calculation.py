@@ -8,8 +8,7 @@ import os
 # Default paths
 default_config = {
     "polygon_path": "C:/Androniki/pythonProject1/ams_public_space.shp",
-    "graph_file_path": "C:/Androniki/pythonProject1/AMS/metropolitan_region_amsterdam_walk.graphml",
-    "nodes_file": "C:/Androniki/pythonProject1/final_nodes.shp",
+    "graph_file_path": "C:/Androniki/pythonProject1/AMS/Amsterdam_pedestrian_network.graphml",
     "output_cool_place_nodes": "C:/Androniki/pythonProject1/outputs/cool_place_nodes.pkl"
 }
 
@@ -70,42 +69,13 @@ def calculate_and_save_cool_place_nodes(graph, cool_place_polygons, output_path)
 
     print(f"Cool place nodes calculated and saved to {output_path}.")
 
-
 # Load data based on config
 polygon_path = config["polygon_path"]
 graph_file_path = config["graph_file_path"]
-nodes_file = config["nodes_file"]
 pre_calculated_nodes_path = config["output_cool_place_nodes"]
 
-# Load the nodes shapefile into a GeoDataFrame
-nodes_gdf = gpd.read_file(nodes_file)
-
-# Initialize an empty graph for nodes_gdf
-G = nx.Graph()
-
-# Add nodes to G from the shapefile
-for idx, row in nodes_gdf.iterrows():
-    node_id = row['osmid']  # Adjust if 'osmid' column name differs
-    x, y = row.geometry.x, row.geometry.y
-    G.add_node(node_id, pos=(x, y))
-
-
-# Load the OSM graph from the GraphML file
-G_100 = ox.load_graphml(graph_file_path)
-
-# Ensure all edges have 'length' attribute for pathfinding
-if 'length' not in nx.get_edge_attributes(G_100, 'length'):
-    ox.distance.add_edge_lengths(G_100)
-
-# Find common nodes between G and G_100
-G_node_ids = set(G.nodes())
-G_100_node_ids = set(G_100.nodes())
-common_node_ids = G_node_ids.intersection(G_100_node_ids)
-
-# Create a subgraph of G_100 with only common nodes
-G_subgraph = G_100.subgraph(common_node_ids).copy()
-
 # Load the cool place polygons and calculate cool place nodes
-graph = ox.project_graph(G_subgraph, to_crs='EPSG:28992')
+G = ox.load_graphml(graph_file_path)
+graph = ox.project_graph(G, to_crs='EPSG:28992')
 cool_place_polygons = load_cool_place_polygons(polygon_path)
 calculate_and_save_cool_place_nodes(graph, cool_place_polygons, pre_calculated_nodes_path)
