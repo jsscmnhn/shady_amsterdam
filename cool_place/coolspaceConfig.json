@@ -9,10 +9,10 @@
     "street_furniture_file": "ams_bench_osm",
     "heatrisk_file": "ams_heatrisk_2023",
     "pet_file": "G:\\TUD\\Synthesis\\cool_place\\ams_PET_average.tiff",
-    "shademaps_path": "G:\\TUD\\Synthesis\\cool_place\\shademaps_20230719\\",
-    "output_identification_file": "coolspace_identification_20230719",
-    "output_evaluation_file": "final_cool_space_20230719",
-    "output_shadeGeometry_gpkg": "shadeGeoms_20230719.gpkg"
+    "shademaps_path": "G:\\TUD\\Synthesis\\cool_place\\shademaps_20230913\\",
+    "output_identification_file": "coolspace_identification_20230913",
+    "output_evaluation_file": "final_cool_space_20230913",
+    "output_shadeGeometry_gpkg": "shadeGeoms_20230913.gpkg"
   },
   "parameters": {
     "hasIdentificationOutput": false,
