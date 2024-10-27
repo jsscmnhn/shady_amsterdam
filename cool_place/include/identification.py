@@ -327,11 +327,11 @@ class CoolSpace:
                 return 0
 
         def classify_shade_coverage_percent(area_percent) -> int:
-            if 0 <= area_percent <= 0.1:
+            if 0.9 <= area_percent:
                 return 3
-            elif area_percent <= 0.3:
+            elif 0.7 <= area_percent:
                 return 2
-            elif area_percent <= 0.5:
+            elif 0.5 <= area_percent:
                 return 1
             else:
                 return 0
