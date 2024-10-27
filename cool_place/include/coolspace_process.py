@@ -253,6 +253,7 @@ def evaluation(coolspace: gpd.geodataframe,
             shade = cool_eval.evaluate_sfurniture(shade, col)
             shade = cool_eval.evaluate_heatrisk(shade, col)
             shade = cool_eval.eval_pet(shade, col)
+            shade = cool_eval.shade_recom(shade, col)
 
             cool_eval.eval_shades.append(shade)
 

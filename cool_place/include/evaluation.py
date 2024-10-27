@@ -192,7 +192,9 @@ class CoolEval:
             lambda row: int(row['Area'] / 10) if row['Area'] > 0 else 0,
             axis=1
         )
-        shade = gpd.sjoin(shade, self.cool_places[['geometry', 'resident']], how='left', predicate='intersects')
+        sc_column = 'sc' + layer_name[-1]
+        shade = gpd.sjoin(shade, self.cool_places[['geometry', 'resident',sc_column]].rename(columns={sc_column: 'shade_cov'}), how='left', predicate='intersects')
+
         shade['resident'] = shade['resident'].fillna(0)
         shade['cap_status'] = shade.apply(
             lambda row: int(row['cap_area'] - row['resident']) if pd.notnull(row['cap_area']) and pd.notnull(
@@ -315,6 +317,75 @@ class CoolEval:
         duration = end_time - start_time
         print(f"Eval pet took {duration:.2f} seconds")
         return shade
+    def shade_recom(self, shade: gpd.GeoDataFrame, layer_name: str) -> gpd.GeoDataFrame:
+        """
+        Calculate a final recommendation score for each cool place.
+
+        The function combines weighted scores from capacity, benches, heat risk, PET, and shade availability
+        to create a final recommendation ("Not recommended", "Recommended", "Highly Recommended") for each cool place.
+        """
+        w_capacity = 0.2
+        w_bench = 0.1
+        w_hr = 0.2
+        w_pet = 0.2
+        w_shade = 0.3
+
+        columns_to_fill = ['shade_cov', 'cap_status', 'benches_count', 'heat_rs', 'PET']
+
+
+        for col in columns_to_fill:
+            if col in shade.columns:
+                shade[col].fillna(0, inplace=True)
+
+        def classify_pet(pet):
+            if pet > 35:
+                return 0  # Lowest class
+            elif 30 < pet <= 35:
+                return 0.8
+            else:
+                return 1
+
+        def classify_shade(shade):
+            if shade == 1:
+                return 0.6
+            elif shade == 2:
+                return 0.8
+            elif shade == 3:
+                return 1
+            else:
+                return 0
+
+        def min_max_normalize(column):
+            if column.max() == column.min():
+                return np.zeros_like(column)
+            return (column - column.min()) / (column.max() - column.min())
+
+        shade['capst_n'] = min_max_normalize(shade['cap_status']).round(2)
+        shade['hrs_n'] = min_max_normalize(shade['heat_rs']).round(2)
+        shade['bc_n'] = min_max_normalize(shade['benches_count']).round(2)
+
+        shade['PET_c'] = shade['PET'].apply(classify_pet).round(2)
+        shade['shade_c'] = shade['shade_cov'].apply(classify_shade).round(2)
+
+        shade['score'] = ((shade['capst_n'] * w_capacity) +
+                         (shade['bc_n'] * w_bench) +
+                         (shade['hrs_n'] * w_hr) +
+                         (shade['PET_c'] * w_pet) +
+                         (shade['shade_c'] * w_shade)).round(2)
+
+        def classify(row):
+            if row['shade_c'] == 0 or row['PET_c'] == 0:
+                return 'Not recommended'
+            elif row['score'] <= 0.4:
+                return 'Not recommended'
+            elif 0.4 < row['score'] <= 0.6:
+                return 'Recommended'
+            else:
+                return 'Highly Recommended'
+
+        shade['recom'] = shade.apply(classify, axis=1)
+
+        return shade
 
     def aggregate_to_cool_places(self) -> None:
         """
@@ -337,7 +408,7 @@ class CoolEval:
             self.cool_places = self.cool_places.join(eval_shade_renamed[columns_to_add], how='left')
             print(f"Processed layer {i + 1} and added columns: {columns_to_add}")
 
-        columns_to_average = ['cap_area', 'cap_status', 'benches_count', 'heat_rs', 'PET']
+        columns_to_average = ['shade_cov','cap_area', 'cap_status', 'benches_count', 'heat_rs', 'PET']
 
         for feature in columns_to_average:
             feature_columns = [col for col in self.cool_places.columns if re.match(f'{feature}_\d+$', col)]
@@ -361,8 +432,10 @@ class CoolEval:
         w_hr = 0.2
         w_pet = 0.2
         w_shade = 0.3
+        w_sc = 0.15
 
-        columns_to_fill = ['cap_status_avg', 'benches_count_avg', 'heat_rs_avg', 'PET_avg', 'scDay']
+
+        columns_to_fill = ['cap_status_avg', 'benches_count_avg', 'heat_rs_avg', 'PET_avg', 'scDay', 'shade_cov_avg']
 
         for col in columns_to_fill:
             if col in self.cool_places.columns:
@@ -395,17 +468,24 @@ class CoolEval:
         self.cool_places['hrs_norm'] = min_max_normalize(self.cool_places['heat_rs_avg']).round(2)
         self.cool_places['bc_norm'] = min_max_normalize(self.cool_places['benches_count_avg']).round(2)
 
-        self.cool_places['PET_c'] = self.cool_places['PET_avg'].apply(classify_pet).round(2)
-        self.cool_places['scDay_c'] = self.cool_places['scDay'].apply(classify_shade).round(2)
+        self.cool_places['PET_cl'] = self.cool_places['PET_avg'].apply(classify_pet).round(2)
+        self.cool_places['scDay_cl'] = self.cool_places['scDay'].apply(classify_shade).round(2)
+        self.cool_places['sc_cl'] = self.cool_places['shade_cov_avg'].apply(classify_shade).round(2)
 
         self.cool_places['score'] = ((self.cool_places['capst_norm'] * w_capacity) +
                          (self.cool_places['bc_norm'] * w_bench) +
                          (self.cool_places['hrs_norm'] * w_hr) +
-                         (self.cool_places['PET_c'] * w_pet) +
-                         (self.cool_places['scDay_c'] * w_shade)).round(2)
+                         (self.cool_places['PET_cl'] * w_pet) +
+                         (self.cool_places['scDay_cl'] * w_sc)+
+                         (self.cool_places['sc_cl'] * w_sc)).round(2)
+        self.cool_places['score2'] = ((self.cool_places['capst_norm'] * w_capacity) +
+                                     (self.cool_places['bc_norm'] * w_bench) +
+                                     (self.cool_places['hrs_norm'] * w_hr) +
+                                     (self.cool_places['PET_cl'] * w_pet) +
+                                     (self.cool_places['scDay_cl'] * w_shade)).round(2)
 
         def classify(row):
-            if row['scDay_c'] == 0 or row['PET_c'] == 0:
+            if row['scDay_cl'] == 0 or row['PET_cl'] == 0:
                 return 'Not recommended'
             elif row['score'] <= 0.4:
                 return 'Not recommended'
@@ -414,7 +494,18 @@ class CoolEval:
             else:
                 return 'Highly Recommended'
 
-        self.cool_places['recom'] = self.cool_places.apply(classify, axis=1)
+        self.cool_places['final_recom'] = self.cool_places.apply(classify, axis=1)
+        def classify2(row):
+            if row['scDay_cl'] == 0 or row['PET_cl'] == 0:
+                return 'Not recommended'
+            elif row['score2'] <= 0.4:
+                return 'Not recommended'
+            elif 0.4 < row['score2'] <= 0.6:
+                return 'Recommended'
+            else:
+                return 'Highly Recommended'
+
+        self.cool_places['final_recom2'] = self.cool_places.apply(classify2, axis=1)
 
     def export_eval_gpkg(self, output_gpkg_path: str, layer_name: str) -> None:
         """
