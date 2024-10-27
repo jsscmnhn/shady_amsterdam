@@ -8,7 +8,8 @@ from shapely.geometry import shape, box
 from shapely.ops import unary_union
 import numpy as np
 from rich.progress import Progress
-from multiprocessing import Pool, Manager, cpu_count
+import multiprocessing
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 pd.set_option('future.no_silent_downcasting', True)
 
@@ -412,24 +413,25 @@ class CoolSpace:
         with Progress() as progress:
             raster_task = progress.add_task("Processing shade maps...", total=len(rasters))
 
-            # create pools
-            num_processes = max(1, cpu_count() - 2)  # reserve 2 CPUs if possible
-            with Pool(num_processes) as pool:
-                # submit tasks and collect results
-                results = [
-                    pool.apply_async(
-                        self.calculate_shade_for_raster,
-                        args=(raster_idx, raster, area_thres, shade_thres, ratio_thres)
-                    )
+            # reserve 2 CPUs if possible
+            num_processes = max(1, multiprocessing.cpu_count() - 2)
+            with ProcessPoolExecutor(max_workers=num_processes) as executor:
+                futures = {
+                    executor.submit(self.calculate_shade_for_raster, raster_idx, raster, area_thres, shade_thres,
+                                    ratio_thres): raster_idx
                     for raster_idx, raster in enumerate(rasters)
-                ]
+                }
 
-                # get result from every task and add them into self.data
-                for result in results:
-                    raster_idx, shade_averages, shade_areas, shade_geometries = result.get()
-                    self.data[f"sdAvg{raster_idx}"] = shade_averages
-                    self.data[f"sdArea{raster_idx}"] = shade_areas
-                    self.data[f"sdGeom{raster_idx}"] = shade_geometries
-                    progress.update(raster_task, advance=1)
+                for future in as_completed(futures):
+                    raster_idx = futures[future]
+                    try:
+                        raster_idx, shade_averages, shade_areas, shade_geometries = future.result()
+                        self.data[f"sdAvg{raster_idx}"] = shade_averages
+                        self.data[f"sdArea{raster_idx}"] = shade_areas
+                        self.data[f"sdGeom{raster_idx}"] = shade_geometries
+                    except Exception as e:
+                        print(f"Error processing raster {raster_idx}: {e}")
+                    finally:
+                        progress.advance(raster_task)
 
         self.intervals = len(rasters)

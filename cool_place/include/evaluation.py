@@ -13,7 +13,23 @@ import re
 from shapely.geometry import Point, shape
 import time
 from rich.progress import Progress
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
+import multiprocessing
+
+def process_chunk(shade_chunk, pet_raster_path, affine):
+    return zonal_stats(shade_chunk, pet_raster_path, stats=['mean'], affine=affine)
+
+def calculate_distances(buildings_within_data, cool_places_data):
+    results = {}
+    for building_idx, geometry_left, index_right in buildings_within_data:
+        cool_place_id = cool_places_data[index_right]
+        distance = geometry_left.distance(cool_place_id[1])
+
+        # 更新结果字典，保持最小距离
+        if building_idx not in results or distance < results[building_idx][0]:
+            results[building_idx] = (distance, cool_place_id[0])
+    return results
+
 
 class CoolEval:
     def __init__(self, cool_places: gpd.GeoDataFrame, buildings: gpd.GeoDataFrame, bench: gpd.GeoDataFrame,
@@ -84,8 +100,16 @@ class CoolEval:
 
             return self.buildings
 
-
     def calculate_walking_shed(self, batch_size=100):
+        """
+        Assign each building to the nearest cool place within a specified buffer distance.
+
+        The function computes the walking shed by creating a buffer around each cool place,
+        finding the buildings within that buffer, and assigning the nearest cool place ID to each building.
+
+        Returns:
+        GeoDataFrame: Updated buildings dataset with the assigned cool place ID.
+        """
         with Progress() as progress:
             task = progress.add_task("Calculate walking shed...", total=len(self.cool_places))
             start_time = time.time()
@@ -134,6 +158,72 @@ class CoolEval:
             print(f"Calculating walking shed took {duration:.2f} seconds")
 
             return self.buildings
+
+    def calculate_walking_shed_multi(self, batch_size=100):
+        """
+        This is the multi-processing version of "calculate_walking_shed" method.
+        """
+        with Progress() as progress:
+            task = progress.add_task("Calculate walking shed...", total=len(self.cool_places))
+            start_time = time.time()
+
+            if self.buildings.crs.is_geographic:
+                self.buildings = self.buildings.to_crs(epsg=28992)
+            if self.cool_places.crs.is_geographic:
+                self.cool_places = self.cool_places.to_crs(epsg=28992)
+
+            self.buildings['c_id'] = None
+            self.buildings['dist'] = float('inf')
+
+            # get necessary data for executor
+            cool_places_geom = self.cool_places[['id', 'geometry']].copy()
+            cool_places_data = {i: (row['id'], row['geometry']) for i, row in cool_places_geom.iterrows()}
+            num_batches = (len(cool_places_geom) // batch_size) + 1
+
+            cpu_count = max(1, multiprocessing.cpu_count() - 2)
+            min_distances = {}
+
+            with ProcessPoolExecutor(max_workers=cpu_count) as executor:
+                futures = []
+                for i in range(num_batches):
+                    cool_places_batch = cool_places_geom.iloc[i * batch_size:(i + 1) * batch_size].copy()
+                    cool_places_batch['buffered'] = cool_places_batch.geometry.buffer(self.search_buffer)
+
+                    buildings_within = gpd.sjoin(
+                        self.buildings[['geometry']].copy(),
+                        cool_places_batch.set_geometry('buffered'),
+                        predicate='intersects',
+                        how='inner'
+                    )
+                    # get necessary data for executor
+                    buildings_within_data = [(row.name, row['geometry_left'], row['index_right']) for _, row in
+                                             buildings_within.iterrows()]
+
+                    futures.append(
+                        executor.submit(calculate_distances, buildings_within_data, cool_places_data)
+                    )
+                    progress.advance(task, advance=batch_size)
+
+                for future in as_completed(futures):
+                    result = future.result()
+                    min_distances.update(result)
+
+            self.buildings['c_id'] = self.buildings.index.map(
+                lambda idx: min_distances[idx][1] if idx in min_distances else None
+            )
+            self.buildings['dist'] = self.buildings.index.map(
+                lambda idx: min_distances[idx][0] if idx in min_distances else float('inf')
+            )
+
+            missing_cool_place = self.buildings['c_id'].isna().sum()
+            if missing_cool_place > 0:
+                print(f"Warning: {missing_cool_place} buildings were not assigned to any cool place.")
+
+            end_time = time.time()
+            duration = end_time - start_time
+            print(f"Calculating walking shed took {duration:.2f} seconds")
+
+        return self.buildings
 
     def evaluate_resident(self) -> gpd.GeoDataFrame:
         """
@@ -275,7 +365,7 @@ class CoolEval:
         print(f"Evaluate heatrisk took {duration:.2f} seconds")
         return shade
 
-    def eval_pet(self, shade: gpd.GeoDataFrame, layer_name: str) -> gpd.GeoDataFrame:
+    def eval_pet(self, shade: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         """
         Evaluate the Physiological Equivalent Temperature (PET) for each shaded area.
 
@@ -317,6 +407,35 @@ class CoolEval:
         print(f"Eval pet took {duration:.2f} seconds")
         return shade
 
+    def eval_pet_multi(self, shade: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+        """
+        This is the multi-processing version of "eval_pet" method.
+        """
+        start_time = time.time()
+
+        with rasterio.open(self.pet) as src:
+            affine = src.transform
+
+            num_chunks = max(1, multiprocessing.cpu_count() - 2)  # 保留两个 CPU
+            chunks = np.array_split(shade, num_chunks)
+
+            with ProcessPoolExecutor(max_workers=num_chunks) as executor:
+                futures = [executor.submit(process_chunk, chunk, self.pet, affine) for chunk in chunks]
+
+                results = [future.result() for future in futures]
+
+        stats = [stat for chunk_stats in results for stat in chunk_stats]
+
+        avg_pet = [stat['mean'] for stat in stats]
+        shade['PET'] = avg_pet
+        shade['PET'] = shade['PET'].round()
+        shade['PET Recom'] = shade['PET'].apply(lambda x: "not recommended" if x > 35 else "recommended")
+
+        end_time = time.time()
+        duration = end_time - start_time
+        print(f"Eval pet took {duration:.2f} seconds")
+
+        return shade
 
     def aggregate_to_cool_places(self) -> None:
         """

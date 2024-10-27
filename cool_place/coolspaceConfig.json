@@ -8,16 +8,16 @@
     "building_population_file": "ams_bpop_2020",
     "street_furniture_file": "ams_bench_osm",
     "heatrisk_file": "ams_heatrisk_2023",
-    "output_identification_file": "coolspace_identification_multiprocessing",
-    "output_evaluation_file": "final_cool_space",
+    "output_identification_file": "coolspace_identification_20230621",
+    "output_evaluation_file": "final_cool_space_20230621",
     "pet_file": "G:\\TUD\\Synthesis\\cool_place\\ams_PET_average.tiff",
-    "shademaps_path": "G:\\TUD\\Synthesis\\cool_place\\shademaps\\"
+    "shademaps_path": "G:\\TUD\\Synthesis\\cool_place\\shademaps_20230621\\"
   },
   "parameters": {
     "hasIdentificationOutput": false,
-    "outputShadeGeometries": false,
-    "performEvaluation": false,
-    "useMutiProcessing": true,
+    "outputShadeGeometries": true,
+    "performEvaluation": true,
+    "useMultiProcessing": true,
     "road_buffer_attribute": "buffer",
     "building_buffer": 4,
     "shade_calculation_mode": "single-day",

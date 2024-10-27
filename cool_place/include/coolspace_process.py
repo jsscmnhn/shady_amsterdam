@@ -75,7 +75,7 @@ def identification(coolspace_file: gpd.geodataframe,
                    afternoon_range: list = None,
                    late_afternoon_range: list = None,
                    output_coolspace_type: str = 'land-use',
-                   useMutiProcessing: bool = False) -> gpd.geodataframe:
+                   useMultiProcessing: bool = False) -> gpd.geodataframe:
 
     coolSpace = CoolSpace(coolspace_file)
     road = Road(road_file)
@@ -91,7 +91,7 @@ def identification(coolspace_file: gpd.geodataframe,
     with Progress() as progress:
         task = progress.add_task("Loading shade maps...", total=daytime[1] + 1)
         for shadow_file in shadow_files:
-            if not useMutiProcessing:
+            if not useMultiProcessing:
                 shadow_map = rasterio.open(shadow_file, crs=coolSpace.data.crs)
                 shadows.append(shadow_map)
             else:
@@ -120,7 +120,7 @@ def identification(coolspace_file: gpd.geodataframe,
     coolSpace.clip(building.data, use_clip=True, filter_thin=True)
 
     # Perform shade calculation for ALL shade maps
-    if not useMutiProcessing:
+    if not useMultiProcessing:
         coolSpace.calculate_shade(shadows, use_clip=True)
     else:
         coolSpace.calculate_shade_multi(shadows, use_clip=True)
@@ -205,6 +205,7 @@ def evaluation(coolspace: gpd.geodataframe,
                morning_range: list = None,
                afternoon_range: list = None,
                late_afternoon_range: list = None,
+               useMultiProcessing: bool = False
                ) -> gpd.geodataframe:
 
     start_time = single_day_time_range[0]
@@ -228,7 +229,10 @@ def evaluation(coolspace: gpd.geodataframe,
                          heatrisk=heatrisk_file,
                          pet=pet_file,
                          search_buffer=search_buffer)
-    cool_eval.calculate_walking_shed()
+    if not useMultiProcessing:
+        cool_eval.calculate_walking_shed()
+    else:
+        cool_eval.calculate_walking_shed_multi()
     cool_eval.evaluate_resident()
 
     for col in wkt_columns:
@@ -252,7 +256,10 @@ def evaluation(coolspace: gpd.geodataframe,
             shade = cool_eval.evaluate_capacity(shade, col)
             shade = cool_eval.evaluate_sfurniture(shade, col)
             shade = cool_eval.evaluate_heatrisk(shade, col)
-            shade = cool_eval.eval_pet(shade, col)
+            if not useMultiProcessing:
+                shade = cool_eval.eval_pet(shade)
+            else:
+                shade = cool_eval.eval_pet_multi(shade)
             
             cool_eval.eval_shades.append(shade)
 
