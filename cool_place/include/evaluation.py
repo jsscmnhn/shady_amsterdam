@@ -137,7 +137,7 @@ class CoolEval:
                 for _, row in buildings_within.iterrows():
                     building_idx = row.name
                     cool_place_idx = row['index_right']
-                    distance = row['geometry_left'].distance(row['geometry_right'])
+                    distance = row['geometry'].distance(row['geometry_right'])
 
                     if building_idx not in min_distances or distance < min_distances[building_idx][0]:
                         min_distances[building_idx] = (distance, self.cool_places.loc[cool_place_idx].id)
@@ -196,7 +196,7 @@ class CoolEval:
                         how='inner'
                     )
                     # get necessary data for executor
-                    buildings_within_data = [(row.name, row['geometry_left'], row['index_right']) for _, row in
+                    buildings_within_data = [(row.name, row['geometry'], row['index_right']) for _, row in
                                              buildings_within.iterrows()]
 
                     futures.append(
