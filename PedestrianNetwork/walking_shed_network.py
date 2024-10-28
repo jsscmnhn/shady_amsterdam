@@ -285,14 +285,12 @@ def walking_shed_calculation(place=None, graph_file_path=None, polygon_path=None
 
     # Plot the walking shed with colored buildings
     plot_colored_walking_shed(buildings)
-   
 
 
 if __name__ == "__main__":
     walking_shed_calculation(
         place="Amsterdam, Netherlands",
         polygon_path="C:/Androniki/pythonProject1/ams_public_space.shp",
-        building_shapefile_path="C:/Androniki/pythonProject1/merged_buildings.shp"
+        building_shapefile_path="C:/Androniki/pythonProject1/merged_buildings.shp")
         # polygon_path="C:/pedestrian_demo_data/public_spaces/ams_public_space.shp",
         # building_shapefile_path="C:/pedestrian_demo_data/ams_buildings/ams_buildings.shp"
-    )
