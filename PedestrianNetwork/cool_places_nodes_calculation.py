@@ -79,3 +79,4 @@ G = ox.load_graphml(graph_file_path)
 graph = ox.project_graph(G, to_crs='EPSG:28992')
 cool_place_polygons = load_cool_place_polygons(polygon_path)
 calculate_and_save_cool_place_nodes(graph, cool_place_polygons, pre_calculated_nodes_path)
+
