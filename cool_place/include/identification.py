@@ -219,7 +219,7 @@ class CoolSpace:
         output = output.set_geometry(shade_geom_col, crs=self.data.crs)
         return output
 
-    def get_cool_spaces(self, start: int = None, end: int = None, geom_type: str = 'geometry') -> gpd.geodataframe:
+    def get_cool_spaces(self, start: int = None, end: int = None, geom_type: str = 'clipped') -> gpd.geodataframe:
         """
         get cool spaces geometries (the geometries that have shade geometries from the rasters within the search range).
 
@@ -269,7 +269,7 @@ class CoolSpace:
         self.data.drop(columns=["count"], inplace=True)
         return output
 
-    def evaluate_shade_coverage(self, attri_name: str = "Query", start: int = None, end: int = None, geom_type: str = 'geometry') -> None:
+    def evaluate_shade_coverage(self, attri_name: str = "Query", start: int = None, end: int = None, geom_type: str = 'clipped') -> None:
         """
         calculate the shade coverage based on the average shade value of all rasters.
 
@@ -295,10 +295,11 @@ class CoolSpace:
             search_range = range(start, end + 1)
         else:
             search_range = range(raster_nums)
+            end = raster_nums - 1
 
         self.data["tol_shade_score"] = 0
         self.data["tol_shade_area_percent"] = 0
-        self.data["geom_area"] = self.data[geom_type].apply(lambda geom: geom.area if geom is not None else 0)
+        self.data["geom_area"] = self.data[geom_type].apply(lambda geom: geom.area if geom is not None else 0.0001)
 
         with Progress() as progress:
             task = progress.add_task(f"Calculating shade coverage of "
@@ -306,15 +307,17 @@ class CoolSpace:
 
             for i in search_range:
                 shade_avg_col = f"sdAvg{i}"
-                shade_area_col = f"sdArea{i}"
+                shade_geom_col = f"sdGeom{i}"
                 # if the shade average value is below 0.5, it means the polygon has valid shaded area --> +0
                 # otherwise, it means the polygon doesn't have any valid shaded area --> +1
                 self.data["tol_shade_score"] += self.data[shade_avg_col].fillna(1).apply(lambda x: 0 if x < 0.5 else 1)
-                self.data["tol_shade_area_percent"] += self.data[shade_area_col].apply(lambda areas: sum(areas) if areas is not None else 0) / self.data["geom_area"]
+                self.data["tol_shade_area_percent"] += self.data[shade_geom_col].apply(lambda geom: geom.area if
+                                                                                       geom is not None else 0)
                 progress.advance(task)
 
-        self.data["tol_shade_score"] /= raster_nums
-        self.data["tol_shade_area_percent"] /= raster_nums
+        self.data["tol_shade_score"] /= end + 1
+        self.data["tol_shade_area_percent"] /= self.data["geom_area"]
+        self.data["tol_shade_area_percent"] /= end + 1
 
         def classify_shade_coverage_time(avg) -> int:
             if 0 <= avg <= 0.1:
