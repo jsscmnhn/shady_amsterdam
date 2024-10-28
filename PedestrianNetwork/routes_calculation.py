@@ -6,6 +6,9 @@ import time
 from geopy.geocoders import Nominatim  # For location name geocoding
 from pyproj import Transformer  # For coordinate transformation
 import pickle
+from datetime import datetime, timedelta
+import os
+
 
 def load_graph_from_file(graph_file_path):
     # Load the graph from a GraphML file
@@ -286,18 +289,76 @@ def demo_shade_route_calculation(graph_file_path, pre_calculated_nodes_path, use
         print("Could not find any route.")
 
 
-# Example Usage
-graph_file_path = 'C:/pedestrian_demo_data/ams_graph_with_shade_900_cropped.graphml'
-polygon_path = 'C:/pedestrian_demo_data/public_spaces/ams_public_space.shp'
-pre_calculated_nodes_path = 'C:/pedestrian_demo_data/cool_place_nodes.pkl'
+def find_nearest_timestamp_files(date_time, graph_dir, nodes_dir):
+    # Parse available files in the directories
+    graph_files = [f for f in os.listdir(graph_dir) if f.startswith("ams_graph_with_shade")]
+    nodes_files = [f for f in os.listdir(nodes_dir) if f.startswith("cool_places_nodes")]
+
+    # Extract dates and times, ensuring they are zero-padded and parsed as datetime objects
+    graph_timestamps = []
+    for f in graph_files:
+        parts = f.split('_')
+        date_str = parts[4]
+        time_str = parts[5].split('.')[0].zfill(4)  # Zero-pad time to ensure HHMM format
+        timestamp = datetime.strptime(date_str + time_str, "%Y%m%d%H%M")
+        graph_timestamps.append((timestamp, f))  # Store both the datetime and filename
+
+    # Find closest date to user input
+    closest_date = min(graph_timestamps, key=lambda x: abs(x[0].date() - date_time.date()))[0].date()
+
+    # Filter files to keep only those with the closest date
+    closest_date_files = [t for t in graph_timestamps if t[0].date() == closest_date]
+
+    # From files with closest date, find the closest time
+    nearest_timestamp, nearest_graph_file = min(closest_date_files, key=lambda x: abs(x[0] - date_time))
+    print(f"Nearest Timestamp: {nearest_timestamp} for Graph File: {nearest_graph_file}")
+
+    # Generate the expected nodes filename for the nearest timestamp
+    nearest_date = nearest_timestamp.strftime("%Y%m%d")
+    nearest_time = nearest_timestamp.strftime("%H%M")
+    nodes_file = f"cool_places_nodes_{nearest_date}_{nearest_time}.pkl"
+
+    # Verify if the nodes file exists
+    if nodes_file in nodes_files:
+        print(f"Selected Graph File: {nearest_graph_file}")
+        print(f"Selected Cool Places Nodes File: {nodes_file}")
+        return os.path.join(graph_dir, nearest_graph_file), os.path.join(nodes_dir, nodes_file)
+    else:
+        print("Error: No matching nodes file for the nearest timestamp found.")
+        return None, None
+
+
+def demo_shade_route_calculation_with_time(graph_dir, nodes_dir, user_input, input_type, mode="nearest_cool_place",
+                                           date_time=None):
+    # Determine the datetime if not provided
+    if date_time is None:
+        date_time = datetime.now()
+
+    # Find the nearest files based on date and time
+    graph_file_path, pre_calculated_nodes_path = find_nearest_timestamp_files(date_time, graph_dir, nodes_dir)
+
+    # Proceed with the original function using the selected files
+    demo_shade_route_calculation(graph_file_path, pre_calculated_nodes_path, user_input, input_type, mode)
+
+
+# # Example Usage
+# graph_file_path = 'C:/pedestrian_demo_data/ams_graph_with_shade_900_cropped.graphml'
+# polygon_path = 'C:/pedestrian_demo_data/public_spaces/ams_public_space.shp'
+# pre_calculated_nodes_path = 'C:/pedestrian_demo_data/cool_place_nodes.pkl'
+
+graph_dir = 'C:/pedestrian_demo_data/graphs_with_shade/'
+nodes_dir = 'C:/pedestrian_demo_data/cool_place_nodes/'
+
+demo_shade_route_calculation_with_time(graph_dir, nodes_dir, user_input=("Amsterdam Central Station", "Dam Square"),
+                                       input_type="location_name", mode="origin_destination")
 
 # # Option 1: Routes to nearest cool place with coordinates input
 # demo_shade_route_calculation(graph_file_path, polygon_path, user_input=(52.373169, 4.890660), input_type="coordinates",
 #                              mode="nearest_cool_place")
 
-# Option 2: Routes between two locations with location name input
-demo_shade_route_calculation(graph_file_path, pre_calculated_nodes_path, user_input=("Amsterdam Central Station", "Dam Square"),
-                             input_type="location_name", mode="origin_destination")
+# # Option 2: Routes between two locations with location name input
+# demo_shade_route_calculation(graph_file_path, pre_calculated_nodes_path, user_input=("Amsterdam Central Station", "Dam Square"),
+#                              input_type="location_name", mode="origin_destination")
 
 # # Option 3: Routes to nearest cool place with location name input
 # demo_shade_route_calculation(graph_file_path, polygon_path, user_input=("Amsterdam Central Station"),
