@@ -2,15 +2,9 @@ import geopandas as gpd
 import networkx as nx
 import osmnx as ox
 from shapely.geometry import Point
-import matplotlib.pyplot as plt
-from matplotlib.patches import Patch
 import time
-from scipy.spatial import KDTree
-import numpy as np
-from multiprocessing import Pool, cpu_count
-from osmnx.distance import nearest_nodes
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from multiprocessing import Manager
+
 
 
 def load_building_polygons(building_shapefile_path):
@@ -55,16 +49,13 @@ def find_cool_place_nodes(graph, cool_place_polygons):
         cool_place_polygons = cool_place_polygons.to_crs(nodes.crs)
 
     # Use spatial indexing to find nodes within polygons
-    # First, create the spatial index for polygons
     spatial_index = cool_place_polygons.sindex
 
-    # Define a lambda function to check if a point is within any cool place polygon
     def is_within_polygon(node_geometry):
         possible_matches_index = list(spatial_index.intersection(node_geometry.bounds))
         possible_matches = cool_place_polygons.iloc[possible_matches_index]
         return possible_matches.contains(node_geometry).any()
 
-    # Apply the function to each node geometry in a vectorized way
     cool_place_nodes = nodes[nodes['geometry'].apply(is_within_polygon)].index
 
     end_time = time.time()
@@ -74,26 +65,22 @@ def find_cool_place_nodes(graph, cool_place_polygons):
     return cool_place_nodes.tolist()
 
 
-def get_nearest_node(graph, point):
-    # Find the nearest graph node to a given point
-    return ox.distance.nearest_nodes(graph, X=point.x, Y=point.y)
-
-
 def find_nodes_within_distances(graph, cool_place_nodes, distances=[200, 300, 400, 500]):
     start_time = time.time()
     print("Starting to find nodes within specified distance thresholds...")
 
-    # Dictionary to store nodes within each distance threshold
-    distance_nodes = {distance: set() for distance in distances}
+    # Dictionary to store nodes within each distance threshold for each cool place
+    distance_nodes = {cool_place_node: {distance: set() for distance in distances} for cool_place_node in
+                      cool_place_nodes}
 
     # For each cool place node, perform Dijkstra to find nodes within the distance thresholds
     for i, cool_place_node in enumerate(cool_place_nodes):
         if i % 10 == 0:  # Print every 10 cool place nodes to track progress
-            print(f"Processing cool place node {i+1}/{len(cool_place_nodes)}")
+            print(f"Processing cool place node {i + 1}/{len(cool_place_nodes)}")
 
         for distance in distances:
             lengths = nx.single_source_dijkstra_path_length(graph, cool_place_node, cutoff=distance, weight='length')
-            distance_nodes[distance].update(lengths.keys())
+            distance_nodes[cool_place_node][distance].update(lengths.keys())
             print(f"  Found {len(lengths)} nodes within {distance} meters of cool place node {cool_place_node}")
 
     end_time = time.time()
@@ -103,120 +90,40 @@ def find_nodes_within_distances(graph, cool_place_nodes, distances=[200, 300, 40
     return distance_nodes
 
 
-def assign_buildings_to_distance_category(buildings, graph, distance_nodes):
-    start_time = time.time()
-    print("Starting to assign distance categories to buildings based on proximity...")
-
-    # Initialize distance category for each building
-    buildings['distance_category'] = None
-
-    # Assign each building to a distance category based on its nearest graph node
-    for idx, building in buildings.iterrows():
-        if idx % 10 == 0:  # Print every 10 buildings to track progress
-            print(f"Assigning distance category for building {idx+1}/{len(buildings)}")
-
-        building_centroid = building.geometry.centroid
-        nearest_building_node = get_nearest_node(graph, building_centroid)
-
-        # Assign the building to the closest distance category where its node falls
-        assigned_category = None
-        for distance in sorted(distance_nodes.keys()):
-            if nearest_building_node in distance_nodes[distance]:
-                buildings.at[idx, 'distance_category'] = distance
-                assigned_category = distance
-                break
-
-        print(f"  Building {idx+1} assigned to distance category: {assigned_category or '> 500m'}")
-
-    end_time = time.time()
-    duration = end_time - start_time
-    print(f"Assigning buildings to distance category took {duration:.2f} seconds")
-
-    return buildings
-
-
 def assign_buildings_to_distance_category_with_precomputed(buildings, graph, distance_nodes):
     start_time = time.time()
     print("Starting to assign distance categories to buildings...")
 
-    # Find nearest nodes for all building centroids
+    # Calculate nearest nodes only once
     building_centroids = buildings.geometry.centroid
     nearest_nodes = ox.distance.nearest_nodes(graph, X=building_centroids.x, Y=building_centroids.y)
     buildings['nearest_node'] = nearest_nodes
 
-    # Assign distance category based on precomputed distance nodes
-    def get_distance_category(node_id):
-        for distance in sorted(distance_nodes.keys()):
-            if node_id in distance_nodes[distance]:
-                return distance
-        return '>500m'  # If the node isn't within the maximum distance, assign ">500m"
+    # Define the modified distance category assignment function
+    def get_distance_category(building_index, node_id):
+        centroid_node = nearest_nodes[building_index]  # Use precomputed nearest node
 
-    buildings['distance_category'] = buildings['nearest_node'].apply(get_distance_category)
+        for cool_place_node, distances_dict in distance_nodes.items():
+            for distance in sorted(distances_dict.keys()):
+                if node_id in distances_dict[distance]:
+                    try:
+                        path_length = nx.shortest_path_length(graph, source=centroid_node, target=cool_place_node,
+                                                              weight='length')
+                        if path_length <= distance:
+                            return distance
+                    except nx.NetworkXNoPath:
+                        continue
+        return '>500m'
+
+    # Use ThreadPoolExecutor to parallelize building assignment
+    with ThreadPoolExecutor() as executor:
+        futures = [executor.submit(get_distance_category, idx, node_id) for idx, node_id in
+                   enumerate(buildings['nearest_node'])]
+        buildings['distance_category'] = [future.result() for future in as_completed(futures)]
 
     end_time = time.time()
     duration = end_time - start_time
     print(f"Assigning buildings to distance category took {duration:.2f} seconds")
-
-    return buildings
-
-
-def assign_building_distance_category(building, graph, distance_nodes):
-    # Calculate the nearest node for the building and assign the distance category
-    building_centroid = building.geometry.centroid
-    nearest_building_node = get_nearest_node(graph, building_centroid)
-
-    # Assign the building to the closest distance category where its node falls
-    assigned_category = '> 500m'
-    for distance in sorted(distance_nodes.keys()):
-        if nearest_building_node in distance_nodes[distance]:
-            assigned_category = distance
-            break
-
-    building['distance_category'] = assigned_category
-
-    # Print the result for this building for monitoring purposes
-    print(f"Processed building with ID {building.name}: Assigned distance category {assigned_category}")
-    return building
-
-def parallel_assign_buildings_to_distance_category(buildings, graph, distance_nodes):
-    start_time = time.time()
-    print("Starting parallel assignment of distance categories to buildings with ThreadPoolExecutor...")
-
-    # List to store the processed buildings
-    processed_buildings = []
-
-    # Use ThreadPoolExecutor for parallel processing
-    with ThreadPoolExecutor() as executor:
-        # Submit tasks to the executor for each building
-        futures = [executor.submit(assign_building_distance_category, building, graph, distance_nodes) for _, building in buildings.iterrows()]
-
-        # Track the progress as each future completes
-        for i, future in enumerate(as_completed(futures), 1):
-            processed_buildings.append(future.result())
-
-            # Print progress for every 10 buildings processed
-            if i % 10 == 0:
-                print(f"Processed {i}/{len(buildings)} buildings...")
-
-    # Combine processed buildings back into a single GeoDataFrame
-    buildings = gpd.GeoDataFrame(processed_buildings)
-
-    end_time = time.time()
-    duration = end_time - start_time
-    print(f"ThreadPoolExecutor assignment of buildings to distance category took {duration:.2f} seconds")
-    print("All buildings have been assigned distance categories.")
-
-    return buildings
-
-
-def calculate_walking_shed_with_distance_categories(buildings, cool_place_nodes, graph, distances=[200, 300, 400, 500]):
-    # Find nodes within each distance threshold for cool place nodes
-    distance_nodes = find_nodes_within_distances(graph, cool_place_nodes, distances)
-
-    # Assign distance category to buildings based on proximity to cool place nodes
-    # buildings = assign_buildings_to_distance_category(buildings, graph, distance_nodes)
-    # buildings  = parallel_assign_buildings_to_distance_category(buildings, graph, distance_nodes)
-    buildings = assign_buildings_to_distance_category_with_precomputed(buildings, graph, distance_nodes)
 
     return buildings
 
@@ -232,26 +139,6 @@ def assign_building_colors(buildings):
     buildings['color'] = buildings['color'].fillna('red')
 
     return buildings
-
-
-def plot_colored_walking_shed(buildings):
-    fig, ax = plt.subplots(figsize=(10, 10))
-
-    buildings_polygons = buildings[buildings.geometry.type == 'Polygon']
-    buildings_polygons.plot(ax=ax, facecolor=buildings_polygons['color'], edgecolor='none', alpha=0.7)
-
-    legend_elements = [
-        Patch(facecolor='green', edgecolor='none', label='< 200m'),
-        Patch(facecolor='blue', edgecolor='none', label='200m - 300m'),
-        Patch(facecolor='yellow', edgecolor='none', label='300m - 400m'),
-        Patch(facecolor='orange', edgecolor='none', label='400m - 500m'),
-        Patch(facecolor='red', edgecolor='none', label='> 500m')
-    ]
-
-    ax.legend(handles=legend_elements, loc='upper right', title='Distance to Cool Place')
-
-    plt.title("Walking Shed with Distance-based Building Colors")
-    plt.show()
 
 
 def walking_shed_calculation(place=None, graph_file_path=None, polygon_path=None, building_shapefile_path=None):
@@ -275,13 +162,15 @@ def walking_shed_calculation(place=None, graph_file_path=None, polygon_path=None
     buildings = load_building_polygons(building_shapefile_path)
 
     print("Calculating walking shed with distance categories...")
-    # Calculate walking shed using network distances
-    buildings = calculate_walking_shed_with_distance_categories(buildings, cool_place_nodes, graph)
+    # Calculate nodes within distance categories for each cool place
+    distance_nodes = find_nodes_within_distances(graph, cool_place_nodes)
+
+    # Assign distance category to buildings based on proximity to cool place nodes
+    buildings = assign_buildings_to_distance_category_with_precomputed(buildings, graph, distance_nodes)
 
     print("Assigning colors to the buildings...")
     # Assign colors to the buildings based on their proximity to cool places
     buildings = assign_building_colors(buildings)
-
 
     # Plot the walking shed with colored buildings
     plot_colored_walking_shed(buildings)
@@ -290,6 +179,8 @@ def walking_shed_calculation(place=None, graph_file_path=None, polygon_path=None
 if __name__ == "__main__":
     walking_shed_calculation(
         place="Amsterdam, Netherlands",
-        polygon_path="C:/pedestrian_demo_data/public_spaces/ams_public_space.shp",
-        building_shapefile_path="C:/pedestrian_demo_data/ams_buildings/ams_buildings.shp"
+        polygon_path="C:/Androniki/pythonProject1/ams_public_space.shp",
+        building_shapefile_path="C:/Androniki/pythonProject1/merged_buildings.shp"
+        # polygon_path="C:/pedestrian_demo_data/public_spaces/ams_public_space.shp",
+        # building_shapefile_path="C:/pedestrian_demo_data/ams_buildings/ams_buildings.shp"
     )
