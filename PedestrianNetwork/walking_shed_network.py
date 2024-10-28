@@ -4,7 +4,8 @@ import osmnx as ox
 from shapely.geometry import Point
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-
+import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
 
 
 def load_building_polygons(building_shapefile_path):
@@ -141,6 +142,32 @@ def assign_building_colors(buildings):
     return buildings
 
 
+def plot_colored_walking_shed(buildings):
+    fig, ax = plt.subplots(figsize=(10, 10))
+
+    # Filter only polygons for buildings, in case there are other geometry types
+    buildings_polygons = buildings[buildings.geometry.type == 'Polygon']
+
+    # Plot each building polygon, with colors based on the 'color' column
+    buildings_polygons.plot(ax=ax, facecolor=buildings_polygons['color'], edgecolor='none', alpha=0.7)
+
+    # Define legend elements for each distance category color
+    legend_elements = [
+        Patch(facecolor='green', edgecolor='none', label='< 200m'),
+        Patch(facecolor='blue', edgecolor='none', label='200m - 300m'),
+        Patch(facecolor='yellow', edgecolor='none', label='300m - 400m'),
+        Patch(facecolor='orange', edgecolor='none', label='400m - 500m'),
+        Patch(facecolor='red', edgecolor='none', label='> 500m')
+    ]
+
+    # Add the legend to the plot
+    ax.legend(handles=legend_elements, loc='upper right', title='Distance to Cool Place')
+
+    # Set plot title and show the plot
+    plt.title("Walking Shed with Distance-based Building Colors")
+    plt.show()
+
+
 def walking_shed_calculation(place=None, graph_file_path=None, polygon_path=None, building_shapefile_path=None):
     if graph_file_path:
         graph = load_graph_from_file(graph_file_path)
@@ -174,6 +201,9 @@ def walking_shed_calculation(place=None, graph_file_path=None, polygon_path=None
 
     # Plot the walking shed with colored buildings
     plot_colored_walking_shed(buildings)
+
+
+    
 
 
 if __name__ == "__main__":
