@@ -39,8 +39,6 @@ def load_cool_place_polygons(polygon_path):
 
     return polygons
 
-    return polygons
-
 
 def calculate_and_save_cool_place_nodes(graph, cool_place_polygons, output_path):
     # Get nodes as GeoDataFrame
