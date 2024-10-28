@@ -16,7 +16,7 @@
   },
   "parameters": {
     "hasIdentificationOutput": false,
-    "outputShadeGeometries": true,
+    "outputShadeGeometries": false,
     "performEvaluation": true,
     "useMultiProcessing": true,
     "road_buffer_attribute": "buffer",
