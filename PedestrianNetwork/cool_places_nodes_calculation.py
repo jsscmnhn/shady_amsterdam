@@ -95,11 +95,6 @@ def export_layers_to_shapefiles(geopackage_path, output_directory, date_str):
 
 
 def process_all_shapefiles(polygon_directory, graph_directory, output_directory):
-    # Ensure the output directory exists
-    if not os.path.exists(output_directory):
-        os.makedirs(output_directory)
-        print(f"Created output directory: {output_directory}")
-
     # Loop through each shapefile in the directory with the specified pattern
     for filename in os.listdir(polygon_directory):
         # Check if the filename matches the required pattern
