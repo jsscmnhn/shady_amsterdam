@@ -66,7 +66,7 @@
        * [get_cool_spaces](#heading--2-2-3-2)
      * [2.2.4. Evaluation Functions](#heading--2-2-4)
        * [evaluate_shade_coverage](#heading--2-2-4-1)
-  * [2.3. CoolEval Class](#heading--2-3)
+  * [2.3. Cool Space Class for Evaluation](#heading--2-3)
      * [2.3.1. Initialization Functions](#heading--2-3-1)
        * [__init__](#heading--2-3-1-1)
      * [2.3.2. Walking Shed Functions](#heading--2-3-2)
