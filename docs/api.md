@@ -13,6 +13,8 @@ Compute the center xy coordinates of a grid.
 - *numpy.ndarray*: `grid_center_x` - A grid where each cell contains the center x-coordinate.
 - *numpy.ndarray*: `grid_center_y` - A grid where each cell contains the center y-coordinate.
 
-**EXAMPLE**  
-```python
->>> grid_center_x, grid_center_y = raster_center_coords(0, 100, 0, 100, 10)
+[//]: # (**EXAMPLE**  )
+
+[//]: # (```python)
+
+[//]: # (>>> grid_center_x, grid_center_y = raster_center_coords&#40;0, 100, 0, 100, 10&#41;)

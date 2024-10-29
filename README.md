@@ -1,18 +1,22 @@
 # Shady Amsterdam
 Synthesis 1011 repository
 
-https://shady-amsterdam.readthedocs.io/en/latest/
-
 Three steps: calculating and creating the shade maps, identifying and scoring the cool spaces and routing. 
 
 ## Shade Map 
-For more information, look at the wiki page:  [Shade Map Calculation](../../wiki/Shade-Map-Calculation)
+For more information, look at the page:  [Shade Map Calculation](docs/Shade-Map-Calculation.md)
 
-## Cool Space
-For more information, look at the wiki page:  [Cool Space Process](../../wiki/Cool-Spaces-Identification-and-Scoring)
+## Cool Spaces
+For more information, look at the page:  [Cool Space Process](docs/Cool-Spaces.md)
+
+## Network
+For more information, look at the page:  [Network Process](docs/Network.md)
 
 # Running the code
 ## Configuration file 
-[Setting up the Configuration File](../../wiki/Setting-up-the-Configuration-File)
+[Setting up the Configuration File](docs/Configuration-setup.md)
 ## Requirements
 The file containing the required packages for this repository can be found at: 
+
+## API
+for more information about the
