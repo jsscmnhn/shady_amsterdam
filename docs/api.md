@@ -44,8 +44,58 @@
 	
 **[2. Cool Spaces Functions](#heading--2)**
 
-  * [2.1. TODO](#heading--2-1)
-
+  * [2.1. Process functions](#heading--2-1)
+     * [read_config](#heading--2-1-1)
+     * [convert_to_datetime](#heading--2-1-2)
+     * [compute_search_range](#heading--2-1-3)
+     * [identification](#heading--2-1-4)
+     * [evaluation](#heading--2-1-5)
+     * [list_to_string](#heading--2-1-6)
+     * [drop_or_wkt](#heading--2-1-7)
+     * [output_all_shade_geoms](#heading--2-1-8)
+  * [2.2. Cool Space Class for Identification](#heading--2-2)
+     * [2.2.1. Initialization and Geometry Functions](#heading--2-2-1)
+       * [__init__](#heading--2-2-1-1)
+       * [clip](#heading--2-2-1-2)
+     * [2.2.2. Shade Calculation Functions](#heading--2-2-2)
+       * [calculate_shade](#heading--2-2-2-1)
+       * [calculate_shade_for_raster](#heading--2-2-2-2)
+       * [calculate_shade_multi](#heading--2-2-2-3)
+     * [2.2.3. Shade Geometry Retrieval Functions](#heading--2-2-3)
+       * [get_shade_geometries](#heading--2-2-3-1)
+       * [get_cool_spaces](#heading--2-2-3-2)
+     * [2.2.4. Evaluation Functions](#heading--2-2-4)
+       * [evaluate_shade_coverage](#heading--2-2-4-1)
+  * [2.3. CoolEval Class](#heading--2-3)
+     * [2.3.1. Initialization Functions](#heading--2-3-1)
+       * [__init__](#heading--2-3-1-1)
+     * [2.3.2. Walking Shed Functions](#heading--2-3-2)
+       * [calculate_walking_shed_origin](#heading--2-3-2-1)
+       * [calculate_walking_shed](#heading--2-3-2-2)
+       * [calculate_walking_shed_multi](#heading--2-3-2-3)
+     * [2.3.3. Resident and Capacity Evaluation Functions](#heading--2-3-3)
+       * [evaluate_resident](#heading--2-3-3-1)
+       * [evaluate_capacity](#heading--2-3-3-2)
+     * [2.3.4. Shade Furniture and Heat Risk Evaluation Functions](#heading--2-3-4)
+       * [evaluate_sfurniture](#heading--2-3-4-1)
+       * [evaluate_heatrisk](#heading--2-3-4-2)
+     * [2.3.5. PET Evaluation Functions](#heading--2-3-5)
+       * [eval_pet](#heading--2-3-5-1)
+       * [eval_pet_multi](#heading--2-3-5-2)
+     * [2.3.6. Aggregation and Recommendation Functions](#heading--2-3-6)
+       * [aggregate_to_cool_places](#heading--2-3-6-1)
+       * [final_recom](#heading--2-3-6-2)
+     * [2.3.7. Export Functions](#heading--2-3-7)
+       * [export_eval_gpkg](#heading--2-3-7-1)
+  * [2.4. Building Class](#heading--2-4)
+     * [__init__](#heading--2-4-1)
+     * [create_buffer](#heading--2-4-2)
+  * [2.5. Road Class](#heading--2-5)
+     * [__init__](#heading--2-5-1)
+     * [assign_buffer_hardSurface](#heading--2-5-2)
+     * [assign_buffer_roadtype](#heading--2-5-3)
+     * [create_attribute](#heading--2-5-4)
+     * [create_buffer](#heading--2-5-5)
 
 **[3. Network Functions](#heading--3)**
 
@@ -562,3 +612,349 @@
  ---
 
 ## Cool Spaces Functions <a name="heading--2"/>
+### Process Functions (*coolspace_process.py*) <a name="heading--2-1"/>
+
+#### <span style="color: red;">`read_config`</span><span style="color: gray;">(filename)</span> <a name="heading--2-1-1"/>
+
+> Load configuration settings from a JSON file.
+>
+>**PARAMETERS**  
+>- **`filename`** — *str*: The path to the JSON configuration file.
+>
+>**RETURNS**  
+>- *dict*: `config` - A dictionary containing the parsed configuration settings.
+
+#### <span style="color: red;">`convert_to_datetime`</span><span style="color: gray;">(time)</span> <a name="heading--2-1-2"/>
+
+> Convert an integer in HHMM format to a `datetime` object.
+>
+>**PARAMETERS**  
+>- **`time`** — *int*: The time in HHMM format, where the first two digits represent hours and the last two represent minutes.
+>
+>**RETURNS**  
+>- *datetime*: A `datetime` object set to October 16, 2024, with the specified hour and minute. The date components (year, month, day) are placeholders and do not impact the function's purpose.
+
+#### <span style="color: red;">`compute_search_range`</span><span style="color: gray;">(search_start_time, search_end_time, start_time, end_time, time_interval)</span> <a name="heading--2-1-3"/>
+
+> Calculate the index range for shade maps based on a specified time interval within a given range.
+>
+>**PARAMETERS**  
+>- **`search_start_time`**, **`search_end_time`** — *int*: The starting and ending times in HHMM format for the desired search range.
+>- **`start_time`**, **`end_time`** — *int*: The beginning and ending times in HHMM format for the available shade maps.
+>- **`time_interval`** — *int*: The interval in minutes between each shade map.
+>
+>**RETURNS**  
+>- *list*: A list containing `start_idx` and `end_idx`, which are the computed index range for the shade maps based on the specified search range. If the search range exceeds the time bounds of the shade maps, returns `[None, None]` and prints an error message.
+
+#### <span style="color: red;">`identification`</span><span style="color: gray;">(coolspace_file, road_file, building_file, shademaps_path, road_buffer_attri, building_buffer_num=4, mode='single-day', num_days=None, single_day_time_range=None, time_interval=None, search_range=None, morning_range=None, afternoon_range=None, late_afternoon_range=None, output_coolspace_type='land-use', useMultiProcessing=False)</span> <a name="heading--2-1-4"/>
+
+> Identify and evaluate cool spaces based on shade coverage across different time ranges, area ratios and output configurations.
+>
+>**PARAMETERS**  
+>- **`coolspace_file`** — *GeoDataFrame*: GeoDataFrame containing cool space data.
+>- **`road_file`** — *GeoDataFrame*: GeoDataFrame containing road data.
+>- **`building_file`** — *GeoDataFrame*: GeoDataFrame containing building data.
+>- **`shademaps_path`** — *str*: Path to the directory containing shade map files.
+>- **`road_buffer_attri`** — *str*: Attribute name in `road_file` used to create a buffer.
+>- **`building_buffer_num`** — *int, optional*: Buffer size for buildings; defaults to 4.
+>- **`mode`** — *str, optional*: Calculation mode, either `'single-day'` or `'multi-days'`; defaults to `'single-day'`.
+>- **`num_days`** — *int, optional*: Number of days, required if `mode` is `'multi-days'`.
+>- **`single_day_time_range`** — *list, optional*: Start and end times in HHMM format for a single-day range.
+>- **`time_interval`** — *int, optional*: Time interval in minutes for shade map calculations.
+>- **`search_range`**, **`morning_range`**, **`afternoon_range`**, **`late_afternoon_range`** — *list, optional*: Specific time ranges in HHMM format for different periods within the single-day mode.
+>- **`output_coolspace_type`** — *str, optional*: Type of output geometry, either `'land-use'` or `'public-space'`; defaults to `'land-use'`.
+>- **`useMultiProcessing`** — *bool, optional*: Enables multiprocessing for shade calculation if set to `True`; defaults to `False`.
+>
+>**RETURNS**  
+>- *GeoDataFrame*: `output_gdf` - A GeoDataFrame containing cool space polygons with shade evaluations. The output geometry type depends on `output_coolspace_type`, with other geometries converted to WKT format and stored in columns.
+
+#### <span style="color: red;">`evaluation`</span><span style="color: gray;">(coolspace, building_population_file, bench_file, heatrisk_file, pet_file, gpkg_file, output_layer, search_buffer=700, single_day_time_range=None, time_interval=None, search_range=None, morning_range=None, afternoon_range=None, late_afternoon_range=None, useMultiProcessing=False)</span> <a name="heading--2-1-5"/>
+
+> Evaluate cool spaces by analyzing their accessibility, capacity, street furniture, heat risk, and PET scores based on spatial and temporal parameters.
+>
+>**PARAMETERS**  
+>- **`coolspace`** — *GeoDataFrame*: GeoDataFrame containing cool space data to evaluate.
+>- **`building_population_file`** — *GeoDataFrame*: GeoDataFrame with building population data.
+>- **`bench_file`** — *GeoDataFrame*: GeoDataFrame with data on available benches.
+>- **`heatrisk_file`** — *GeoDataFrame*: GeoDataFrame containing heat risk data.
+>- **`pet_file`** — *str*: Path to the PET (Physiological Equivalent Temperature) data file.
+>- **`gpkg_file`** — *str*: File path for saving the evaluation results in a GeoPackage format.
+>- **`output_layer`** — *str*: Name of the output layer in the GeoPackage.
+>- **`search_buffer`** — *int, optional*: Buffer distance in meters for the walking shed calculation; defaults to 700.
+>- **`single_day_time_range`** — *list, optional*: Start and end times in HHMM format for a single-day evaluation range.
+>- **`time_interval`** — *int, optional*: Time interval in minutes for shade map evaluations.
+>- **`search_range`**, **`morning_range`**, **`afternoon_range`**, **`late_afternoon_range`** — *list, optional*: Specific time ranges in HHMM format for different periods within the single-day mode.
+>- **`useMultiProcessing`** — *bool, optional*: Enables multiprocessing for shade calculations if set to `True`; defaults to `False`.
+>
+>**RETURNS**  
+>- *GeoDataFrame*: A GeoDataFrame with cool space evaluations, including assessed shade accessibility, resident capacity, street furniture presence, heat risk, and PET scores.
+
+#### <span style="color: red;">`list_to_string`</span><span style="color: gray;">(gdf)</span> <a name="heading--2-1-6"/>
+
+> Convert list values in columns of a GeoDataFrame to strings.
+>
+>**PARAMETERS**  
+>- **`gdf`** — *GeoDataFrame*: The GeoDataFrame in which columns containing lists will have their lists converted to string format.
+>
+>**RETURNS**  
+>- *None*: This function modifies the GeoDataFrame `gdf` in place, converting any list-type elements in its columns to strings.
+
+#### <span style="color: red;">`drop_or_wkt`</span><span style="color: gray;">(gdf, mode='to_wkt')</span> <a name="heading--2-1-7"/>
+
+> Convert or drop geometry columns in a GeoDataFrame.
+>
+>**PARAMETERS**  
+>- **`gdf`** — *GeoDataFrame*: The GeoDataFrame where geometry columns other than the active geometry may be converted or removed.
+>- **`mode`** — *str, optional*: Determines action for geometry columns; `'to_wkt'` converts columns to WKT format, while other values drop them. Defaults to `'to_wkt'`.
+>
+>**RETURNS**  
+>- *None*: This function modifies the GeoDataFrame `gdf` in place, converting specified geometry columns to WKT format or dropping them based on the `mode` setting.
+
+#### <span style="color: red;">`output_all_shade_geoms`</span><span style="color: gray;">(gdf, folder_path, output_gpkg)</span> <a name="heading--2-1-8"/>
+
+> Export shade geometries from a GeoDataFrame to a GeoPackage, filtering out non-public areas.
+>
+>**PARAMETERS**  
+>- **`gdf`** — *GeoDataFrame*: Input GeoDataFrame containing shade geometries and area attributes.
+>- **`folder_path`** — *str*: Path to the directory where the GeoPackage will be saved.
+>- **`output_gpkg`** — *str*: Name of the GeoPackage file (e.g., "shadeGeoms.gpkg") for storing output layers.
+>
+>**RETURNS**  
+>- *None*: This function filters out rows with `typelandge` values of `'overig'` and `'bebouwd gebied'` and exports all shade geometry columns starting with `'sdGeom'` to individual layers in a GeoPackage. The function runs iteratively, using a progress bar to track the output process for each geometry column.
+
+---
+
+### Cool Space Class for Identification (*identification.py*) <a name="heading--2-2"/>
+
+#### **Initialization and Geometry Functions** <a name="heading--2-2-1"/>
+
+##### **`__init__`**  <a name="heading--2-2-1-1"/>
+> Initializes a `CoolSpace` object.
+> - **`data`**: GeoDataFrame with spatial data; initializes with a `clipped` column for storing modified geometries.
+
+##### **`clip`**  <a name="heading--2-2-1-2"/>
+> Clips the geometries in `data` using a specified clipping method.
+> - **`clipper`**: A GeoDataFrame used to clip `data`.
+> - **`how`**: Specifies the clipping method, e.g., `'difference'`, `'intersection'`, etc.
+> - **`use_clip`**: If `True`, uses the `clipped` geometry in `data`.
+> - **`filter_thin`**: If `True`, applies additional filtering to exclude thin geometries.
+>
+>**Process Summary**:
+> - Validates `how` method and coordinate systems.
+> - Computes the clipping operation and optionally explodes multi-polygons.
+> - Filters thin geometries by buffering and computes area-to-perimeter ratios to filter small or thin geometries.
+> - Updates `self.data` with the filtered geometries in the `clipped` column.
+
+#### **Shade Calculation Functions** <a name="heading--2-2-2"/>
+
+##### **`calculate_shade`** <a name="heading--2-2-2-1"/> 
+> Calculates shade metrics (average shade, shade area, and geometry) for each raster.
+> - **`rasters`**: List of rasters representing shade data.
+> - **`area_thres`**: Minimum area threshold for shade regions.
+> - **`shade_thres`**: Maximum shade value for valid shaded regions.
+> - **`ratio_thres`**: Minimum area-to-perimeter ratio for shade polygons.
+> - **`use_clip`**: If `True`, uses `clipped` geometry.
+>
+>**Process Summary**:
+> - For each raster, checks if geometries intersect the raster bounds.
+> - Clips geometries to the raster, extracts shaded regions, and filters based on area and shape.
+> - Computes average shade values, areas, and geometries, storing them as new columns in `data`.
+> - Updates the `intervals` attribute with the number of rasters processed.
+
+##### **`calculate_shade_for_raster`**  <a name="heading--2-2-2-2"/>
+> Processes a single raster and calculates shade metrics.
+> - Supports multi-processing by handling a single raster in isolation.
+> - **`raster_idx`**, **`raster`**, **`area_thres`**, **`shade_thres`**, **`ratio_thres`**: Similar to `calculate_shade`.
+>
+>**Process Summary**:
+> - Intersects each geometry with raster bounds, extracts valid shaded regions.
+> - Aggregates shade metrics and returns them for integration into the main dataset.
+
+##### **`calculate_shade_multi`**  <a name="heading--2-2-2-3"/>
+> Multi-processing version of `calculate_shade`.
+> - **`rasters`**, **`area_thres`**, **`shade_thres`**, **`ratio_thres`**, **`use_clip`**: Similar to `calculate_shade`.
+>
+>**Process Summary**:
+> - Initializes parallel processes to handle rasters individually.
+> - Each process uses `calculate_shade_for_raster`, collects the results, and integrates them into `data`.
+> - Sets `intervals` to the number of processed rasters.
+
+#### **Shade Geometry Retrieval Functions** <a name="heading--2-2-3"/>
+
+##### **`get_shade_geometries`**  <a name="heading--2-2-3-1"/>
+> Retrieves specific shade geometries for a given raster.
+> - **`raster_idx`**: Index of the raster to retrieve shade geometries from.
+>
+>**Process Summary**:
+> - Retrieves shade geometry, area, and average shade values for each geometry in the specified raster, returning them as a GeoDataFrame.
+
+##### **`get_cool_spaces`**  <a name="heading--2-2-3-2"/>
+> Retrieves cool spaces that contain shade geometries within a specified range.
+> - **`start`**: Starting raster index.
+> - **`end`**: Ending raster index.
+> - **`geom_type`**: Geometry type to output (`'geometry'` or `'clipped'`).
+>
+>**Process Summary**:
+> - Counts the number of shade geometries for each geometry within the specified range.
+> - Filters based on the `count` of valid shade geometries, setting `clipped` or `geometry` as output based on `geom_type`.
+
+#### **Evaluation Functions** <a name="heading--2-2-4"/>
+
+##### **`evaluate_shade_coverage`**  <a name="heading--2-2-4-1"/>
+> Evaluates shade coverage over a specific time range.
+> - **`attri_name`**: Label for the output attributes.
+> - **`start`** and **`end`**: Raster indices defining the evaluation time range.
+> - **`geom_type`**: Geometry type to use (`'geometry'` or `'clipped'`).
+>
+>**Process Summary**:
+> - Aggregates shade scores across rasters in the specified range.
+> - Classifies shade coverage into four categories: **0** (<50%), **1** (50%-70%), **2** (70%-90%), **3** (90%-100%).
+> - Adds new columns to `data` to store classified shade coverage based on time and area.
+
+---
+
+### Cool Space Class for Evaluation (*evaluation.py*) <a name="heading--2-3"/>
+
+#### **Initialization Functions** <a name="heading--2-3-1"/>
+
+##### `__init__` <a name="heading--2-3-1-1"/>
+> Initializes a `CoolEval` object with data about cool places, nearby buildings, benches, heat risk, and PET (Physiological Equivalent Temperature) values.
+> - **Parameters**:
+>   - `cool_places`: GeoDataFrame containing polygons of cool places.
+>   - `buildings`: GeoDataFrame with building data, including attributes like resident population.
+>   - `bench`: GeoDataFrame with bench locations.
+>   - `heatrisk`: GeoDataFrame containing heat risk information.
+>   - `pet`: Path to the raster file for PET data.
+>   - `search_buffer`: Distance buffer used to determine building proximity to cool places.
+> - **Attributes**:
+>   - `eval_shades`: List for storing evaluation results from each shade geometry.
+
+#### **Walking Shed Functions** <a name="heading--2-3-2"/>
+
+##### `calculate_walking_shed_origin` <a name="heading--2-3-2-1"/>
+> Calculates the walking shed by assigning each building to the nearest cool place within a specified buffer distance.
+> - **Process**:
+>   - Projects geometries to a suitable coordinate system.
+>   - Buffers each cool place, finds intersecting buildings, and calculates the nearest cool place for each building.
+>   - Stores the nearest cool place ID and distance in the `buildings` GeoDataFrame.
+
+##### `calculate_walking_shed` <a name="heading--2-3-2-2"/>
+> Similar to `calculate_walking_shed_origin`, but processes buildings and cool places in batches for efficiency.
+> - **Process**:
+>   - Divides `cool_places` into batches, applies the same distance calculation, and stores results for each building.
+>   - Returns the `buildings` GeoDataFrame with assigned cool place IDs.
+
+##### `calculate_walking_shed_multi` <a name="heading--2-3-2-3"/>
+> Multi-processing version of `calculate_walking_shed`, designed for parallel execution.
+> - **Process**:
+>   - Uses multiple processes to compute the nearest cool places for each batch of buildings.
+>   - Aggregates results to create the final `buildings` dataset with walking shed assignments.
+
+#### **3. Resident and Capacity Evaluation Functions** <a name="heading--2-3-3"/>
+
+##### `evaluate_resident` <a name="heading--2-3-3-1"/>
+> Aggregates the number of residents, elderly residents, and children within a specified distance to each cool place.
+> - **Process**:
+>   - Groups building attributes (residents, elderly, kids) by cool place ID and joins them to the `cool_places` GeoDataFrame.
+>   - Returns the updated `cool_places` with aggregated resident information.
+
+##### `evaluate_capacity` <a name="heading--2-3-3-2"/>
+> Evaluates the capacity of shaded areas based on area and nearby residents.
+> - **Process**:
+>   - Computes the area of each shaded polygon, calculates the capacity (e.g., people per square meter), and assigns capacity status based on nearby residents.
+>   - Adds columns for capacity attributes and returns the updated shade GeoDataFrame.
+
+#### **4. Shade Furniture and Heat Risk Evaluation Functions** <a name="heading--2-3-4"/>
+
+##### `evaluate_sfurniture` <a name="heading--2-3-4-1"/>
+> Checks for benches within each shaded area.
+> - **Process**:
+>   - Uses a spatial join to count benches in each shaded polygon, assigning counts to each shade area.
+>   - Adds bench availability information to the shade GeoDataFrame.
+
+##### `evaluate_heatrisk` <a name="heading--2-3-4-2"/>
+> Calculates and classifies the heat risk within shaded areas.
+> - **Process**:
+>   - Joins `heatrisk` data to shaded areas based on intersections, calculates average heat risk, and classifies risk levels.
+>   - Adds heat risk scores and classifications to the shade GeoDataFrame.
+
+#### **PET Evaluation Functions** <a name="heading--2-3-5"/>
+
+##### `eval_pet` <a name="heading--2-3-5-1"/>
+> Computes the average PET (Physiological Equivalent Temperature) values for shaded areas and assigns recommendations.
+> - **Process**:
+>   - Divides shaded areas into chunks, uses zonal statistics to calculate mean PET for each polygon, and applies classifications.
+>   - Adds PET values and recommendations to the shade GeoDataFrame.
+
+##### `eval_pet_multi` <a name="heading--2-3-5-2"/>
+> Multi-processing version of `eval_pet`, leveraging parallel computation for large datasets.
+> - **Process**:
+>   - Splits shade data across available processors, computes PET values, and aggregates results.
+>   - Adds PET values and recommendations in parallel, enhancing performance for large datasets.
+
+#### **Aggregation and Recommendation Functions** <a name="heading--2-3-6"/>
+
+##### `aggregate_to_cool_places` <a name="heading--2-3-6-1"/>
+> Aggregates evaluation results from shaded areas back to cool places.
+> - **Process**:
+>   - Aggregates key attributes like capacity, benches, and PET across all shade layers and calculates average values.
+>   - Joins these averages to the `cool_places` GeoDataFrame for a comprehensive summary.
+
+##### `final_recom` <a name="heading--2-3-6-2"/>
+> Calculates a recommendation score for each cool place based on capacity, benches, heat risk, PET, and shade metrics.
+> - **Process**:
+>   - Normalizes features, assigns weights, and classifies final scores into "Not recommended," "Recommended," or "Highly Recommended."
+>   - Adds final recommendation classifications to the `cool_places` dataset.
+
+#### **7. Export Functions** <a name="heading--2-3-7"/>
+
+##### `export_eval_gpkg` <a name="heading--2-3-7-1"/>
+> Exports the final evaluation of cool places to a GeoPackage.
+> - **Process**:
+>   - Converts geometries to WKT format if necessary, and saves the evaluated `cool_places` data as a new layer in a specified GeoPackage file.
+
+---
+
+### Building Class (*building.py*) <a name="heading--2-4">
+
+#### `__init__` <a name="heading--2-4-1">
+> Initializes a `Building` object with building geometry data.
+> - **Parameters**: `data` - A GeoDataFrame containing building geometries.
+> - **Attributes**: Adds a `"buffered"` column to store buffered geometries.
+
+#### `create_buffer` <a name="heading--2-4-2">
+> Creates buffer geometries around each building.
+> - **Parameters**: `buffer_size` - The buffer distance in meters.
+> - **Process**: Applies the buffer around each building's geometry and stores it in the `"buffered"` column, confirming creation status with a message.
+
+---
+
+### Road Class (*road_process.py*) <a name="heading--2-5">
+
+**Note**: The `assign_buffer_hardSurface`, `assign_buffer_roadtype`, and `create_attribute` methods are designed for a specific dataset and are used primarily during development. In practical applications, the input road dataset **must** include an attribute specifying the buffer distance for different road types, allowing direct use of the `create_buffer` method.
+
+#### `__init__` <a name="heading--2-5-1">
+> Initializes a `Road` object with road geometry data.
+> - **Parameters**: `data` - A GeoDataFrame containing road geometries.
+> - **Attributes**: Adds a `"buffered"` column to store buffered geometries.
+
+#### `assign_buffer_hardSurface` <a name="heading--2-5-2">
+> Assigns buffer size based on the width of hard surfaces.
+> - **Parameters**: `roadtype` - A string specifying road width range (e.g., "> 7 meter").
+> - **Returns**: Buffer size in meters.
+
+#### `assign_buffer_roadtype` <a name="heading--2-5-3">
+> Assigns buffer size based on road type.
+> - **Parameters**: `roadtype` - A string specifying the type of road (e.g., "autosnelweg").
+> - **Returns**: Buffer size in meters.
+
+#### `create_attribute` <a name="heading--2-5-4">
+> Creates a new attribute for buffer size based on road surface type or road type.
+> - **Parameters**:
+>   - `attri_in` - The existing attribute name (e.g., "verharding").
+>   - `new_attri` - The name for the new attribute to store buffer sizes.
+
+#### `create_buffer` <a name="heading--2-5-5">
+> Creates buffer geometries for roads based on a specified buffer attribute.
+> - **Parameters**: `buffer_attri` - The column name holding buffer sizes.
+> - **Process**: Buffers each road geometry according to the buffer size in `buffer_attri` and stores the result in `"buffered"`.
