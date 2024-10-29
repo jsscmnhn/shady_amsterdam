@@ -801,13 +801,14 @@
 #### **Evaluation Functions** <a name="heading--2-2-4"/>
 
 ##### <span style="color: red;">`evaluate_shade_coverage`</span><span style="color: gray;">  <a name="heading--2-2-4-1"/>
-> Evaluates shade coverage over a specific time range.
+> Evaluates shade coverage over a specific time range and the ratio of shaded area to total cool space area.
 > - **`attri_name`**: Label for the output attributes.
 > - **`start`** and **`end`**: Raster indices defining the evaluation time range.
 > - **`geom_type`**: Geometry type to use (`'geometry'` or `'clipped'`).
 >
 >**Process Summary**:
 > - Aggregates shade scores across rasters in the specified range.
+> - Two scores, "sc" in terms of time and "sp" in terms of area ratio.
 > - Classifies shade coverage into four categories: **0** (<50%), **1** (50%-70%), **2** (70%-90%), **3** (90%-100%).
 > - Adds new columns to `data` to store classified shade coverage based on time and area.
 
