@@ -1,3 +1,9 @@
+/.idea
+*.pyc
+/cool_place/test.py
+.vscode
+**/.DS_Store
+cool_place/coolspaceConfig.json
 
 data/C_25GN1.LAZ
 /data
