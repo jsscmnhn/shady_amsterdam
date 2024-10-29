@@ -90,26 +90,11 @@ def read_config(file_path):
 
     return params
 
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Creation of Canopy Height Model (CHM), Digital Surface Model '
-                                                 'with ground and buildings (DSM) and shade maps based on AHN '
-                                                 'data through a configuration JSON file.')
-    parser.add_argument('config_file', type=str, help='Path to the configuration file')
-
-    args = parser.parse_args()
-
-    config_file = args.config_file
-
-    # Check if the config file exists
-    if not os.path.exists(config_file):
-        raise FileNotFoundError(f"Config file not found: {config_file}")
-
+def shade_main(configuration_file):
     # Read parameters from the config file
     params = read_config(config_file)
     for param in params:
         print(param + ' ' + str(params[param]))
-
 
     if params.get('download_las'):
         print("Downloading LAS tiles...")
@@ -117,16 +102,17 @@ if __name__ == '__main__':
 
     if params.get('download_dsm_dtm'):
         print("Downloading and merging DSM and DTM tiles...")
-        tile_bounds = download_raster_tiles(params['tile_list_file'], params['ahn_output_folder'], params['merged_name'])
+        tile_bounds = download_raster_tiles(params['tile_list_file'], params['ahn_output_folder'],
+                                            params['merged_name'])
         if params.get('download_buildings'):
             print("Downloading buildings geometries...")
-            setup_WFS_download( params["buildings_name"], tile_bounds, params['buildings_output_folder'])
+            setup_WFS_download(params["buildings_name"], tile_bounds, params['buildings_output_folder'])
 
     if params.get('create_chm'):
         print("Creating first CHM files...")
         process_laz_files_parallel(params['las_output_folder'], params['chm_output_folder'], params['ndvi_threshold'],
                                    params['resolution'], params['remove_las'], params['smooth_chm'],
-                                   params['filter_size'],  params['pre_filter'], params['chm_max_workers'])
+                                   params['filter_size'], params['pre_filter'], params['chm_max_workers'])
 
     if params.get('create_final_dsm_chm'):
         # First check if a merged dtm and dsm is already provided, and a buildings geopackage
@@ -164,3 +150,19 @@ if __name__ == '__main__':
         merge_tif_files_by_time(params['output_base_shademap'], params['output_folder_merged_shademaps'],
                                 params['merged_name'], params['files_start_time'], params['files_end_time'],
                                 params['delete_input_shade'])
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Creation of Canopy Height Model (CHM), Digital Surface Model '
+                                                 'with ground and buildings (DSM) and shade maps based on AHN '
+                                                 'data through a configuration JSON file.')
+    parser.add_argument('config_file', type=str, help='Path to the configuration file')
+
+    args = parser.parse_args()
+
+    config_file = args.config_file
+
+    # Check if the config file exists
+    if not os.path.exists(config_file):
+        raise FileNotFoundError(f"Config file not found: {config_file}")
+
+    shade_main(config_file)
