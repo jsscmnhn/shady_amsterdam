@@ -51,6 +51,6 @@ if __name__ == '__main__':
     shade_main(config_file_shade)
 
 ########################################### Functions for creating the cool spaces #####################################
-    coolspace_main("cool_place/coolspaceConfig.json")
+    coolspace_main(config_file_cool_spaces)
 
 ########################################### Functions for creating the pedestrian network ##############################
