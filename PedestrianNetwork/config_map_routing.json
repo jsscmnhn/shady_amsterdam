@@ -1,0 +1,20 @@
+{
+    "graphml_file": "C:/Github_synthesis/AMS/graphs_with_shade/ams_graph_with_shade_20150701_1800_cropped.graphml",
+	"cool places path": "C:/Androniki/pythonProject1/ams_public_space.shp",
+	"buildings":"C:/Github_synthesis/AMS/merged_buildings.shp",
+	
+	"cool places nodes path": "C:/Github_synthesis/AMS/cool_place_nodes/cool_places_nodes_20230816_1000.pkl",
+	"route option":"origin_destination",
+	"location indication option":"location_name",
+	
+	
+	"origin name":"Amsterdam Central Station",
+	"destination name":"Dam Square",
+	
+	"origin latitude":"",
+	"origin longitude":"",
+	"destination latitude":"",
+	"destination longitude":"",
+	
+	"date and time": "None"
+}
