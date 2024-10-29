@@ -1,0 +1,26 @@
+{
+    "Dataset_Preparation": {
+        "graphml_file": "C:/pedestrian_demo_data/Amsterdam_pedestrian_network.graphml",
+        "area_name_for_OSM_network": "None",
+        "shade_maps_path": "C:/pedestrian_demo_data/shade_maps",
+        "new_graphml_files_path": "C:/pedestrian_demo_data/graphs_with_shade/",
+
+        "cool_places_path": "C:/pedestrian_demo_data/cool_places_polygons/",
+        "cool_places_nodes_path": "C:/pedestrian_demo_data/cool_place_nodes"
+    },
+    "Routing": {
+        "graph_dir": "",
+        "nodes_dir": "",
+        "graph_file": "",
+        "nodes_file": "",
+        "route_option": "",
+        "location_indication_option": "",
+        "origin_name": "",
+        "destination_name": "",
+        "origin_latitude": "",
+        "origin_longitude": "",
+        "destination_latitude": "",
+        "destination_longitude": "",
+        "date_time": ""
+    }
+}
