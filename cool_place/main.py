@@ -9,12 +9,9 @@ from include.coolspace_process import (read_config,
                                        drop_or_wkt,
                                        output_all_shade_geoms)
 
-
-# entry
-if __name__ == '__main__':
-
-# ======== Read config =================================================================================================
-    config = read_config("coolspaceConfig.json")
+def coolspace_main(config_file: str):
+    # ======== Read config =================================================================================================
+    config = read_config(config_file)
     with Progress() as progress:
         task = progress.add_task("Reading config parameters...", total=1)
         # read GeoPackage and layers
@@ -42,7 +39,7 @@ if __name__ == '__main__':
         num_days               = config['shade_info_multi']['num_days']
 
         # read parameters
-        useMultiProcessing       = config['parameters']['useMultiProcessing']
+        useMultiProcessing      = config['parameters']['useMultiProcessing']
         hasIdentificationOutput = config['parameters']['hasIdentificationOutput']
         outputShadeGeometries   = config['parameters']['outputShadeGeometries']
         performEvaluation       = config['parameters']['performEvaluation']
@@ -51,10 +48,9 @@ if __name__ == '__main__':
         building_buffer         = config['parameters']['building_buffer']
         capacity_search_buffer  = config['parameters']['capacity_search_buffer']
         progress.advance(task)
-# ======================================================================================================================
+    # ======================================================================================================================
 
-
-# ======== Identification Process ======================================================================================
+    # ======== Identification Process ======================================================================================
     if not hasIdentificationOutput:
         with Progress() as progress:
             task = progress.add_task("Loading GeoPackage layers for identification...", total=3)
@@ -99,18 +95,16 @@ if __name__ == '__main__':
         total = end - begin
         minutes, seconds = divmod(total, 60)
         print(f"Total time for identification: {int(minutes)} minutes and {seconds:.2f} seconds")
-# ======================================================================================================================
+    # ======================================================================================================================
 
-
-# ======== Output Shade Geometries if needed ===========================================================================
+    # ======== Output Shade Geometries if needed ===========================================================================
     if outputShadeGeometries:
         progress.add_task("Outputing shade geometries...", total=1)
         coolspace_output = gpd.read_file(gpkg_file, layer=output_identification_layer)
         output_all_shade_geoms(coolspace_output, folder_path, output_shadeGeometry_gpkg)
-# ======================================================================================================================
+    # ======================================================================================================================
 
-
-# ======== Evaluation Process ==========================================================================================
+    # ======== Evaluation Process ==========================================================================================
     if performEvaluation:
         with Progress() as progress:
             task = progress.add_task("Loading GeoPackage layers for evaluation...", total=5)
@@ -152,4 +146,10 @@ if __name__ == '__main__':
         total2 = end2 - begin2
         minutes2, seconds2 = divmod(total2, 60)
         print(f"Total time for evaluation: {int(minutes2)} minutes and {seconds2:.2f} seconds")
+
+
 # ======================================================================================================================
+
+# entry
+if __name__ == '__main__':
+    coolspace_main("coolspaceConfig.json")
