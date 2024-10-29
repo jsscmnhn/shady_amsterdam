@@ -92,6 +92,7 @@ def find_nearest_cool_place_dijkstra(graph, start_node, cool_place_nodes, max_di
         # Perform Dijkstra search from all cool place nodes to the target (start_node)
         distance, path = nx.multi_source_dijkstra(graph, cool_place_nodes, target=start_node, weight='length',
                                                   cutoff=max_distance)
+        # print("Performed Dijkstra search from all cool place nodes to the target.")
 
         # Find the node in `cool_place_nodes` that was the source of the shortest path to the start_node
         for cool_place_node in cool_place_nodes:
@@ -109,7 +110,7 @@ def find_nearest_cool_place_dijkstra(graph, start_node, cool_place_nodes, max_di
         return None
 
 
-def calculate_routes(graph, start_node, end_node=None, cool_place_nodes=None, max_distance=1000):
+def calculate_routes(graph, start_node, end_node=None, cool_place_nodes=None, max_distance=5000):
     # If end_node is None, calculate routes to the nearest cool place
     if end_node is None and cool_place_nodes is not None:
         nearest_cool_place = find_nearest_cool_place_dijkstra(graph, start_node, cool_place_nodes, max_distance)
@@ -346,11 +347,11 @@ def demo_shade_route_calculation_with_time(graph_dir, nodes_dir, user_input, inp
 # polygon_path = 'C:/pedestrian_demo_data/public_spaces/ams_public_space.shp'
 # pre_calculated_nodes_path = 'C:/pedestrian_demo_data/cool_place_nodes.pkl'
 
-graph_dir = 'C:/pedestrian_demo_data/graphs_with_shade/'
-nodes_dir = 'C:/pedestrian_demo_data/cool_place_nodes/'
+# graph_dir = 'C:/pedestrian_demo_data/graphs_with_shade/'
+# nodes_dir = 'C:/pedestrian_demo_data/cool_place_nodes/'
 
-demo_shade_route_calculation_with_time(graph_dir, nodes_dir, user_input=("Amsterdam Central Station", "Dam Square"),
-                                       input_type="location_name", mode="origin_destination")
+# demo_shade_route_calculation_with_time(graph_dir, nodes_dir, user_input=("Amsterdam Central Station", "Dam Square"),
+#                                        input_type="location_name", mode="origin_destination")
 
 # # Option 1: Routes to nearest cool place with coordinates input
 # demo_shade_route_calculation(graph_file_path, polygon_path, user_input=(52.373169, 4.890660), input_type="coordinates",
