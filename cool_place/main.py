@@ -9,9 +9,8 @@ from include.coolspace_process import (read_config,
                                        drop_or_wkt,
                                        output_all_shade_geoms)
 
-def coolspace_main(config_file: str):
+def coolspace_main(config):
     # ======== Read config =================================================================================================
-    config = read_config(config_file)
     with Progress() as progress:
         task = progress.add_task("Reading config parameters...", total=1)
         # read GeoPackage and layers
@@ -152,4 +151,5 @@ def coolspace_main(config_file: str):
 
 # entry
 if __name__ == '__main__':
-    coolspace_main("coolspaceConfig.json")
+    config = read_config("coolspaceConfig.json")
+    coolspace_main(config)
