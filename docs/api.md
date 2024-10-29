@@ -61,7 +61,7 @@
        * [calculate_shade](#heading--2-2-2-1)
        * [calculate_shade_for_raster](#heading--2-2-2-2)
        * [calculate_shade_multi](#heading--2-2-2-3)
-     * [2.2.3. Shade Geometry Retrieval Functions](#heading--2-2-3)
+     * [2.2.3. Geometry Retrieval Functions](#heading--2-2-3)
        * [get_shade_geometries](#heading--2-2-3-1)
        * [get_cool_spaces](#heading--2-2-3-2)
      * [2.2.4. Evaluation Functions](#heading--2-2-4)
@@ -779,7 +779,7 @@
 > - Each process uses `calculate_shade_for_raster`, collects the results, and integrates them into `data`.
 > - Sets `intervals` to the number of processed rasters.
 
-#### **Shade Geometry Retrieval Functions** <a name="heading--2-2-3"/>
+#### **Geometry Retrieval Functions** <a name="heading--2-2-3"/>
 
 ##### <span style="color: red;">`get_shade_geometries`</span><span style="color: gray;">  <a name="heading--2-2-3-1"/>
 > Retrieves specific shade geometries for a given raster.
