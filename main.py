@@ -16,7 +16,7 @@ def flatten_dict(nested_dict, parent_key='', sep='_'):
     ------------------------------------------------------------------
     Input:
     - nested_dict (dict): The dictionary to flatten.
-    - parent_key (str): The base key string for the flattened keys.
+        - parent_key (str): The base key string for the flattened keys.
     - sep (str): Separator to use between concatenated keys.
 
     Output:
@@ -165,3 +165,7 @@ if __name__ == '__main__':
         merge_tif_files_by_time(params['output_base_shademap'], params['output_folder_merged_shademaps'],
                                 params['merged_name'], params['files_start_time'], params['files_end_time'],
                                 params['delete_input_shade'])
+
+########################################### Functions for creating the cool spaces #####################################
+
+########################################### Functions for creating the pedestrian network #####################################
