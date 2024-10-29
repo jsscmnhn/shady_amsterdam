@@ -153,12 +153,15 @@ def process_all_shapefiles(polygon_directory, graph_directory, output_directory)
 # calculate_and_save_cool_place_nodes(graph, cool_place_polygons, pre_calculated_nodes_path)
 
 # Example use
-polygon_directory = 'C:/pedestrian_demo_data/cool_places_polygons/'
-graph_directory = 'C:/pedestrian_demo_data/graphs_with_shade/'
-output_directory = 'C:/pedestrian_demo_data/cool_place_nodes/'
-process_all_shapefiles(polygon_directory,
-                       graph_directory,
-                       output_directory)
+# polygon_directory = 'C:/pedestrian_demo_data/cool_places_polygons/'
+# graph_directory = 'C:/pedestrian_demo_data/graphs_with_shade/'
+# output_directory = 'C:/pedestrian_demo_data/cool_place_nodes/'
+#
+# polygon_directory = 'C:/Github_synthesis/AMS/cool_places_polygons/'
+# graph_directory = 'C:/Github_synthesis/AMS/graphs_with_shade/'
+# output_directory = 'C:/Github_synthesis/AMS/cool_place_nodes/'
+#
+# process_all_shapefiles(polygon_directory,graph_directory,output_directory)
 
 # # From gpkg to shapefiles
 # geopackage_path = 'C:/pedestrian_demo_data/shadeGeoms.gpkg'
