@@ -11,6 +11,8 @@ from multiprocessing import Pool, cpu_count
 from osmnx.distance import nearest_nodes
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from multiprocessing import Manager
+from scipy.spatial import KDTree
+
 
 
 def load_building_polygons(building_shapefile_path):
@@ -47,31 +49,41 @@ def load_cool_place_polygons(polygon_path):
 def find_cool_place_nodes(graph, cool_place_polygons):
     start_time = time.time()
 
-    # Get nodes as GeoDataFrame
-    nodes = ox.graph_to_gdfs(graph, nodes=True, edges=False)
+    # Convert graph nodes to a GeoDataFrame
+    nodes_gdf = ox.graph_to_gdfs(graph, nodes=True, edges=False)
 
-    # Ensure that both geometries are in the same CRS (Coordinate Reference System)
-    if nodes.crs != cool_place_polygons.crs:
-        cool_place_polygons = cool_place_polygons.to_crs(nodes.crs)
+    # Ensure CRS matches between nodes and polygons
+    if nodes_gdf.crs != cool_place_polygons.crs:
+        cool_place_polygons = cool_place_polygons.to_crs(nodes_gdf.crs)
 
-    # Use spatial indexing to find nodes within polygons
-    # First, create the spatial index for polygons
-    spatial_index = cool_place_polygons.sindex
+    # Filter out rows with None geometries
+    cool_place_polygons = cool_place_polygons[cool_place_polygons.geometry.notnull()]
 
-    # Define a lambda function to check if a point is within any cool place polygon
-    def is_within_polygon(node_geometry):
-        possible_matches_index = list(spatial_index.intersection(node_geometry.bounds))
-        possible_matches = cool_place_polygons.iloc[possible_matches_index]
-        return possible_matches.contains(node_geometry).any()
+    # Extract node coordinates and KDTree for quick nearest neighbor search
+    node_coords = [(geom.x, geom.y) for geom in nodes_gdf.geometry]
+    kd_tree = KDTree(node_coords)
 
-    # Apply the function to each node geometry in a vectorized way
-    cool_place_nodes = nodes[nodes['geometry'].apply(is_within_polygon)].index
+    # Map from KDTree result indices to graph node IDs
+    node_indices = list(nodes_gdf.index)
+
+    # Find the nearest network node for each cool place polygon centroid
+    cool_place_nodes = []
+    for _, polygon in cool_place_polygons.iterrows():
+        if polygon.geometry is None:
+            print("Skipping None geometry in cool_place_polygons.")
+            continue
+
+        centroid = polygon.geometry.centroid
+        nearest_idx = kd_tree.query((centroid.x, centroid.y))[1]
+        nearest_node = node_indices[nearest_idx]
+        cool_place_nodes.append(nearest_node)
 
     end_time = time.time()
     duration = end_time - start_time
     print(f"Finding cool place nodes took {duration:.2f} seconds")
 
-    return cool_place_nodes.tolist()
+    return cool_place_nodes
+
 
 
 def get_nearest_node(graph, point):
@@ -269,6 +281,8 @@ def walking_shed_calculation(place=None, graph_file_path=None, polygon_path=None
     else:
         raise ValueError("You must provide the path to a cool place polygon file.")
 
+    print('number of cool spaces:',len(cool_place_polygons))
+
     cool_place_nodes = find_cool_place_nodes(graph, cool_place_polygons)
     print(f"Found {len(cool_place_nodes)} cool place nodes on the graph.")
 
@@ -290,7 +304,7 @@ def walking_shed_calculation(place=None, graph_file_path=None, polygon_path=None
 if __name__ == "__main__":
     walking_shed_calculation(
         place="Amsterdam, Netherlands",
-        polygon_path="C:/Androniki/pythonProject1/ams_public_space.shp",
+        polygon_path="C:/Github_synthesis/AMS/cool_places_polygons/cool_places_polygons_20230816_900.shp",
         building_shapefile_path="C:/Androniki/pythonProject1/merged_buildings.shp")
         # polygon_path="C:/pedestrian_demo_data/public_spaces/ams_public_space.shp",
         # building_shapefile_path="C:/pedestrian_demo_data/ams_buildings/ams_buildings.shp"
