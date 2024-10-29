@@ -1,12 +1,11 @@
 import geopandas as gpd
 import networkx as nx
 import osmnx as ox
-from shapely.geometry import Point
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 import time
 from osmnx.distance import nearest_nodes
-
+from shapely.geometry import MultiPolygon, Point
 
 def load_building_polygons(building_shapefile_path):
     """
@@ -88,41 +87,62 @@ def load_cool_place_polygons(polygon_path):
     polygons = gpd.read_file(polygon_path)
     return polygons
 
-
-def find_cool_place_nodes(graph, cool_place_polygons):
+def find_cool_place_nodes(graph, cool_place_polygons, max_distance=500, known_crs="EPSG:28992"):
     """
-    Find the nearest graph nodes for each cool place polygon centroid.
+    Find the nearest graph nodes for each cool place polygon centroid if within max_distance.
 
     Parameters:
     - graph: NetworkX graph with nodes representing the walkable area.
     - cool_place_polygons: GeoDataFrame of cool place polygons.
+    - max_distance: Maximum distance in meters for a node to be considered as a cool place node.
+    - known_crs: The known CRS for the data to avoid CRS estimation issues.
 
     Returns:
-    - List of unique nearest nodes to cool place centroids.
+    - List of unique nearest nodes to cool place centroids within max_distance.
     """
-
     start_time = time.time()
 
-    # Ensure the cool place polygons are in the same CRS as the graph nodes
-    nodes = ox.graph_to_gdfs(graph, nodes=True, edges=False)
-    if cool_place_polygons.crs != nodes.crs:
-        cool_place_polygons = cool_place_polygons.to_crs(nodes.crs)
+    # Convert graph nodes to GeoDataFrame and set known CRS
+    nodes_gdf = ox.graph_to_gdfs(graph, nodes=True, edges=False)
+    nodes_gdf = nodes_gdf.set_crs(known_crs, allow_override=True)
 
-    # Calculate centroids for each cool place polygon
-    centroids = cool_place_polygons.geometry.centroid
+    # Ensure cool_place_polygons also has the known CRS
+    cool_place_polygons = cool_place_polygons.to_crs(known_crs)
 
-    # Filter out centroids with null or invalid geometries
-    valid_centroids = centroids[~(centroids.is_empty | centroids.isna())]
+    cool_place_nodes = []
 
-    # Find the nearest graph nodes for all valid centroids at once
-    nearest_nodes_list = nearest_nodes(graph, X=valid_centroids.x, Y=valid_centroids.y)
+    for _, polygon in cool_place_polygons.iterrows():
+        if polygon.geometry is None:
+            continue
+
+        # Handle MultiPolygon by iterating over each part
+        if isinstance(polygon.geometry, MultiPolygon):
+            polygons = polygon.geometry.geoms  # Extract individual polygons from MultiPolygon
+        else:
+            polygons = [polygon.geometry]
+
+        for poly in polygons:
+            centroid = poly.centroid
+
+            # Find the nearest node to this centroid
+            nearest_node = ox.nearest_nodes(graph, X=centroid.x, Y=centroid.y)
+
+            # Check the distance manually since we can't use automatic estimation
+            nearest_node_data = nodes_gdf.loc[nearest_node]
+            nearest_node_point = Point(nearest_node_data['geometry'].x, nearest_node_data['geometry'].y)
+            distance = centroid.distance(nearest_node_point)
+
+            if distance <= max_distance:
+                cool_place_nodes.append(nearest_node)
+            else:
+                print(f"Skipping centroid at {centroid} with nearest node distance {distance:.2f}m (greater than {max_distance}m)")
 
     end_time = time.time()
     duration = end_time - start_time
     print(f"Finding cool place nodes based on centroids took {duration:.2f} seconds")
 
     # Return the list of unique nearest nodes
-    return list(set(nearest_nodes_list))  # Remove duplicates, if any
+    return list(set(cool_place_nodes))  # Remove duplicates, if any
 
 
 def get_nearest_node(graph, point):
@@ -290,7 +310,7 @@ def plot_colored_walking_shed(buildings):
     plt.show()
 
 
-def walking_shed_calculation(place=None, graph_file_path=None, polygon_path=None, building_shapefile_path=None):
+def walking_shed_calculation(graph=None, polygon_path=None, building_shapefile_path=None):
     """
     Calculate and plot a walking shed with distance categories for a given place.
 
@@ -300,21 +320,9 @@ def walking_shed_calculation(place=None, graph_file_path=None, polygon_path=None
     - polygon_path: Path to the cool place polygon file.
     - building_shapefile_path: Path to the building polygons file.
     """
-
-    if graph_file_path:
-        graph = load_graph_from_file(graph_file_path)
-    elif place:
-        graph = load_graph_from_osm(place)
-    else:
-        raise ValueError("You must provide either a place name or a graph file path.")
-
+    graph = load_graph_from_file(graph)
     graph = process_graph(graph)
-
-    if polygon_path:
-        cool_place_polygons = load_cool_place_polygons(polygon_path)
-    else:
-        raise ValueError("You must provide the path to a cool place polygon file.")
-
+    cool_place_polygons = load_cool_place_polygons(polygon_path)
     cool_place_nodes = find_cool_place_nodes(graph, cool_place_polygons)
     print(f"Found {len(cool_place_nodes)} cool place nodes on the graph.")
 
@@ -335,9 +343,9 @@ def walking_shed_calculation(place=None, graph_file_path=None, polygon_path=None
 
 if __name__ == "__main__":
     walking_shed_calculation(
-        place="Amsterdam, Netherlands",
-        polygon_path="C:/pedestrian_demo_data/cool_places_polygons/cool_places_polygons_20230816_1300.shp",
-        building_shapefile_path="C:/pedestrian_demo_data/merged_buildings/merged_buildings.shp"
-        # polygon_path = "C:/Github_synthesis/AMS/cool_places_polygons/cool_places_polygons_20230816_900.shp",
-        # building_shapefile_path = "C:/Androniki/pythonProject1/merged_buildings.shp")
+        graph="C:/Github_synthesis/AMS/graphs_with_shade/ams_graph_with_shade_20150701_1800_cropped.graphml",
+        polygon_path = "C:/Github_synthesis/AMS/cool_places_polygons/cool_places_polygons_20230816_900.shp",
+        building_shapefile_path = "C:/Androniki/pythonProject1/merged_buildings.shp",
+        # polygon_path="C:/pedestrian_demo_data/cool_places_polygons/cool_places_polygons_20230816_1300.shp",
+        # building_shapefile_path="C:/pedestrian_demo_data/merged_buildings/merged_buildings.shp"
     )
