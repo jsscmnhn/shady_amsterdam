@@ -8,9 +8,18 @@ import os
 import re
 
 
-
-
 def add_edge_identifiers_to_gdf(graph, edges_gdf):
+    """
+    Add unique edge identifiers (u, v, key) from the graph to the edges GeoDataFrame.
+
+    Parameters:
+    - graph: A NetworkX graph with edges that need to be identified.
+    - edges_gdf: A GeoDataFrame of edges from the graph.
+
+    Returns:
+    - Updated GeoDataFrame with 'u', 'v', and 'key' columns, matching each edge to its graph identifiers.
+    """
+
     # Extract edge tuples from the graph (u, v, key)
     edge_tuples = list(graph.edges(keys=True))  # Extract all (u, v, key) tuples
 
@@ -28,6 +37,18 @@ def add_edge_identifiers_to_gdf(graph, edges_gdf):
 
 
 def compute_shade_weights(edges, raster, affine):
+    """
+    Compute the shade weights for each edge based on raster data.
+
+    Parameters:
+    - edges: GeoDataFrame of edges with geometry.
+    - raster: Raster data (opened with rasterio) representing shade values.
+    - affine: Affine transformation of the raster for correct geospatial alignment.
+
+    Returns:
+    - GeoDataFrame of edges with calculated 'shade_proportion' and 'shade_weight' columns.
+    """
+
     start_time = time.time()
 
     # Compute zonal statistics for shade weights on each edge
@@ -54,6 +75,17 @@ def compute_shade_weights(edges, raster, affine):
 
 
 def update_graph_with_shade_weight(graph, edges_gdf):
+    """
+    Update the graph with calculated shade weights from the GeoDataFrame.
+
+    Parameters:
+    - graph: A NetworkX graph to update.
+    - edges_gdf: GeoDataFrame containing edges with shade weights.
+
+    Returns:
+    - The updated NetworkX graph with 'shade_weight' as an edge attribute.
+    """
+
     start_time = time.time()
 
     # Create a multi-index on 'u', 'v', and 'key' for faster lookups
@@ -81,12 +113,28 @@ def update_graph_with_shade_weight(graph, edges_gdf):
 
 
 def store_graph_with_shade_weights(graph, edges_gdf, output_path):
+    """
+    Save the updated graph with shade weights to a file.
+
+    Parameters:
+    - graph: NetworkX graph with shade weights applied to edges.
+    - output_path: File path to store the graph in GraphML format.
+    """
+
     # Save the updated graph to a file
     ox.save_graphml(graph, output_path)
     print(f"Graph with shade weights saved to {output_path}")
 
 
 def precalculate_and_store_shade_weights(graph, raster_path, output_graph_path):
+    """
+    Perform the entire process of shade weight calculation and storage.
+
+    Parameters:
+    - graph: NetworkX graph of the area of interest.
+    - raster_path: Path to the raster file containing shade data.
+    - output_graph_path: Path to save the updated graph with shade weights.
+    """
 
     # Convert the graph edges to a GeoDataFrame
     _, edges = ox.graph_to_gdfs(graph)
@@ -113,6 +161,16 @@ def precalculate_and_store_shade_weights(graph, raster_path, output_graph_path):
 
 
 def generate_graph_name_from_raster(raster_filename):
+    """
+    Generate a unique graph filename based on raster file's date and time.
+
+    Parameters:
+    - raster_filename: Filename of the raster file.
+
+    Returns:
+    - A string representing the output graph filename based on date and time.
+    """
+
     # Extract date and time from raster filename using regular expression
     match = re.search(r'amsterdam_(\d{8})_(\d{3,4})', raster_filename)
     if match:
@@ -123,6 +181,15 @@ def generate_graph_name_from_raster(raster_filename):
         raise ValueError(f"Filename {raster_filename} does not match expected pattern.")
 
 def process_multiple_shade_maps(graph_file, raster_dir, output_dir):
+    """
+    Process multiple raster files to generate and store shade-weighted graphs.
+
+    Parameters:
+    - graph_file: Initial graph file for processing.
+    - raster_dir: Directory containing multiple raster files.
+    - output_dir: Directory to save generated shade-weighted graphs.
+    """
+
     # Get a list of all TIF files in the raster directory
     graph = graph_file
     raster_files = [f for f in os.listdir(raster_dir) if f.endswith('.TIF')]
