@@ -16,7 +16,7 @@ from io import BytesIO
 
 def download_las_tiles(tile_list_file, output_folder):
     """
-    Download LAZ files for each subtile specified in a text file.
+    Download LAZ files for each GeoTiles subtile specified in a text file.
     ------
     Input:
     - tile_list_file (str): Path to the text file containing the list of subtiles to download.

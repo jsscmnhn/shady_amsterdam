@@ -95,7 +95,7 @@
 > - **`change_nodata`** — *boolean*: If true, use a no data value of -9999; if false, use the dataset's no data value.
 > 
 > **RETURNS**  
-> - (nothing)
+> - (nothing): The function saves the .TIF directly at the output file path.
  
 ---
 
@@ -103,14 +103,15 @@
 
 #### <span style="color: red;">`download_las_tiles`</span><span style="color: gray;">(tile_list_file, output_folder)</span> <a name="heading--1-2-1"/>
 
-> Download LAZ files for each subtile specified in a text file.
+> Download LAZ files for each GeoTiles subtile specified in a text file. \
+> *Note: the base link for downloading is hard coded as "https://geotiles.citg.tudelft.nl/AHN4_T", this function will have to be updated if GeoTiles changes*
 >
 > **PARAMETERS**  
 > - **`tile_list_file`** — *str*: Path to the text file containing the list of subtiles to download.
 > - **`output_folder`** — *str*: Path to the folder where the downloaded files should be saved.
 >
 > **RETURNS**  
-> - (none): The function writes output files directly to the specified `output_folder/{subtile}`.
+> - (nothing): The function writes output files directly to the specified `output_folder/{subtile}`.
 
 #### <span style="color: red;">`download_and_extract`</span><span style="color: gray;">(url, file_path, output_folder)</span> <a name="heading--1-2-2"/>
 
@@ -122,7 +123,7 @@
 > - **`output_folder`** — *str*: Path to the folder where the extracted contents should be saved.
 >
 > **RETURNS**  
-> - (none)
+> - (nothing)
 
 #### <span style="color: red;">`merge_tif_files`</span><span style="color: gray;">(input_folder, output_file, file_prefix, nodata_value=-9999)</span> <a name="heading--1-2-3"/>
 
@@ -132,24 +133,25 @@
 > - **`input_folder`** — *str*: Path to the folder containing the TIF files.
 > - **`output_file`** — *str*: Path to the output raster file.
 > - **`file_prefix`** — *str*: Prefix of files to merge ("M_" for DTM or "R_" for DSM).
-> - **`nodata_value`** — *int*, *optional*: Value to replace the nodata value. Defaults to -9999.
+> - **`nodata_value`** — *int*, *optional*: Value to replace the nodata value. Default: -9999.
 >
 > **RETURNS**  
 > - *list*: A list containing the name of the tile and the extent of that tile, for downloading the building data.
-> - (none): The function writes the merged file directly to the specified `output_file`.
+> - The function writes the merged file directly to the specified `output_file`.
 
 #### <span style="color: red;">`download_raster_tiles`</span><span style="color: gray;">(tile_list_file, output_folder, name)</span> <a name="heading--1-2-4"/>
 
-> Download DSM and DTM files for each tile specified in a text file.
->
-> **PARAMETERS**  
+> Download DSM and DTM files for each GeoTiles tile specified in a text file. \
+>*Note: the base links for downloading are hard coded as "https://ns_hwh.fundaments.nl/hwh-ahn/ahn4/02a_DTM_0.5m" and "https://ns_hwh.fundaments.nl/hwh-ahn/ahn4/03a_DSM_0.5m", this function will have to be updated if GeoTiles changes*
+> 
+>**PARAMETERS**  
 > - **`tile_list_file`** — *str*: Path to the text file containing the list of tiles to download.
 > - **`output_folder`** — *str*: Directory where the downloaded and unzipped files will be saved.
 > - **`name`** — *str*: Name of the output raster file.
 >
 > **RETURNS**  
-> - *list*: A list containing the name of the tile and the extent of that tile, for downloading the building data.
-> - (none): The function writes output files directly to the specified `output_folder`.
+> - *list*: A list containing the name of the tile and the extent of that tile, for downloading the building data at a later step.
+> - The function writes output files directly to the specified `output_folder`.
 
 #### <span style="color: red;">`download_wfs_data`</span><span style="color: gray;">(wfs_url, layer_name, bbox, gpkg_name, output_folder, tile_name)</span> <a name="heading--1-2-5"/>
 
@@ -183,7 +185,7 @@
 
 #### <span style="color: red;">`median_filter_chm`</span><span style="color: gray;">(chm_array, nodata_value=-9999, size=3)</span> <a name="heading--1-3-1"/>
 
-> Apply a median filter to a CHM, handling NoData values.
+> Apply a median filter to a numpy array, ignoring the NoData values.
 >
 > **PARAMETERS**  
 > - **`chm_array`** — *np.ndarray*: The array representing the height values of the CHM.
@@ -196,7 +198,7 @@
 
 #### <span style="color: red;">`extract_vegetation_points`</span><span style="color: gray;">(LasData, ndvi_threshold=0.1, pre_filter=False)</span> <a name="heading--1-3-2"/>
 
-> Extract vegetation points based on classification and NDVI threshold.
+> Extract vegetation points based on AHN classification and NDVI threshold.
 >
 > **PARAMETERS**  
 > - **`LasData`** — *laspy.LasData*: Input point cloud data in LAS format.
@@ -223,11 +225,11 @@
 > - **`filter_size`** — *int*: Size of the median filter (default: 3).
 >
 > **RETURNS**  
-> - *(none)*: The function saves the CHM as a raster file (.tif) to the specified output path.
+> - *(nothing)*: The function saves the CHM as a raster file (.tif) to the specified output path.
 
 #### <span style="color: red;">`interpolation_vegetation`</span><span style="color: gray;">(LasData, veg_points, resolution, no_data_value=-9999)</span> <a name="heading--1-3-4"/>
 
-> Create a vegetation raster using Laplace interpolation.
+> Create a vegetation raster from LAS vegetation points using Laplace interpolation.
 >
 > **PARAMETERS**  
 > - **`LasData`** — *laspy.LasData*: Input LiDAR point cloud data.
@@ -245,7 +247,7 @@
 > Process a LAZ file to extract vegetation points and generate a CHM.
 >
 > **PARAMETERS**  
-> - **`file_path`** — *str*: The file_path containing the folders containing the input .LAZ file.
+> - **`file_path`** — *str*: The file_path containing the folder containing the input .LAZ file.
 > - **`output_folder`** — *str*: The folder where the output CHM .tif files will be saved.
 > - **`ndvi_threshold`** — *float*: The NDVI threshold for classifying vegetation points.
 > - **`resolution`** — *float*: The resolution of the output CHM rasters, defining the size of each pixel (default: 0.5).
@@ -255,7 +257,7 @@
 > - **`pre_filter`** — *bool*: If True, applies an additional filter to remove vegetation points below a certain height threshold (1.5 meters above the lowest vegetation point).
 >
 > **RETURNS**  
-> - *(none)*: The function processes a .LAZ file, creates a corresponding CHM .tif file, and saves it to the output folder. Optionally deletes the original .LAZ files if `remove` is set to True.
+> - *(Nothing)*: The function processes a .LAZ file, creates a corresponding CHM .tif file, and saves it to the output folder. Optionally deletes the original .LAZ files if `remove` is set to True.
 
 
 #### <span style="color: red;">`process_laz_files`</span><span style="color: gray;">(input_folder, output_folder, ndvi_threshold=0.0, resolution=0.5, remove=False, smooth_chm=False, filter_size=3, pre_filter=False, max_workers=4)</span> <a name="heading--1-3-6"/>
@@ -274,7 +276,7 @@
 > - **`max_workers`** — *int*: The number of parallel processes to process the LAZ files.
 >
 > **RETURNS**  
-> - *(none)*: The function processes the .LAZ files, creates corresponding CHM .tif files, and saves them to the output folder. Optionally deletes the original .LAZ files if `remove` is set to True.
+> - *(Nothing)*: The function processes the .LAZ files, creates corresponding CHM .tif files, and saves them to the output folder. Optionally deletes the original .LAZ files if `remove` is set to True.
 
 ---
 
@@ -301,9 +303,9 @@
 > - `no_data` (int, optional): NoData value to replace source NoData value with.
 >
 > **Output:**  
-> - `cropped_data` (2D numpy array): Cropped raster data.  
-> - `src.window_transform(window)` (affine transform matrix): For the given window.  
-> - `src.crs` (rasterio src): A PROJ4 dict representation of the CRS of the input raster.
+> - *2D numpy array*: Cropped raster data.  
+> - *src.window_transform(window)*: Affine transform matrix for the given window.  
+> - *src.crs*: A PROJ4 dict representation of the CRS of the input raster.
 
 
 #### <span style="color: red;">`extract_center_cells`</span><span style="color: gray;">(cropped_data, no_data=-9999)</span> <a name="heading--1-4-3"/>
@@ -315,7 +317,7 @@
 > - `no_data` (int, optional): NoData value to replace source NoData value with.
 >
 > **Output:**  
-> - `xyz_filled` (list): List containing x, y, and z coordinates of the cells.
+> - *List*: Containing x, y, and z coordinates of the cells.
 
 
 #### <span style="color: red;">`fill_raster`</span><span style="color: gray;">(cropped_data, nodata_value, transform, speed_up=False)</span> <a name="heading--1-4-4"/>
@@ -329,8 +331,8 @@
 > - `speed_up` (boolean): If True, checks for a large NoData area and uses linear interpolation if so. Default is False.
 >
 > **Output:**  
-> - `new_data[0, 1:-1, 1:-1]` (2D numpy array): Filled raster data with first and last rows and columns removed to ensure there are no NoData values from Laplace interpolation.  
-> - `new_transform` (rasterio transform): Affine transform matrix reflecting the one-column one-row removal shift.
+> - *2D numpy array*: Filled raster data with first and last rows and columns removed to ensure there are no NoData values from Laplace interpolation.  
+> - *rasterio transform*: Affine transform matrix reflecting the one-column one-row removal shift.
 
 
 #### <span style="color: red;">`chm_finish`</span><span style="color: gray;">(chm_array, dtm_array, transform, min_height=2, max_height=40)</span> <a name="heading--1-4-5"/>
@@ -345,13 +347,13 @@
 > - `max_height` (float, optional): Maximum height for vegetation to be included.
 >
 > **Output:**  
-> - `result_array` (2D numpy array): Array of the CHM with normalized height and min and max heights removed.  
-> - `new_transform` (rasterio transform): Affine transform matrix reflecting the one-column one-row removal shift.
+> - *2D numpy array*: Array of the CHM with normalized height and min and max heights removed.  
+> - *rasterio transform*: Affine transform matrix reflecting the one-column one-row removal shift.
 
 
 #### <span style="color: red;">`replace_buildings`</span><span style="color: gray;">(filled_dtm, dsm_buildings, buildings_geometries, transform)</span> <a name="heading--1-4-6"/>
 
-> Replace the values of the filled DTM with the values of the filled DSM, if there is a building.
+> Replace the values of the filled DTM with the values of the filled DSM, if there is a building at the value location.
 >
 > **Input:**  
 > - `filled_dtm` (2D np array): Filled array of the cropped AHN DTM.  
@@ -360,7 +362,7 @@
 > - `transform` (rasterio transform): Affine transform matrix.
 >
 > **Output:**  
-> - `final_dsm` (2D numpy array): A numpy array representing the final DSM, containing only ground and building heights.
+> - *2D numpy array*: A numpy array representing the final DSM, containing only ground and building heights.
 
 
 #### <span style="color: red;">`load_buildings`</span><span style="color: gray;">(buildings_path, layer)</span> <a name="heading--1-4-7"/>
@@ -372,7 +374,7 @@
 > - `layer` (string): (Tile) name of the layer of buildings to be used.
 >
 > **Output:**  
-> - List of dictionaries: A list of geometries in GeoJSON-like dictionary format. Each dictionary represents a building geometry with its spatial coordinates.
+> - *List of dictionaries*: A list of geometries in GeoJSON-like dictionary format. Each dictionary represents a building geometry with its spatial coordinates.
 
 
 #### <span style="color: red;">`extract_tilename`</span><span style="color: gray;">(filename)</span> <a name="heading--1-4-8"/>
@@ -383,7 +385,7 @@
 > - `filename` (string): The name of the input chm.tif.
 >
 > **Output:**  
-> - `match.group(1)`: The name of the AHN tile.
+> - *string*: The name of the AHN tile.
 
 
 #### <span style="color: red;">`process_single_file`</span><span style="color: gray;">(chm_path, dtm_path, dsm_path, building_geometries, output_base_folder, nodata_value=-9999, speed_up=False, min_height=2, max_height=40)</span> <a name="heading--1-4-9"/>
@@ -426,7 +428,7 @@
 > - `max_height` (float, optional): Maximum height for vegetation to be included in final CHM.
 >
 > **Output:**  
-> - None: The function writes output files directly to the specified `output_base_folder`.  
+> - (Nothing): The function writes output files directly to the specified `output_base_folder`.  
 > - Output files: For each input CHM file, the function generates:  
 >   - A DSM file with building data incorporated: `DSM_<tile>_<subtile_number>.tif`  
 >   - A processed CHM file: `CHM_<tile>_<subtile_number>.tif`  
@@ -447,7 +449,7 @@
 > - `max_workers` (int): Number of parallel processes.
 >
 > **Output:**  
-> - None: The function writes output files directly to the specified `output_base_folder`.
+> - (Nothing): The function writes output files directly to the specified `output_base_folder`.
 
 ---
 
@@ -455,7 +457,7 @@
 
 #### <span style="color: red;">`process_chm_dsm`</span><span style="color: gray;">(chm_filename, dsm_filename, folder_path, output_dir, date, start_time=10, end_time=21, interval=30, use_chm=True, trans=10, trunkheight=25)</span> <a name="heading--1-5-1"/>
 
-> Function to process a single DSM and CHM file pair.
+> Function to process a single DSM and CHM file pair and create shade maps from them for the given time frame and interval.
 >
 > **Input:**  
 > - `chm_filename` (str): Name of the CHM file to be processed.  
@@ -471,12 +473,12 @@
 > - `trunkheight` (int, optional): Trunk height for vegetation calculations, representing the percentage of CHM height for trunk height (default: 25).
 >
 > **Output:**  
-> - None: This function prints a message upon completion of shade calculation.
+> - (Nothing): This function prints a message upon completion of shade calculation.
 
 
 #### <span style="color: red;">`run_shade_calculation`</span><span style="color: gray;">(file_pairs, output_base_folder, date, start_time, end_time, interval, use_chm=True, trans=10, trunkheight=25, max_workers=4)</span> <a name="heading--1-5-2"/>
 
-> Process CHM and DSM file pairs in parallel.
+> Process CHM and DSM file pairs in parallel to create shade maps.
 >
 > **Input:**  
 > - `file_pairs` (list): List of tuples containing `(CHM file, DSM file, folder_path, tile)`.  
@@ -490,7 +492,7 @@
 > - `trunkheight` (int, optional): Trunk height for vegetation calculations, representing the percentage of CHM height for trunk height (default: 25).
 >
 > **Output:**  
-> - None: This function prints messages regarding processing status and creates output directories.
+> - (Nothing): This function prints messages regarding processing status and creates output directories.
 
 
 #### <span style="color: red;">`process_folders`</span><span style="color: gray;">(base_folder, output_base_folder, date, start_time=9, end_time=20, interval=30, use_chm=True, trans=10, trunkheight=25, max_workers=4)</span> <a name="heading--1-5-3"/>
@@ -509,7 +511,7 @@
 > - `trunkheight` (int, optional): Trunk height for vegetation calculations, representing the percentage of CHM height for trunk height (default: 25).
 >
 > **Output:**  
-> - None: This function prints messages regarding the processing status for each folder.
+> - (Nothing): This function prints messages regarding the processing status for each folder.
 
 ---
 
@@ -517,7 +519,7 @@
 
 #### <span style="color: red;">`merge_tif_files_by_time`</span><span style="color: gray;">(main_folder, output_folder, merged_name, start_time=900, end_time=2000, delete_input_files=False, nodata_value=-9999)</span> <a name="heading--1-6-1"/>
 
-> Merge multiple TIF files from specified subfolders into a single mosaic file for each specified time step.
+> Merge multiple TIF files from specified subfolders into a single file for each specified time step.
 >
 > **Input:**  
 > - `main_folder` (str): Path to the main folder containing subfolders with TIF files to be merged.  
@@ -529,7 +531,7 @@
 > - `delete_input_files` (bool, optional): If True, deletes the original TIFF files after merging (default: False).
 >
 > **Output:**  
-> - None: The function saves merged TIFF files directly to the specified `output_folder` with the naming format `{merged_name}_{date_str}_{time}.TIF`.
+> - (Nothing): The function saves merged TIFF files directly to the specified `output_folder` with the naming format `{merged_name}_{date_str}_{time}.TIF`.
 
 ---
 ### Running Code (*main_shade.py*) <a name="heading--1-7"/>
@@ -544,7 +546,7 @@
 > - `sep` (str): Separator to use between concatenated keys.
 >
 > **Output:**  
-> - `items`: A flat dictionary.
+> - *dictionary*: A flat dictionary.
 
 
 #### <span style="color: red;">`read_config`</span><span style="color: gray;">(file_path)</span> <a name="heading--1-7-2"/>
@@ -555,7 +557,7 @@
 > - `file_path` (str): The path to the configuration file.
 >
 > **Output:**  
-> - `params` (dict): The configuration dictionary containing all required parameters.
+> - *dictionary*: The configuration dictionary containing all required parameters.
  
  ---
 
