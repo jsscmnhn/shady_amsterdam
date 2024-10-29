@@ -7,6 +7,8 @@ import time
 from osmnx.distance import nearest_nodes
 from shapely.geometry import MultiPolygon, Point
 
+
+
 def load_building_polygons(building_shapefile_path):
     """
     Load building polygons from a shapefile.
@@ -87,9 +89,10 @@ def load_cool_place_polygons(polygon_path):
     polygons = gpd.read_file(polygon_path)
     return polygons
 
+
 def find_cool_place_nodes(graph, cool_place_polygons, max_distance=500, known_crs="EPSG:28992"):
     """
-    Find the nearest graph nodes for each cool place polygon centroid if within max_distance.
+    Find the nearest graph nodes for each cool place polygon (or each part if MultiPolygon) centroid within max_distance.
 
     Parameters:
     - graph: NetworkX graph with nodes representing the walkable area.
@@ -106,43 +109,50 @@ def find_cool_place_nodes(graph, cool_place_polygons, max_distance=500, known_cr
     nodes_gdf = ox.graph_to_gdfs(graph, nodes=True, edges=False)
     nodes_gdf = nodes_gdf.set_crs(known_crs, allow_override=True)
 
-    # Ensure cool_place_polygons also has the known CRS
+    # Ensure cool_place_polygons has the known CRS
     cool_place_polygons = cool_place_polygons.to_crs(known_crs)
 
-    cool_place_nodes = []
+    # Filter out None geometries
+    cool_place_polygons = cool_place_polygons[cool_place_polygons.geometry.notnull()]
 
-    for _, polygon in cool_place_polygons.iterrows():
-        if polygon.geometry is None:
-            continue
+    # List to store all centroids for polygons and MultiPolygons
+    centroids = []
 
-        # Handle MultiPolygon by iterating over each part
-        if isinstance(polygon.geometry, MultiPolygon):
-            polygons = polygon.geometry.geoms  # Extract individual polygons from MultiPolygon
+    # Gather centroids, handling MultiPolygons by adding each part's centroid
+    for _, feature in cool_place_polygons.iterrows():
+        geometry = feature.geometry
+        if isinstance(geometry, MultiPolygon):
+            centroids.extend([poly.centroid for poly in geometry.geoms])
         else:
-            polygons = [polygon.geometry]
+            centroids.append(geometry.centroid)
 
-        for poly in polygons:
-            centroid = poly.centroid
+    # Extract X, Y coordinates of all centroids
+    X = [centroid.x for centroid in centroids]
+    Y = [centroid.y for centroid in centroids]
 
-            # Find the nearest node to this centroid
-            nearest_node = ox.nearest_nodes(graph, X=centroid.x, Y=centroid.y)
+    # Perform batch nearest node search for all centroids
+    nearest_nodes_list = nearest_nodes(graph, X=X, Y=Y)
 
-            # Check the distance manually since we can't use automatic estimation
-            nearest_node_data = nodes_gdf.loc[nearest_node]
-            nearest_node_point = Point(nearest_node_data['geometry'].x, nearest_node_data['geometry'].y)
-            distance = centroid.distance(nearest_node_point)
+    # Filter nodes by distance to each centroid
+    cool_place_nodes = []
+    for centroid, nearest_node in zip(centroids, nearest_nodes_list):
+        nearest_node_geom = nodes_gdf.loc[nearest_node].geometry
+        distance = centroid.distance(nearest_node_geom)
 
-            if distance <= max_distance:
-                cool_place_nodes.append(nearest_node)
-            else:
-                print(f"Skipping centroid at {centroid} with nearest node distance {distance:.2f}m (greater than {max_distance}m)")
+        if distance <= max_distance:
+            cool_place_nodes.append(nearest_node)
+        else:
+            print(
+                f"Skipping centroid at {centroid} with nearest node distance {distance:.2f}m (greater than {max_distance}m)")
 
     end_time = time.time()
     duration = end_time - start_time
-    print(f"Finding cool place nodes based on centroids took {duration:.2f} seconds")
+    print(f"Finding cool place nodes took {duration:.2f} seconds")
 
     # Return the list of unique nearest nodes
-    return list(set(cool_place_nodes))  # Remove duplicates, if any
+    return list(set(cool_place_nodes))  # Remove duplicates
+
+
 
 
 def get_nearest_node(graph, point):
