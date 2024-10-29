@@ -13,10 +13,13 @@ For more information, look at the page:  [Cool Space Process](docs/Cool-Spaces.m
 For more information, look at the page:  [Network Process](docs/Network.md)
 
 # Running the code
+## API
+[API](docs/api.md)
+
 ## Configuration file 
 [Setting up the Configuration File](docs/Configuration-setup.md)
 ## Requirements
 The file containing the required packages for this repository can be found at: 
 
-## API
-for more information about the
+
+
