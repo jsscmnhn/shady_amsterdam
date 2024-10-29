@@ -4,3 +4,25 @@
 .vscode
 **/.DS_Store
 cool_place/coolspaceConfig.json
+
+data/C_25GN1.LAZ
+/data
+/Calculating shade/archive/data
+Calculating shade/archive/final/top_CHM_25DN2.TIF
+/Calculating shade/archive/final
+/Calculating shade/archive/output
+/Calculating shade/shade_calculation/output
+/Calculating shade/archive/tryout
+Calculating shade/Calculating_chm_dsm/myfile.geojson
+/Calculating shade/data
+/Calculating shade/Calculating_chm_dsm/output
+/Calculating shade/Calculating_chm_dsm/data
+/shade_calculation/path
+shade_calculation/src/amsterdam
+/shade_calculation/src/testingbounds
+/shade_calculation/test
+Calculating shade/archive/fixing_shademap.py
+/Calculating shade
+/Calculating shade
+
+/.vs/
