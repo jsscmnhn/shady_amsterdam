@@ -6,6 +6,9 @@ Three steps: calculating and creating the shade maps, identifying and scoring th
 ## Shade Map 
 For more information, look at the wiki page:  [Shade Map Calculation](../../wiki/Shade-Map-Calculation)
 
+## Cool Space
+For more information, look at the wiki page:  [Cool Space Process](../../wiki/Cool-Spaces-Identification-and-Scoring)
+
 # Running the code
 ## Configuration file 
 [Setting up the Configuration File](../../wiki/Setting-up-the-Configuration-File)
