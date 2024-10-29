@@ -1,0 +1,25 @@
+{
+    "notes": "Provide the following data for the pedestrian network analysis:",
+    
+    "shade_weights": {
+        "graphml_file": "C:/Github_synthesis/AMS/Amsterdam_pedestrian_network.graphml", 
+        "graphml_file_note": "Path to the pre-saved GraphML file for the Amsterdam pedestrian network.",
+        
+        "area_name": "None",
+        "area_name_note": "Name of the area to load the OSM network from if no GraphML file is provided.",
+
+        "shade_maps_path": "C:/Github_synthesis/AMS/shade_maps/",
+        "shade_maps_path_note": "Path to directory containing shade maps (e.g., TIFF files).",
+        
+        "new_graphml_files_path": "C:/Github_synthesis/AMS/graphs_with_shade/",
+        "new_graphml_files_path_note": "Path to store the GraphML files after adding shade weights."
+    },
+
+    "cool_places": {
+        "cool_places_path": "C:/Github_synthesis/AMS/cool_places_polygons/",
+        "cool_places_path_note": "Path to the shapefile or GeoJSON file containing cool place polygons.",
+        
+        "cool_places_nodes_path": "C:/Github_synthesis/AMS/cool_place_nodes/",
+        "cool_places_nodes_path_note": "Path to store the output file with cool place nodes."
+    }
+}
