@@ -12,6 +12,11 @@ from osmnx.distance import nearest_nodes
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from multiprocessing import Manager
 from scipy.spatial import KDTree
+import osmnx as ox
+
+
+
+from shapely.geometry import MultiPolygon
 
 
 
@@ -46,7 +51,7 @@ def load_cool_place_polygons(polygon_path):
     return polygons
 
 
-def find_cool_place_nodes(graph, cool_place_polygons):
+def find_cool_place_nodes(graph, cool_place_polygons, max_distance=100):
     start_time = time.time()
 
     # Convert graph nodes to a GeoDataFrame
@@ -59,24 +64,40 @@ def find_cool_place_nodes(graph, cool_place_polygons):
     # Filter out rows with None geometries
     cool_place_polygons = cool_place_polygons[cool_place_polygons.geometry.notnull()]
 
-    # Extract node coordinates and KDTree for quick nearest neighbor search
+    # Extract node coordinates and create KDTree for quick nearest neighbor search
     node_coords = [(geom.x, geom.y) for geom in nodes_gdf.geometry]
     kd_tree = KDTree(node_coords)
 
     # Map from KDTree result indices to graph node IDs
     node_indices = list(nodes_gdf.index)
 
-    # Find the nearest network node for each cool place polygon centroid
+    # Find the nearest network node for each cool place polygon or MultiPolygon centroid
     cool_place_nodes = []
     for _, polygon in cool_place_polygons.iterrows():
         if polygon.geometry is None:
             print("Skipping None geometry in cool_place_polygons.")
             continue
 
-        centroid = polygon.geometry.centroid
-        nearest_idx = kd_tree.query((centroid.x, centroid.y))[1]
-        nearest_node = node_indices[nearest_idx]
-        cool_place_nodes.append(nearest_node)
+        # Check if the geometry is a MultiPolygon
+        if isinstance(polygon.geometry, MultiPolygon):
+            # Process each polygon in the MultiPolygon
+            for sub_polygon in polygon.geometry.geoms:
+                centroid = sub_polygon.centroid
+                distance, nearest_idx = kd_tree.query((centroid.x, centroid.y))
+                if distance <= max_distance:
+                    nearest_node = node_indices[nearest_idx]
+                    cool_place_nodes.append(nearest_node)
+                else:
+                    print(f"Skipping centroid at {centroid} with nearest node distance {distance:.2f}m (greater than {max_distance}m)")
+        else:
+            # Process single Polygon
+            centroid = polygon.geometry.centroid
+            distance, nearest_idx = kd_tree.query((centroid.x, centroid.y))
+            if distance <= max_distance:
+                nearest_node = node_indices[nearest_idx]
+                cool_place_nodes.append(nearest_node)
+            else:
+                print(f"Skipping centroid at {centroid} with nearest node distance {distance:.2f}m (greater than {max_distance}m)")
 
     end_time = time.time()
     duration = end_time - start_time
