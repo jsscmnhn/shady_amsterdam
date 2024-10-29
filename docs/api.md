@@ -97,6 +97,8 @@
 > **RETURNS**  
 > - (nothing)
  
+---
+
 ### Data Acquisition (*collect_data.py*) <a name="heading--1-2"/>
 
 #### <span style="color: red;">`download_las_tiles`</span><span style="color: gray;">(tile_list_file, output_folder)</span> <a name="heading--1-2-1"/>
@@ -174,6 +176,8 @@
 >
 > **RETURNS**  
 > - (none): Saves a GeoPackage file to the given `{gpkg_name}` at layer `{tile_name}`.
+ 
+ ---
 
 ### CHM Creation (*create_first_chm_parallel.py*) <a name="heading--1-3"/>
 
@@ -189,7 +193,6 @@
 > **RETURNS**  
 > - *np.ndarray*: The smoothed CHM array.
 
----
 
 #### <span style="color: red;">`extract_vegetation_points`</span><span style="color: gray;">(LasData, ndvi_threshold=0.1, pre_filter=False)</span> <a name="heading--1-3-2"/>
 
@@ -203,7 +206,6 @@
 > **RETURNS**  
 > - *laspy.LasData*: A new LasData object containing only the filtered vegetation points based on the specified criteria.
 
----
 
 #### <span style="color: red;">`chm_creation`</span><span style="color: gray;">(LasData, vegetation_data, output_filename, resolution=0.5, smooth=False, nodata_value=-9999, filter_size=3)</span> <a name="heading--1-3-3"/>
 
@@ -223,8 +225,6 @@
 > **RETURNS**  
 > - *(none)*: The function saves the CHM as a raster file (.tif) to the specified output path.
 
----
-
 #### <span style="color: red;">`interpolation_vegetation`</span><span style="color: gray;">(LasData, veg_points, resolution, no_data_value=-9999)</span> <a name="heading--1-3-4"/>
 
 > Create a vegetation raster using Laplace interpolation.
@@ -239,7 +239,6 @@
 > - *np.ndarray*: Generated raster for vegetation.
 > - *tuple*: Grid of x, y center coordinates for each raster cell.
 
----
 
 #### <span style="color: red;">`process_single_laz_file`</span><span style="color: gray;">(file_path, output_folder, ndvi_threshold=0.0, resolution=0.5, remove=False, smooth_chm=False, filter_size=3, pre_filter=False)</span> <a name="heading--1-3-5"/>
 
@@ -258,7 +257,6 @@
 > **RETURNS**  
 > - *(none)*: The function processes a .LAZ file, creates a corresponding CHM .tif file, and saves it to the output folder. Optionally deletes the original .LAZ files if `remove` is set to True.
 
----
 
 #### <span style="color: red;">`process_laz_files`</span><span style="color: gray;">(input_folder, output_folder, ndvi_threshold=0.0, resolution=0.5, remove=False, smooth_chm=False, filter_size=3, pre_filter=False, max_workers=4)</span> <a name="heading--1-3-6"/>
 
@@ -278,6 +276,8 @@
 > **RETURNS**  
 > - *(none)*: The function processes the .LAZ files, creates corresponding CHM .tif files, and saves them to the output folder. Optionally deletes the original .LAZ files if `remove` is set to True.
 
+---
+
 ### DSM and Final CHM Creation (*create_dsm_and_chm_parallel.py*) <a name="heading--1-4"/>
 
 #### <span style="color: red;">`get_bbox`</span><span style="color: gray;">(raster_paths)</span> <a name="heading--1-4-1"/>
@@ -290,7 +290,6 @@
 > **Output:**  
 > - *rasterio.coords.BoundingBox*: Bounding box of the raster.
 
----
 
 #### <span style="color: red;">`crop_raster`</span><span style="color: gray;">(raster_path, bbox, no_data=-9999)</span> <a name="heading--1-4-2"/>
 
@@ -306,7 +305,6 @@
 > - `src.window_transform(window)` (affine transform matrix): For the given window.  
 > - `src.crs` (rasterio src): A PROJ4 dict representation of the CRS of the input raster.
 
----
 
 #### <span style="color: red;">`extract_center_cells`</span><span style="color: gray;">(cropped_data, no_data=-9999)</span> <a name="heading--1-4-3"/>
 
@@ -319,7 +317,6 @@
 > **Output:**  
 > - `xyz_filled` (list): List containing x, y, and z coordinates of the cells.
 
----
 
 #### <span style="color: red;">`fill_raster`</span><span style="color: gray;">(cropped_data, nodata_value, transform, speed_up=False)</span> <a name="heading--1-4-4"/>
 
@@ -335,7 +332,6 @@
 > - `new_data[0, 1:-1, 1:-1]` (2D numpy array): Filled raster data with first and last rows and columns removed to ensure there are no NoData values from Laplace interpolation.  
 > - `new_transform` (rasterio transform): Affine transform matrix reflecting the one-column one-row removal shift.
 
----
 
 #### <span style="color: red;">`chm_finish`</span><span style="color: gray;">(chm_array, dtm_array, transform, min_height=2, max_height=40)</span> <a name="heading--1-4-5"/>
 
@@ -352,7 +348,6 @@
 > - `result_array` (2D numpy array): Array of the CHM with normalized height and min and max heights removed.  
 > - `new_transform` (rasterio transform): Affine transform matrix reflecting the one-column one-row removal shift.
 
----
 
 #### <span style="color: red;">`replace_buildings`</span><span style="color: gray;">(filled_dtm, dsm_buildings, buildings_geometries, transform)</span> <a name="heading--1-4-6"/>
 
@@ -367,7 +362,6 @@
 > **Output:**  
 > - `final_dsm` (2D numpy array): A numpy array representing the final DSM, containing only ground and building heights.
 
----
 
 #### <span style="color: red;">`load_buildings`</span><span style="color: gray;">(buildings_path, layer)</span> <a name="heading--1-4-7"/>
 
@@ -380,7 +374,6 @@
 > **Output:**  
 > - List of dictionaries: A list of geometries in GeoJSON-like dictionary format. Each dictionary represents a building geometry with its spatial coordinates.
 
----
 
 #### <span style="color: red;">`extract_tilename`</span><span style="color: gray;">(filename)</span> <a name="heading--1-4-8"/>
 
@@ -392,7 +385,6 @@
 > **Output:**  
 > - `match.group(1)`: The name of the AHN tile.
 
----
 
 #### <span style="color: red;">`process_single_file`</span><span style="color: gray;">(chm_path, dtm_path, dsm_path, building_geometries, output_base_folder, nodata_value=-9999, speed_up=False, min_height=2, max_height=40)</span> <a name="heading--1-4-9"/>
 
@@ -416,7 +408,6 @@
 >   - A processed CHM file: `CHM_<tile>_<subtile_number>.tif`  
 >   - These files are saved in folders named after the tile in `output_base_folder`.
 
----
 
 #### <span style="color: red;">`process_files`</span><span style="color: gray;">(chm_folder, dtm_path, dsm_path, buildings_path, output_base_folder, nodata_value=-9999, max_workers=4, speed_up=False, min_height=2, max_height=40)</span> <a name="heading--1-4-10"/>
 
@@ -441,7 +432,6 @@
 >   - A processed CHM file: `CHM_<tile>_<subtile_number>.tif`  
 >   - These files are saved in folders named after the tile in `output_base_folder`.
 
----
 
 #### <span style="color: red;">`process_folders`</span><span style="color: gray;">(base_chm_folder, dtm_path, dsm_path, buildings_path, output_base_folder, max_workers=4, speed_up=False, min_height=2, max_height=40)</span> <a name="heading--1-4-11"/>
 
@@ -458,6 +448,8 @@
 >
 > **Output:**  
 > - None: The function writes output files directly to the specified `output_base_folder`.
+
+---
 
 ### Creating Shade Maps (*shade_parallel.py*) <a name="heading--1-5"/>
 
@@ -481,7 +473,6 @@
 > **Output:**  
 > - None: This function prints a message upon completion of shade calculation.
 
----
 
 #### <span style="color: red;">`run_shade_calculation`</span><span style="color: gray;">(file_pairs, output_base_folder, date, start_time, end_time, interval, use_chm=True, trans=10, trunkheight=25, max_workers=4)</span> <a name="heading--1-5-2"/>
 
@@ -501,7 +492,6 @@
 > **Output:**  
 > - None: This function prints messages regarding processing status and creates output directories.
 
----
 
 #### <span style="color: red;">`process_folders`</span><span style="color: gray;">(base_folder, output_base_folder, date, start_time=9, end_time=20, interval=30, use_chm=True, trans=10, trunkheight=25, max_workers=4)</span> <a name="heading--1-5-3"/>
 
@@ -521,6 +511,8 @@
 > **Output:**  
 > - None: This function prints messages regarding the processing status for each folder.
 
+---
+
 ### Merging Shade Maps (*merge_shademaps.py*) <a name="heading--1-6"/>
 
 #### <span style="color: red;">`merge_tif_files_by_time`</span><span style="color: gray;">(main_folder, output_folder, merged_name, start_time=900, end_time=2000, delete_input_files=False, nodata_value=-9999)</span> <a name="heading--1-6-1"/>
@@ -539,6 +531,7 @@
 > **Output:**  
 > - None: The function saves merged TIFF files directly to the specified `output_folder` with the naming format `{merged_name}_{date_str}_{time}.TIF`.
 
+---
 ### Running Code (*main_shade.py*) <a name="heading--1-7"/>
 
 #### <span style="color: red;">`flatten_dict`</span><span style="color: gray;">(nested_dict, parent_key='', sep='_')</span> <a name="heading--1-7-1"/>
@@ -553,7 +546,6 @@
 > **Output:**  
 > - `items`: A flat dictionary.
 
----
 
 #### <span style="color: red;">`read_config`</span><span style="color: gray;">(file_path)</span> <a name="heading--1-7-2"/>
 
@@ -564,4 +556,7 @@
 >
 > **Output:**  
 > - `params` (dict): The configuration dictionary containing all required parameters.
+ 
+ ---
+
 ## Cool Spaces Functions <a name="heading--2"/>
