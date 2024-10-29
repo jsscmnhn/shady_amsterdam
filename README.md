@@ -1,6 +1,8 @@
 # Shady Amsterdam
 Synthesis 1011 repository
 
+https://shady-amsterdam.readthedocs.io/en/latest/
+
 Three steps: calculating and creating the shade maps, identifying and scoring the cool spaces and routing. 
 
 ## Shade Map 
