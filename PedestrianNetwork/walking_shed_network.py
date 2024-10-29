@@ -11,8 +11,6 @@ from multiprocessing import Pool, cpu_count
 from osmnx.distance import nearest_nodes
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from multiprocessing import Manager
-from scipy.spatial import KDTree
-
 
 
 def load_building_polygons(building_shapefile_path):
@@ -49,41 +47,26 @@ def load_cool_place_polygons(polygon_path):
 def find_cool_place_nodes(graph, cool_place_polygons):
     start_time = time.time()
 
-    # Convert graph nodes to a GeoDataFrame
-    nodes_gdf = ox.graph_to_gdfs(graph, nodes=True, edges=False)
+    # Ensure the cool place polygons are in the same CRS as the graph nodes
+    nodes = ox.graph_to_gdfs(graph, nodes=True, edges=False)
+    if cool_place_polygons.crs != nodes.crs:
+        cool_place_polygons = cool_place_polygons.to_crs(nodes.crs)
 
-    # Ensure CRS matches between nodes and polygons
-    if nodes_gdf.crs != cool_place_polygons.crs:
-        cool_place_polygons = cool_place_polygons.to_crs(nodes_gdf.crs)
+    # Calculate centroids for each cool place polygon
+    centroids = cool_place_polygons.geometry.centroid
 
-    # Filter out rows with None geometries
-    cool_place_polygons = cool_place_polygons[cool_place_polygons.geometry.notnull()]
+    # Filter out centroids with null or invalid geometries
+    valid_centroids = centroids[~(centroids.is_empty | centroids.isna())]
 
-    # Extract node coordinates and KDTree for quick nearest neighbor search
-    node_coords = [(geom.x, geom.y) for geom in nodes_gdf.geometry]
-    kd_tree = KDTree(node_coords)
-
-    # Map from KDTree result indices to graph node IDs
-    node_indices = list(nodes_gdf.index)
-
-    # Find the nearest network node for each cool place polygon centroid
-    cool_place_nodes = []
-    for _, polygon in cool_place_polygons.iterrows():
-        if polygon.geometry is None:
-            print("Skipping None geometry in cool_place_polygons.")
-            continue
-
-        centroid = polygon.geometry.centroid
-        nearest_idx = kd_tree.query((centroid.x, centroid.y))[1]
-        nearest_node = node_indices[nearest_idx]
-        cool_place_nodes.append(nearest_node)
+    # Find the nearest graph nodes for all valid centroids at once
+    nearest_nodes_list = nearest_nodes(graph, X=valid_centroids.x, Y=valid_centroids.y)
 
     end_time = time.time()
     duration = end_time - start_time
-    print(f"Finding cool place nodes took {duration:.2f} seconds")
+    print(f"Finding cool place nodes based on centroids took {duration:.2f} seconds")
 
-    return cool_place_nodes
-
+    # Return the list of unique nearest nodes
+    return list(set(nearest_nodes_list))  # Remove duplicates, if any
 
 
 def get_nearest_node(graph, point):
@@ -172,55 +155,6 @@ def assign_buildings_to_distance_category_with_precomputed(buildings, graph, dis
     return buildings
 
 
-def assign_building_distance_category(building, graph, distance_nodes):
-    # Calculate the nearest node for the building and assign the distance category
-    building_centroid = building.geometry.centroid
-    nearest_building_node = get_nearest_node(graph, building_centroid)
-
-    # Assign the building to the closest distance category where its node falls
-    assigned_category = '> 500m'
-    for distance in sorted(distance_nodes.keys()):
-        if nearest_building_node in distance_nodes[distance]:
-            assigned_category = distance
-            break
-
-    building['distance_category'] = assigned_category
-
-    # Print the result for this building for monitoring purposes
-    print(f"Processed building with ID {building.name}: Assigned distance category {assigned_category}")
-    return building
-
-def parallel_assign_buildings_to_distance_category(buildings, graph, distance_nodes):
-    start_time = time.time()
-    print("Starting parallel assignment of distance categories to buildings with ThreadPoolExecutor...")
-
-    # List to store the processed buildings
-    processed_buildings = []
-
-    # Use ThreadPoolExecutor for parallel processing
-    with ThreadPoolExecutor() as executor:
-        # Submit tasks to the executor for each building
-        futures = [executor.submit(assign_building_distance_category, building, graph, distance_nodes) for _, building in buildings.iterrows()]
-
-        # Track the progress as each future completes
-        for i, future in enumerate(as_completed(futures), 1):
-            processed_buildings.append(future.result())
-
-            # Print progress for every 10 buildings processed
-            if i % 10 == 0:
-                print(f"Processed {i}/{len(buildings)} buildings...")
-
-    # Combine processed buildings back into a single GeoDataFrame
-    buildings = gpd.GeoDataFrame(processed_buildings)
-
-    end_time = time.time()
-    duration = end_time - start_time
-    print(f"ThreadPoolExecutor assignment of buildings to distance category took {duration:.2f} seconds")
-    print("All buildings have been assigned distance categories.")
-
-    return buildings
-
-
 def calculate_walking_shed_with_distance_categories(buildings, cool_place_nodes, graph, distances=[200, 300, 400, 500]):
     # Find nodes within each distance threshold for cool place nodes
     distance_nodes = find_nodes_within_distances(graph, cool_place_nodes, distances)
@@ -281,8 +215,6 @@ def walking_shed_calculation(place=None, graph_file_path=None, polygon_path=None
     else:
         raise ValueError("You must provide the path to a cool place polygon file.")
 
-    print('number of cool spaces:',len(cool_place_polygons))
-
     cool_place_nodes = find_cool_place_nodes(graph, cool_place_polygons)
     print(f"Found {len(cool_place_nodes)} cool place nodes on the graph.")
 
@@ -304,7 +236,8 @@ def walking_shed_calculation(place=None, graph_file_path=None, polygon_path=None
 if __name__ == "__main__":
     walking_shed_calculation(
         place="Amsterdam, Netherlands",
-        polygon_path="C:/Github_synthesis/AMS/cool_places_polygons/cool_places_polygons_20230816_900.shp",
-        building_shapefile_path="C:/Androniki/pythonProject1/merged_buildings.shp")
-        # polygon_path="C:/pedestrian_demo_data/public_spaces/ams_public_space.shp",
-        # building_shapefile_path="C:/pedestrian_demo_data/ams_buildings/ams_buildings.shp"
+        polygon_path="C:/pedestrian_demo_data/cool_places_polygons/cool_places_polygons_20230816_1300.shp",
+        building_shapefile_path="C:/pedestrian_demo_data/merged_buildings/merged_buildings.shp"
+        # polygon_path = "C:/Github_synthesis/AMS/cool_places_polygons/cool_places_polygons_20230816_900.shp",
+        # building_shapefile_path = "C:/Androniki/pythonProject1/merged_buildings.shp")
+    )
