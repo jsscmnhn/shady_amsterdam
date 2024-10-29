@@ -133,7 +133,7 @@ def coolspace_main(config_file: str):
                                       pet_file=pet_file,
                                       gpkg_file=gpkg_file,
                                       output_layer=output_evaluation_layer,
-                                      search_buffer=700,
+                                      search_buffer=capacity_search_buffer,
                                       single_day_time_range=single_day_time_range,
                                       time_interval=time_interval,
                                       morning_range=morning_range,

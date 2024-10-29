@@ -4,6 +4,8 @@ from shade_calculation.src.create_dsm_and_chm_parallel import process_folders as
 from shade_calculation.src.shade_parallel import process_folders as process_shade
 from shade_calculation.src.merge_shademaps import merge_tif_files_by_time
 
+from cool_place.main import coolspace_main
+
 import argparse
 import os
 import json
@@ -167,5 +169,5 @@ if __name__ == '__main__':
                                 params['delete_input_shade'])
 
 ########################################### Functions for creating the cool spaces #####################################
-
+    coolspace_main("cool_place/coolspaceConfig.json")
 ########################################### Functions for creating the pedestrian network #####################################
