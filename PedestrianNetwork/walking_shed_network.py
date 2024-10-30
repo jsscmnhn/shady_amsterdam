@@ -8,36 +8,30 @@ from osmnx.distance import nearest_nodes
 from shapely.geometry import MultiPolygon, Polygon, Point
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from scipy.spatial import KDTree
-
+import heapq
 
 def load_building_polygons(building_shapefile_path):
     buildings = gpd.read_file(building_shapefile_path)
     return buildings
 
-
 def load_graph_from_file(graph_file_path):
     graph = ox.load_graphml(graph_file_path)
     return graph
-
 
 def process_graph(graph):
     if graph.graph['crs'] != 'epsg:28992':
         graph = ox.project_graph(graph, to_crs='EPSG:28992')
     return graph
 
-
 def load_cool_place_polygons(polygon_path):
     polygons = gpd.read_file(polygon_path)
     return polygons
 
-
 def find_cool_place_nodes(graph, cool_place_polygons, max_distance=50, known_crs="EPSG:28992"):
     start_time = time.time()
-
     nodes_gdf = ox.graph_to_gdfs(graph, nodes=True, edges=False)
     nodes_gdf = nodes_gdf.set_crs(known_crs, allow_override=True)
     cool_place_polygons = cool_place_polygons.to_crs(known_crs).dropna(subset=['geometry'])
-
     node_coords = [(geom.x, geom.y) for geom in nodes_gdf.geometry]
     kd_tree = KDTree(node_coords)
 
@@ -48,19 +42,14 @@ def find_cool_place_nodes(graph, cool_place_polygons, max_distance=50, known_crs
     def process_polygon_extents(feature):
         geometry = feature.geometry
         extent_points = []
-
         if isinstance(geometry, MultiPolygon):
             for poly in geometry.geoms:
                 extent_points.extend(get_extent_points(poly))
         elif isinstance(geometry, Polygon):
             extent_points = get_extent_points(geometry)
-
         query_points = [(point.x, point.y) for point in extent_points]
         distances, indices = kd_tree.query(query_points)
-
-        nearby_nodes = [
-            nodes_gdf.index[nearest_idx] for distance, nearest_idx in zip(distances, indices) if distance <= max_distance
-        ]
+        nearby_nodes = [nodes_gdf.index[nearest_idx] for distance, nearest_idx in zip(distances, indices) if distance <= max_distance]
         return nearby_nodes
 
     cool_place_nodes = []
@@ -72,44 +61,51 @@ def find_cool_place_nodes(graph, cool_place_polygons, max_distance=50, known_crs
     print(f"Finding cool place nodes took {time.time() - start_time:.2f} seconds")
     return list(set(cool_place_nodes))
 
+def dijkstra_with_cutoff_optimized(graph, start_node, max_distance, weight="shade_weight"):
+    """
+    Optimized Dijkstra's algorithm with cumulative distance cutoff, using early stopping.
+    """
+    queue = [(0, start_node)]
+    distances = {start_node: 0}
 
-def find_nodes_within_distances(graph, cool_place_nodes, distances=[200, 300, 400, 500], weight="length"):
+    while queue:
+        current_distance, current_node = heapq.heappop(queue)
+        if current_distance > max_distance:
+            break
+
+        for neighbor, data in graph[current_node].items():
+            edge_weight = data.get(weight, float("inf"))
+            new_distance = current_distance + edge_weight
+            if new_distance <= max_distance and (neighbor not in distances or new_distance < distances[neighbor]):
+                distances[neighbor] = new_distance
+                heapq.heappush(queue, (new_distance, neighbor))
+
+    return {node: dist for node, dist in distances.items() if dist <= max_distance}
+
+def find_nodes_within_distances(graph, cool_place_nodes, distances=[200, 300, 400, 500], weight="shade_weight"):
     start_time = time.time()
     print("Starting to find nodes within specified distance thresholds...")
-
     distance_nodes = {distance: set() for distance in distances}
 
     for i, cool_place_node in enumerate(cool_place_nodes):
         if i % 10 == 0:
             print(f"Processing cool place node {i+1}/{len(cool_place_nodes)}")
-
         for distance in distances:
-            lengths = nx.single_source_dijkstra_path_length(graph, cool_place_node, cutoff=distance, weight=weight)
-            distance_nodes[distance].update(lengths.keys())
-            print(f"  Found {len(lengths)} nodes within {distance} meters of cool place node {cool_place_node}")
+            filtered_lengths = dijkstra_with_cutoff_optimized(graph, cool_place_node, max_distance=distance, weight=weight)
+            distance_nodes[distance].update(filtered_lengths.keys())
+            print(f"  Found {len(filtered_lengths)} nodes within {distance} meters of cool place node {cool_place_node}")
 
     print(f"Finding nodes within distance took {time.time() - start_time:.2f} seconds")
     return distance_nodes
 
-
 def save_cool_place_nodes_shapefile(cool_place_nodes, nodes_gdf, output_shapefile_path):
-    """
-    Save cool place nodes as a shapefile.
-
-    Parameters:
-    - cool_place_nodes: List of cool place node IDs.
-    - nodes_gdf: GeoDataFrame of all nodes from the graph.
-    - output_shapefile_path: Path to save the cool place nodes shapefile.
-    """
     cool_place_nodes_gdf = nodes_gdf.loc[cool_place_nodes].copy()
     cool_place_nodes_gdf.to_file(output_shapefile_path, driver="ESRI Shapefile")
     print(f"Cool place nodes saved to {output_shapefile_path}")
 
-
 def assign_buildings_to_distance_category_with_precomputed(buildings, graph, distance_nodes):
     start_time = time.time()
     print("Starting to assign distance categories to buildings...")
-
     building_centroids = buildings.geometry.centroid
     nearest_nodes = ox.distance.nearest_nodes(graph, X=building_centroids.x, Y=building_centroids.y)
     buildings['nearest_node'] = nearest_nodes
@@ -121,23 +117,19 @@ def assign_buildings_to_distance_category_with_precomputed(buildings, graph, dis
         return '>500m'
 
     buildings['distance_category'] = buildings['nearest_node'].apply(get_distance_category)
-
     print(f"Assigning buildings to distance category took {time.time() - start_time:.2f} seconds")
     return buildings
 
-
-def calculate_walking_shed_with_distance_categories(buildings, cool_place_nodes, graph, distances=[200, 300, 400, 500], weight="length"):
+def calculate_walking_shed_with_distance_categories(buildings, cool_place_nodes, graph, distances=[200, 300, 400, 500], weight="shade_weight"):
     distance_nodes = find_nodes_within_distances(graph, cool_place_nodes, distances, weight)
     buildings = assign_buildings_to_distance_category_with_precomputed(buildings, graph, distance_nodes)
     return buildings
-
 
 def assign_building_colors(buildings):
     color_map = {200: 'green', 300: 'blue', 400: 'yellow', 500: 'orange'}
     buildings['color'] = buildings['distance_category'].map(color_map)
     buildings['color'] = buildings['color'].fillna('red')
     return buildings
-
 
 def plot_colored_walking_shed(buildings):
     fig, ax = plt.subplots(figsize=(10, 10))
@@ -156,7 +148,6 @@ def plot_colored_walking_shed(buildings):
     plt.title("Walking Shed with Distance-based Building Colors")
     plt.show()
 
-
 def preprocess_graph_weights(graph, weight):
     for u, v, data in graph.edges(data=True):
         if weight in data:
@@ -168,8 +159,7 @@ def preprocess_graph_weights(graph, weight):
         else:
             data[weight] = float('inf')
 
-
-def walking_shed_calculation(graph=None, polygon_path=None, building_shapefile_path=None, weight="length", output_building_shapefile=None, output_cool_place_shapefile=None):
+def walking_shed_calculation(graph=None, polygon_path=None, building_shapefile_path=None, weight="shade_weight", output_building_shapefile=None, output_cool_place_shapefile=None):
     graph = load_graph_from_file(graph)
     graph = process_graph(graph)
     preprocess_graph_weights(graph, weight)
@@ -187,23 +177,20 @@ def walking_shed_calculation(graph=None, polygon_path=None, building_shapefile_p
 
     plot_colored_walking_shed(buildings)
 
-    # Save buildings with distance category as a new shapefile for QGIS
     if output_building_shapefile:
         buildings.to_file(output_building_shapefile, driver="ESRI Shapefile")
         print(f"Buildings with distance categories saved to {output_building_shapefile}")
 
-    # Save cool place nodes as a shapefile for QGIS
     if output_cool_place_shapefile:
         nodes_gdf = ox.graph_to_gdfs(graph, nodes=True, edges=False)
         save_cool_place_nodes_shapefile(cool_place_nodes, nodes_gdf, output_cool_place_shapefile)
-
 
 if __name__ == "__main__":
     walking_shed_calculation(
         graph="C:/Github_synthesis/AMS/graphs_with_shade/ams_graph_with_shade_20230816_1000_cropped.graphml",
         polygon_path="C:/Github_synthesis/AMS/cool_places_polygons/cool_places_polygons_20230816_1000.shp",
         building_shapefile_path="C:/Androniki/pythonProject1/merged_buildings.shp",
-        weight="length",
+        weight="shade_weight",
         output_building_shapefile="C:/Androniki/pythonProject1/merged_buildings_with_distance_category.shp",
         output_cool_place_shapefile="C:/Androniki/pythonProject1/cool_place_nodes.shp"
     )
