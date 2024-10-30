@@ -26,3 +26,10 @@ Calculating shade/archive/fixing_shademap.py
 /Calculating shade
 
 /.vs/
+docs/figs/shade/amsterdam_DTM.TIF
+docs/figs/shade/amsterdam_DSM.TIF
+*.TIF
+docs/figs/shade/amsterdam_DTM.TIF
+docs/figs/shade/amsterdam_DTM.TIF.aux.xml
+docs/figs/shade/amsterdam_DTM.TIF
+docs/figs/shade/amsterdam_DSM.TIF.aux.xml
