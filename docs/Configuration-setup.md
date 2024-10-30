@@ -18,16 +18,18 @@ One can choose to either edit the file in the repository directly, or to downloa
 
 The configuration file is structured as following:
 
-```json
+```yaml
 {
     "Downloading_Las_tiles": {
         "download_las": true,              # download the LAZ GeoTiles subtiles provided in the .txt file (bool)     
-        "las_output_folder": "path",        # path to directory where the subtile directories will be placed containing the LAZ files(str)
-                                              if download_las is false, but you want to perform create_chm, 
-                                              place the path to the directory containing the directories with the LAZ tiles here.
+        "las_output_folder": "path",       # path to directory where the subtile directories will be placed containing 
+                                           # the LAZ files(str)
+                                           # if download_las is false, but you want to perform create_chm, 
+                                           # place the path to the directory containing the directories with the LAZ tiles here.
         "subtile_list_file": "path",       # path to the .txt file containing the GeoTiles subtile names to be downloaded (str)
         "notes": {
-            "output": "las_output_folder: Provide path to folder containing subtile LAZ folders if LAS tile download is not needed, but Creation of First CHM file is."
+            "output": "las_output_folder: Provide path to folder containing subtile LAZ folders if LAS tile download is not 
+                       needed, but Creation of First CHM file is."
         }
     },
     "Creation_of_AHN_geotiles_DSM_and_DTM_dataset": {
@@ -40,20 +42,22 @@ The configuration file is structured as following:
         "merged_name": "name",             # prefix for the merged DSM and DTM (str)
         "optional": {
                                            # if download_dsm_dtm is set to false, but create_final_dsm_chm is true, provide
-                                             the paths to the .TIFF files of the merged DSM and merged DTM.
+                                           # the paths to the .TIFF files of the merged DSM and merged DTM.
             "merged_dsm": "path",          
             "merged_dtm": "path"
         },
         "notes": {
-            "optional1": "merged_dsm: Provide path to file containing the merged DSM file if creation of AHN geotiles dataset is not needed.",
-            "optional2": "merged_dtm: Provide path to file containing the merged DTM file if creation of AHN geotiles dataset is not needed."
+            "optional1": "merged_dsm: Provide path to file containing the merged DSM file if creation of AHN geotiles dataset is 
+                          not needed.",
+            "optional2": "merged_dtm: Provide path to file containing the merged DTM file if creation of AHN geotiles dataset is 
+                          not needed."
         }
     },
     "Creation_of_first_CHM_file": {
         "create_chm": true,          # perform the creation of CHM files (bool)
-        "chm_output_folder": "path", # path to directory where the subtile directories will be placed containing the CHM files(str)
-                                       if create_chm is false, but you want to perform create_final_dsm_chm, 
-                                       place the path to the directory containing the directories with the CHM here.
+        "chm_output_folder": "path", # path to directory where the subtile directories will be made containing the CHM files (str)
+                                     # if create_chm is false, but you want to perform create_final_dsm_chm, 
+                                     # place the path to the directory containing the directories with the CHM here.
         "ndvi_threshold": 0.0,       # lowest NDVI allowed to classify points as vegetation (float)
         "resolution": 0.5,           # resolution of the output CHM in meters (float)
         "remove_las": false,         # remove the .LAZ subtile after creating the CHM (bool)
@@ -68,13 +72,14 @@ The configuration file is structured as following:
     },
     "Creation_of_final_CHM_and_DSM_with_ground_and_buildings": {    # the parameters for the final DSM & CHM creation step
         "create_final_dsm_chm": true,       # perform the creation of final DSM & CHM (bool)
-        "buildings_path": "path",           # path to GeoPackage file with the building geometries, ONLY ADD IF NOT CREATED WITH {download_buildings} (str)
-        "output_dsm_chm": "path",           # path to directory where the subtile directories will be placed containing the DSM and CHM files(str)
-                                              if create_final_dsm_chm is false, but you want to perform create_shade 
-                                              place the path to the directory containing the directories with the DSM & CHM here.
+        "buildings_path": "path",           # path to GeoPackage file with the building geometries, 
+                                            # ONLY ADD IF NOT CREATED WITH {download_buildings} (str)
+        "output_dsm_chm": "path",           # path to directory where the subtile directories will be placed containing the DSM and CHM files (str)
+                                            # if create_final_dsm_chm is false, but you want to perform create_shade 
+                                            # place the path to the directory containing the directories with the DSM & CHM here.
         "dsm_max_workers": 4,               # maximum amount of parallel processes for the creation of CHM & DSM (int)
-        "speed_up": false,                  # speed up the processing of DTM tiles with large no data values by performing linear interpolation (bool)
-                                                not recommended if parallel processing.
+        "speed_up": false,                  # speed up the processing of DTM tiles with large no data values by performing 
+                                            # linear interpolation (bool) not recommended if parallel processing.
         "min_vegetation_height": 2,         # minimum allowed vegetation height in final CHM, all below will be set to 0 (int)
         "max_vegetation_height": 40,        # maximum allowed vegetation height in final CHM, all above will be set to 0 (int)
         "notes": {
@@ -84,8 +89,8 @@ The configuration file is structured as following:
     "Creation_of_Shade_maps": {             # the parameters for the shade map creation step
         "create_shade": true,               # perform the creation of shade maps (bool)
         "output_base_shademap": "path",     # path to directory where the subtile directories will be placed (str)
-                                              if create_shade is false, but you want to perform merging of shade maps, 
-                                              place the path to the directory containing the directories with shade maps here.
+                                            # if create_shade is false, but you want to perform merging of shade maps, 
+                                            # place the path to the directory containing the directories with shade maps here.
         "date": "2020-12-12",               # date to perform shade pattern calculation for, needs to be in format "YYYY-MM-DD"
         "start_time": 9,                    # start time of calculations, note: time in +2 UTC (int)
         "end_time": 20,                     # end time of calculations, note: time in +2 UTC (int)
