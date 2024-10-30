@@ -116,6 +116,53 @@ The configuration file is structured as following:
 
 
 ## Cool Spaces Configuration file <a name="heading--2"/>
+If no `config_file_cool_spaces` argument is given in *main.py*, the code shall default to .\configuration_files\coolspaceConfig.json.
+One can choose to either edit the file in the repository directly, or to download the file, edit it and provide it as argument. 
+
+The configuration file is structured as following:
+
+```yaml
+{
+  "files": {
+    "folder_path": "G:\\TUD\\Synthesis\\cool_place\\",              # the folder path for both inputs and outputs
+    "gpkg_file": "G:\\TUD\\Synthesis\\cool_place\\coolspace.gpkg",  # the Geopackage contains all the vector input files
+    "landuse_file": "ams_landuse_top10NL",                          # the layer name of land use data within the Geopackage
+    "road_file": "ams_roads_top10NL",                               # the layer name of road data
+    "building_file": "ams_buildings_bagplus",                       # the layer name of building data
+    "building_population_file": "ams_bpop_2020",                    # the layer name of building data that contains population statistics
+    "street_furniture_file": "ams_bench_osm",                       # the layer name of street furniture data
+    "heatrisk_file": "ams_heatrisk_2023",                           # the layer name of heat risk data
+    "pet_file": "G:\\TUD\\Synthesis\\cool_place\\ams_PET_average.tiff",        # the file path of PET file, raster format
+    "shademaps_path": "G:\\TUD\\Synthesis\\cool_place\\shademaps_20230621\\",  # the folder path that contains all the input shade maps
+    "output_identification_file": "coolspace_identification_20230621",         # the layer name of the output identification result
+    "output_evaluation_file": "final_cool_space_20230621",                     # the layer name of the output evaluataion result (the final result)
+    "output_shadeGeometry_gpkg": "shadeGeoms_20230621.gpkg"                    # the file name of output shade geometry Geopackage
+  },
+  "parameters": {
+    "hasIdentificationOutput": false,         # if set to true, it will try to read the identification result and skip the identification process
+    "outputShadeGeometries": false,           # if set to true, all shade geometries will be output as Geopackages, grouped by shade map index
+    "performEvaluation": true,                # if set to false, the evaluation process will be skipped
+    "useMultiProcessing": true,               # if set to false, no multi-processing will be executed
+    "road_buffer_attribute": "buffer",        # the name of buffer attribute within the road data, which is used to set distance buffer for road polygons
+    "building_buffer": 4,                     # the distance buffer for building polygons
+    "shade_calculation_mode": "single-day",   # if set to "multi-days", the shade coverage indicator only calculates the daytime range score and a total average score for all days.
+    "output_coolspace_type": "public-space",  # if set to "land-use", the output geometry will be the initial land use polygons
+    "capacity_search_buffer": 700             # the radius of the circle buffer for searching population around a cool space
+  },
+  "shade_info_single": {
+    "single_day_time_range": [900, 1800],     # specify the daytime range, by default is 900 to 1800, which means 9:00 to 18:00
+    "time_interval": 30,                      # time interval of shade maps, 30 means that one shade map represents a 30-minute interval
+    "morning_range": [900, 1200],             # specify the morning time range
+    "afternoon_range": [1200, 1600],          # specify the afternoon time range
+    "late_afternoon_range": [1600, 1800],     # specify the late afternoon time range
+    "search_range": null                      # specify a user-define time range
+  },
+  "shade_info_multi": {
+    "num_days": 2                             # specify the number of days for "multi-days" mode
+  }
+}
+
+```
 
 
 ## Network Configuration file <a name="heading--3"/>
