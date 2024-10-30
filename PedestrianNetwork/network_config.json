@@ -1,12 +1,12 @@
 {
     "Dataset_Preparation": {
-        "graphml_file": "C:/pedestrian_demo_data/Amsterdam_pedestrian_network.graphml",
-        "area_name_for_OSM_network": "None",
-        "shade_maps_path": "C:/pedestrian_demo_data/shade_maps",
-        "new_graphml_files_path": "C:/pedestrian_demo_data/graphs_with_shade/",
+        "graphml_file": "",
+        "area_name_for_OSM_network": "",
+        "shade_maps_path": "",
+        "new_graphml_files_path": "",
 
-        "cool_places_path": "C:/pedestrian_demo_data/cool_places_polygons/",
-        "cool_places_nodes_path": "C:/pedestrian_demo_data/cool_place_nodes"
+        "cool_places_path": "",
+        "cool_places_nodes_path": ""
     },
     "Routing": {
         "graph_dir": "",
@@ -22,5 +22,13 @@
         "destination_latitude": "",
         "destination_longitude": "",
         "date_time": ""
-    }
+    },
+    "Walking_Shed": {
+    "graph_file": "C:/pedestrian_demo_data/graphs_with_shade/ams_graph_with_shade_20230816_1000_cropped.graphml",
+    "cool_places_path": "C:/pedestrian_demo_data/cool_places_polygons/cool_places_polygons_20230816_1000.shp",
+    "building_shapefile_path": "C:/pedestrian_demo_data/merged_buildings/merged_buildings.shp",
+    "weight": "shade_weight",
+    "output_building_shapefile": "C:/pedestrian_demo_data/merged_buildings_with_distance_category.shp",
+    "output_cool_place_shapefile": "C:/pedestrian_demo_data/cool_place_nodes.shp"
+}
 }
