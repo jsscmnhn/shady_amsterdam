@@ -22,9 +22,9 @@
         
         "cool_places_nodes_path": "C:/Github_synthesis/AMS/cool_place_nodes/",
         "cool_places_nodes_path_note": "Path to store the output file with cool place nodes."
-    }
+    },
 	
-	"notes": "Provide the following data for walking_shed_network:"
+	"notes": "Provide the following data for walking_shed_network:",
 	
 	"walking_shed":{
 		"graphml_file": "C:/Github_synthesis/AMS/graphs_with_shade/ams_graph_with_shade_20150701_1800_cropped.graphml",
