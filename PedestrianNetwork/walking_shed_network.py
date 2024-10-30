@@ -38,7 +38,6 @@ def find_cool_place_nodes(graph, cool_place_polygons, max_distance=50, known_crs
     nodes_gdf = nodes_gdf.set_crs(known_crs, allow_override=True)
     cool_place_polygons = cool_place_polygons.to_crs(known_crs).dropna(subset=['geometry'])
 
-    # Create KDTree for quick distance lookup
     node_coords = [(geom.x, geom.y) for geom in nodes_gdf.geometry]
     kd_tree = KDTree(node_coords)
 
@@ -56,11 +55,9 @@ def find_cool_place_nodes(graph, cool_place_polygons, max_distance=50, known_crs
         elif isinstance(geometry, Polygon):
             extent_points = get_extent_points(geometry)
 
-        # Perform the nearest node lookup
         query_points = [(point.x, point.y) for point in extent_points]
         distances, indices = kd_tree.query(query_points)
 
-        # Collect nodes if within the max distance
         nearby_nodes = [
             nodes_gdf.index[nearest_idx] for distance, nearest_idx in zip(distances, indices) if distance <= max_distance
         ]
@@ -93,6 +90,20 @@ def find_nodes_within_distances(graph, cool_place_nodes, distances=[200, 300, 40
 
     print(f"Finding nodes within distance took {time.time() - start_time:.2f} seconds")
     return distance_nodes
+
+
+def save_cool_place_nodes_shapefile(cool_place_nodes, nodes_gdf, output_shapefile_path):
+    """
+    Save cool place nodes as a shapefile.
+
+    Parameters:
+    - cool_place_nodes: List of cool place node IDs.
+    - nodes_gdf: GeoDataFrame of all nodes from the graph.
+    - output_shapefile_path: Path to save the cool place nodes shapefile.
+    """
+    cool_place_nodes_gdf = nodes_gdf.loc[cool_place_nodes].copy()
+    cool_place_nodes_gdf.to_file(output_shapefile_path, driver="ESRI Shapefile")
+    print(f"Cool place nodes saved to {output_shapefile_path}")
 
 
 def assign_buildings_to_distance_category_with_precomputed(buildings, graph, distance_nodes):
@@ -158,7 +169,7 @@ def preprocess_graph_weights(graph, weight):
             data[weight] = float('inf')
 
 
-def walking_shed_calculation(graph=None, polygon_path=None, building_shapefile_path=None, weight="length"):
+def walking_shed_calculation(graph=None, polygon_path=None, building_shapefile_path=None, weight="length", output_building_shapefile=None, output_cool_place_shapefile=None):
     graph = load_graph_from_file(graph)
     graph = process_graph(graph)
     preprocess_graph_weights(graph, weight)
@@ -176,11 +187,23 @@ def walking_shed_calculation(graph=None, polygon_path=None, building_shapefile_p
 
     plot_colored_walking_shed(buildings)
 
+    # Save buildings with distance category as a new shapefile for QGIS
+    if output_building_shapefile:
+        buildings.to_file(output_building_shapefile, driver="ESRI Shapefile")
+        print(f"Buildings with distance categories saved to {output_building_shapefile}")
+
+    # Save cool place nodes as a shapefile for QGIS
+    if output_cool_place_shapefile:
+        nodes_gdf = ox.graph_to_gdfs(graph, nodes=True, edges=False)
+        save_cool_place_nodes_shapefile(cool_place_nodes, nodes_gdf, output_cool_place_shapefile)
+
 
 if __name__ == "__main__":
     walking_shed_calculation(
-        graph="C:/Github_synthesis/AMS/graphs_with_shade/ams_graph_with_shade_20150701_1800_cropped.graphml",
-        polygon_path="C:/Github_synthesis/AMS/cool_places_polygons/cool_places_polygons_20230816_900.shp",
+        graph="C:/Github_synthesis/AMS/graphs_with_shade/ams_graph_with_shade_20230816_1000_cropped.graphml",
+        polygon_path="C:/Github_synthesis/AMS/cool_places_polygons/cool_places_polygons_20230816_1000.shp",
         building_shapefile_path="C:/Androniki/pythonProject1/merged_buildings.shp",
-        weight="shade_weight"
+        weight="length",
+        output_building_shapefile="C:/Androniki/pythonProject1/merged_buildings_with_distance_category.shp",
+        output_cool_place_shapefile="C:/Androniki/pythonProject1/cool_place_nodes.shp"
     )
