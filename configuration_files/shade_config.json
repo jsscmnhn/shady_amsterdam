@@ -9,6 +9,9 @@
     },
     "Creation_of_AHN_geotiles_DSM_and_DTM_dataset": {
         "download_dsm_dtm": true,
+        "download_buildings" : true,
+        "buildings_name" : "ams_buildings",
+        "buildings_output_folder": "path",
         "ahn_output_folder": "path",
         "tile_list_file": "path",
         "merged_name": "name",

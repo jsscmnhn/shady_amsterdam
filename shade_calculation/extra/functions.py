@@ -13,12 +13,9 @@ Script containing some functions necessary for creating the rasters.
   For writing the grid to an output .tiff file, original data can be either from a LAZ file or from a TIF.
 """
 
-import laspy
 import numpy as np
 import rasterio
-from matplotlib import pyplot as plt
 from rasterio.transform import Affine
-from scipy.spatial import cKDTree
 
 
 def raster_center_coords(min_x, max_x, min_y, max_y, resolution):
