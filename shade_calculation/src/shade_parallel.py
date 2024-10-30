@@ -8,7 +8,7 @@ import os
 import concurrent.futures
 import tqdm
 
-def process_chm_dsm(chm_filename, dsm_filename, folder_path, output_dir, date, start_time=10, end_time=21,
+def process_chm_dsm(chm_filename, dsm_filename, folder_path, output_dir, date, start_time=9, end_time=20,
                     interval=30, use_chm=True, trans=10, trunkheight=25):
     """
      Function to process a single DSM and CHM file pair.
@@ -19,8 +19,8 @@ def process_chm_dsm(chm_filename, dsm_filename, folder_path, output_dir, date, s
      - folder_path (str): Path to the folder containing the CHM and DSM files.
      - output_dir (str): Directory where the output results will be saved.
      - date (str): Date parameter used in the shade calculation.
-     - start_time (int): Starting hour for shade calculation (default: 10).
-    - end_time (int): Ending hour for shade calculation (default: 21).
+     - start_time (int): Starting hour for shade calculation (default: 9).
+    - end_time (int): Ending hour for shade calculation (default: 20).
     - interval (int): Time interval for the calculations (minutes) (default: 30).
     - use_chm (bool): Use the CHM file in the shade calculation (default: True).
     - trans (int): Transmissivity value for the calculations, percentage for tree shade (default: 10).
@@ -30,6 +30,11 @@ def process_chm_dsm(chm_filename, dsm_filename, folder_path, output_dir, date, s
      Output:
      - None: This function prints a message upon completion of shade calculation.
      """
+
+    # update start time and endtime for UMEP tool
+    start_time += 1
+    end_time += 1
+
     chm_path = os.path.join(folder_path, chm_filename)
     dsm_path = os.path.join(folder_path, dsm_filename)
     print(chm_path)
@@ -76,10 +81,6 @@ def run_shade_calculation(file_pairs, output_base_folder, date, start_time, end_
       Output:
       - None: This function prints messages regarding the processing status and creates output directories.
       """
-
-    # update start time and endtime
-    start_time += 1
-    end_time += 1
 
     if not file_pairs:
         print("No file pairs.")

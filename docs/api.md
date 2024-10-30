@@ -505,7 +505,7 @@
 
 ### Creating Shade Maps (*shade_parallel.py*) <a name="heading--1-5"/>
 
-#### <span style="color: red;">`process_chm_dsm`</span><span style="color: gray;">(chm_filename, dsm_filename, folder_path, output_dir, date, start_time=10, end_time=21, interval=30, use_chm=True, trans=10, trunkheight=25)</span> <a name="heading--1-5-1"/>
+#### <span style="color: red;">`process_chm_dsm`</span><span style="color: gray;">(chm_filename, dsm_filename, folder_path, output_dir, date, start_time=9, end_time=20, interval=30, use_chm=True, trans=10, trunkheight=25)</span> <a name="heading--1-5-1"/>
 
 > Function to process a single DSM and CHM file pair and create shade maps from them for the given time frame and interval.
 >
@@ -515,8 +515,8 @@
 > - `folder_path` (str): Path to the folder containing the CHM and DSM files.  
 > - `output_dir` (str): Directory where the output results will be saved.  
 > - `date` (str): Date parameter used in the shade calculation.  
-> - `start_time` (int, optional): Starting hour for shade calculation (default: 10).  
-> - `end_time` (int, optional): Ending hour for shade calculation (default: 21).  
+> - `start_time` (int, optional): Starting hour for shade calculation (default: 9).  
+> - `end_time` (int, optional): Ending hour for shade calculation (default: 20).  
 > - `interval` (int, optional): Time interval for the calculations in minutes (default: 30).  
 > - `use_chm` (bool, optional): Whether to use the CHM file in the shade calculation (default: True).  
 > - `trans` (int, optional): Transmissivity value for calculations, representing the percentage for tree shade (default: 10).  
