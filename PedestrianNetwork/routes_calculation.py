@@ -8,6 +8,7 @@ from pyproj import Transformer  # For coordinate transformation
 import pickle
 from datetime import datetime, timedelta
 import os
+import walking_shed_network
 
 
 def load_graph_from_file(graph_file_path):
@@ -311,7 +312,11 @@ def find_nearest_timestamp_files(date_time, graph_dir, nodes_dir):
     closest_date_files = [t for t in graph_timestamps if t[0].date() == closest_date]
 
     # From files with closest date, find the closest time
-    nearest_timestamp, nearest_graph_file = min(closest_date_files, key=lambda x: abs(x[0] - date_time))
+    nearest_timestamp, nearest_graph_file = min(
+        closest_date_files,
+        key=lambda x: abs(
+            x[0].time().hour * 60 + x[0].time().minute - (date_time.time().hour * 60 + date_time.time().minute))
+    )
     print(f"Nearest Timestamp: {nearest_timestamp} for Graph File: {nearest_graph_file}")
 
     # Generate the expected nodes filename for the nearest timestamp

@@ -129,6 +129,34 @@ def routing(config):
         )
 
 
+def walking_shed(config):
+    walking_shed_config = config["Walking_Shed"]
+    required_inputs = ["graph_file", "cool_places_path", "building_shapefile_path", "weight", "output_building_shapefile", "output_cool_place_shapefile"]
+
+    # Check if walking shed is needed based on required inputs
+    if not check_required_inputs(walking_shed_config, required_inputs):
+        return
+
+    # Extract configuration values
+    graph_file = walking_shed_config.get('graph_file')
+    cool_places_path = walking_shed_config.get('cool_places_path')
+    building_shapefile_path = walking_shed_config.get('building_shapefile_path')
+    weight = walking_shed_config.get('weight')
+    output_building_shapefile = walking_shed_config.get('output_building_shapefile')
+    output_cool_place_shapefile = walking_shed_config.get('output_cool_place_shapefile')
+
+    # Perform walking shed calculations
+    print("Calculating walking shed network...")
+    walking_shed_network.walking_shed_calculation(
+        graph=graph_file,
+        polygon_path=cool_places_path,
+        building_shapefile_path=building_shapefile_path,
+        weight=weight,
+        output_building_shapefile=output_building_shapefile,
+        output_cool_place_shapefile=output_cool_place_shapefile
+    )
+
+
 if __name__ == "__main__":
     # Load the combined configuration
     config = load_config()
@@ -140,3 +168,7 @@ if __name__ == "__main__":
     # Run routing if necessary
     print("Checking routing requirements...")
     routing(config)
+
+    # Run walking shed calculation if necessary
+    print("Checking walking shed requirements...")
+    walking_shed(config)
