@@ -5,7 +5,11 @@ import geopandas as gpd
 import os
 import re
 import fiona
-
+from shapely.geometry import MultiPolygon, Point, Polygon
+from scipy.spatial import KDTree
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import pickle
+import time
 
 def load_graph_from_file(graph_file_path):
     # Load the graph from a GraphML file
@@ -40,30 +44,94 @@ def load_cool_place_polygons(polygon_path):
     return polygons
 
 
-def calculate_and_save_cool_place_nodes(graph, cool_place_polygons, output_path):
-    # Get nodes as GeoDataFrame
-    nodes = ox.graph_to_gdfs(graph, nodes=True, edges=False)
+# def calculate_and_save_cool_place_nodes(graph, cool_place_polygons, output_path):
+#     # Get nodes as GeoDataFrame
+#     nodes = ox.graph_to_gdfs(graph, nodes=True, edges=False)
+#
+#     # Ensure that both geometries are in the same CRS
+#     if nodes.crs != cool_place_polygons.crs:
+#         cool_place_polygons = cool_place_polygons.to_crs(nodes.crs)
+#
+#     # Use spatial indexing to find nodes within polygons
+#     spatial_index = cool_place_polygons.sindex
+#
+#     def is_within_polygon(node_geometry):
+#         possible_matches_index = list(spatial_index.intersection(node_geometry.bounds))
+#         possible_matches = cool_place_polygons.iloc[possible_matches_index]
+#         return possible_matches.contains(node_geometry).any()
+#
+#     # Apply the function to each node geometry
+#     cool_place_nodes = nodes[nodes['geometry'].apply(is_within_polygon)].index.tolist()
+#
+#     # Save the cool place nodes to a file (using pickle for simplicity)
+#     with open(output_path, 'wb') as f:
+#         pickle.dump(cool_place_nodes, f)
+#
+#     print(f"Cool place nodes calculated and saved to {output_path}.")
 
-    # Ensure that both geometries are in the same CRS
-    if nodes.crs != cool_place_polygons.crs:
-        cool_place_polygons = cool_place_polygons.to_crs(nodes.crs)
 
-    # Use spatial indexing to find nodes within polygons
-    spatial_index = cool_place_polygons.sindex
+def calculate_and_save_cool_place_nodes(graph, cool_place_polygons, output_path, max_distance=50, known_crs="EPSG:28992"):
+    start_time = time.time()
 
-    def is_within_polygon(node_geometry):
-        possible_matches_index = list(spatial_index.intersection(node_geometry.bounds))
-        possible_matches = cool_place_polygons.iloc[possible_matches_index]
-        return possible_matches.contains(node_geometry).any()
+    # Convert graph nodes to GeoDataFrame
+    nodes_gdf = ox.graph_to_gdfs(graph, nodes=True, edges=False)
+    nodes_gdf = nodes_gdf.set_crs(known_crs, allow_override=True)
 
-    # Apply the function to each node geometry
-    cool_place_nodes = nodes[nodes['geometry'].apply(is_within_polygon)].index.tolist()
+    # Ensure cool place polygons are in the same CRS
+    cool_place_polygons = cool_place_polygons.to_crs(known_crs).dropna(subset=['geometry'])
 
-    # Save the cool place nodes to a file (using pickle for simplicity)
+    # Create KDTree for efficient distance lookup
+    node_coords = [(geom.x, geom.y) for geom in nodes_gdf.geometry]
+    kd_tree = KDTree(node_coords)
+
+    def get_extent_points(poly):
+        # Get the corner points of the bounding box of the polygon
+        bounds = poly.bounds
+        return [
+            Point(bounds[2], bounds[3]),  # Top-right
+            Point(bounds[0], bounds[3]),  # Top-left
+            Point(bounds[2], bounds[1]),  # Bottom-right
+            Point(bounds[0], bounds[1])   # Bottom-left
+        ]
+
+    def process_polygon_extents(feature):
+        geometry = feature.geometry
+        extent_points = []
+
+        if isinstance(geometry, MultiPolygon):
+            for poly in geometry.geoms:
+                extent_points.extend(get_extent_points(poly))
+        elif isinstance(geometry, Polygon):
+            extent_points = get_extent_points(geometry)
+
+        # Perform nearest node lookup for the extent points
+        query_points = [(point.x, point.y) for point in extent_points]
+        distances, indices = kd_tree.query(query_points)
+
+        # Collect nodes that are within the maximum distance
+        nearby_nodes = [
+            nodes_gdf.index[nearest_idx] for distance, nearest_idx in zip(distances, indices) if distance <= max_distance
+        ]
+        return nearby_nodes
+
+    cool_place_nodes = []
+    # Use ThreadPoolExecutor for parallel processing of polygons
+    with ThreadPoolExecutor() as executor:
+        futures = [executor.submit(process_polygon_extents, feature) for _, feature in cool_place_polygons.iterrows()]
+        for future in as_completed(futures):
+            cool_place_nodes.extend(future.result())
+
+    # Remove duplicates from cool place nodes
+    cool_place_nodes = list(set(cool_place_nodes))
+
+    # Save the cool place nodes to a file
     with open(output_path, 'wb') as f:
         pickle.dump(cool_place_nodes, f)
 
     print(f"Cool place nodes calculated and saved to {output_path}.")
+    print(f"Finding cool place nodes took {time.time() - start_time:.2f} seconds")
+
+    return cool_place_nodes
 
 
 def export_layers_to_shapefiles(geopackage_path, output_directory, date_str):
@@ -152,15 +220,15 @@ def process_all_shapefiles(polygon_directory, graph_directory, output_directory)
 # cool_place_polygons = load_cool_place_polygons(polygon_path)
 # calculate_and_save_cool_place_nodes(graph, cool_place_polygons, pre_calculated_nodes_path)
 
-# Example use
+# # Example use
 # polygon_directory = 'C:/pedestrian_demo_data/cool_places_polygons/'
 # graph_directory = 'C:/pedestrian_demo_data/graphs_with_shade/'
 # output_directory = 'C:/pedestrian_demo_data/cool_place_nodes/'
-#
+# #
 # polygon_directory = 'C:/Github_synthesis/AMS/cool_places_polygons/'
 # graph_directory = 'C:/Github_synthesis/AMS/graphs_with_shade/'
 # output_directory = 'C:/Github_synthesis/AMS/cool_place_nodes/'
-#
+
 # process_all_shapefiles(polygon_directory,graph_directory,output_directory)
 
 # # From gpkg to shapefiles
