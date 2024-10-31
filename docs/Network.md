@@ -37,7 +37,7 @@ The entry function `process_multiple_shade_maps` calculates shade weights for al
   - `raster_dir`: Directory containing raster shade maps for calculating shade weights.
   - `output_dir`: Directory where the processed GraphML files (with shade weights) will be saved.
 
-#### Steps:
+#### How to Use:
 1. Set the `graph_file` to specify the pedestrian network (or OSM graph).
 2. Provide `raster_dir` with the shade maps in `.TIF` format.
 3. Specify `output_dir` to save the updated GraphML files.
@@ -47,27 +47,31 @@ Example:
 process_multiple_shade_maps(graph_file="path/to/network.graphml", raster_dir="path/to/shade_maps", output_dir="path/to/output")
 ```
 
+
 ### 1.2 Cool Places Nodes Calculation (*cool_places_nodes_calculation.py*) <a name="heading--1-2"></a>
 
-This module identifies nearest nodes in the network to the bounding boxes of shaded areas (referred to as "cool places") and saves these nodes for routing calculations, allowing users to find paths to the nearest shaded area.
+This module identifies and saves nodes in the pedestrian network that are closest to the bounding boxes of shaded areas, referred to as "cool places", for use in route calculations.
 
-#### Entry Function: `process_all_shapefiles(polygon_directory, graph_directory, output_directory)`
+#### Entry Function: `process_all_geopackages_in_directory(gpkg_directory, graph_directory, shapefile_output_directory, output_directory)`
 - **Parameters:**
-  - `polygon_directory`: Directory containing shapefiles of shaded areas for various times.
-  - `graph_directory`: Directory where GraphML files with pre-calculated shade weights are stored.
-  - `output_directory`: Directory to save files with identified cool place nodes for each time point.
+  - `gpkg_directory`: Directory containing GeoPackage files, each with layers representing shaded areas at specific times.
+  - `graph_directory`: Directory where GraphML files with shade weights are stored.
+  - `shapefile_output_directory`: Directory to export individual layers from each GeoPackage file as shapefiles.
+  - `output_directory`: Directory to save files with calculated cool place nodes for each time layer.
 
 #### How to Use:
-1. Set `polygon_directory` to the path where shaded area shapefiles are stored. Each shapefile represents a specific time, allowing time-based analysis of cool places.
-2. Use `graph_directory` to provide the directory where shade-weighted GraphML files are located. These files are needed to map shaded areas onto the pedestrian network.
-3. Specify `output_directory` to save the files that store cool place nodes, which are necessary for routing functions to locate the nearest shaded places.
+1. Set `gpkg_directory` to the directory containing the GeoPackage files, each named to include a date, such as `shadeGeoms_YYYYMMDD.gpkg`.
+2. Set `graph_directory` to the directory where shade-weighted GraphML files are located.
+3. Provide `shapefile_output_directory` to specify where to save individual layers exported from each GeoPackage as shapefiles.
+4. Set `output_directory` to save the resulting files containing nodes within shaded areas (cool places).
 
 #### Example
 ```python
-process_all_shapefiles(
-    polygon_directory="path/to/cool_places",
+process_all_geopackages_in_directory(
+    gpkg_directory="path/to/geopackage_files",
     graph_directory="path/to/graph_files_with_shade",
-    output_directory="path/to/output_cool_places_nodes"
+    shapefile_output_directory="path/to/exported_shapefiles",
+    output_directory="path/to/output_cool_place_nodes"
 )
 ```
 
@@ -120,24 +124,32 @@ routing_config = {
 }
 ```
 
+#### Output Example
+One possible routing example:
+<p align="center">
+  <img src="figs/network/routing.png" alt="routing"/>
+  <br>
+  <em>Figure 1: Routing between two locations: Amsterdam Central Station, Dam Square</em>
+</p>
+
 ---
 
 ## 3. Walking Shed Network (*walking_shed_network.py*) <a name="heading--3"></a>
 
-The walking shed network analysis categorizes buildings based on their distance(shortest/shadiest) from cool places, creating a "walking shed" that highlights the proximity of buildings to shaded areas.
+The walking shed network analysis categorizes buildings based on their shortest/shadiest distance from shaded areas (cool places), creating a "walking shed" that highlights proximity to shaded zones.
 
 #### Entry Function: `walking_shed_calculation(graph, polygon_path, building_shapefile_path, weight="shade_weight", output_building_shapefile=None, output_cool_place_shapefile=None)`
 - **Parameters:**
   - `graph`: Path to the GraphML file with shade weights (preprocessed network).
-  - `polygon_path`: Path to shaded area polygons (cool places) as a shapefile.
+  - `polygon_path`: Path to polygons representing cool places (shapefile).
   - `building_shapefile_path`: Path to the shapefile containing building polygons for analysis.
-  - `weight`: The edge attribute used for walking shed calculations, could be set as either `length` or `shade_weight`.
+  - `weight`: The edge attribute used for walking shed calculations, could be either `length` or `shade_weight`.
   - `output_building_shapefile`: (Optional) Path to save the output shapefile for buildings with assigned distance categories.
   - `output_cool_place_shapefile`: (Optional) Path to save the output shapefile for cool place nodes.
 
 #### How to Use:
 1. Set `graph` to the path of the GraphML file that has been preprocessed with shade weights.
-2. Specify `polygon_path` with the shaded area polygons (cool places), in formats such as shapefiles or GeoJSON.
+2. Specify `polygon_path` with the shaded area polygons in shapefile format.
 3. Provide `building_shapefile_path` for the buildings layer to categorize buildings by proximity to cool places.
 4. Optionally, specify paths for `output_building_shapefile` and `output_cool_place_shapefile` to save results.
 
@@ -147,8 +159,16 @@ walking_shed_calculation(
     graph="path/to/network_with_shade.graphml",
     polygon_path="path/to/cool_places.shp",
     building_shapefile_path="path/to/buildings.shp",
-    weight="length",
+    weight="shade_weight",
     output_building_shapefile="path/to/output_buildings.shp",
     output_cool_place_shapefile="path/to/output_cool_places.shp"
 )
 ```
+
+#### Output Example
+One possible walking shed example with `shade_weight` as `weight`:
+<p align="center">
+  <img src="figs/network/walkingshed_shade_weight.png" alt="Walking shed with `shade_weight` as `weight`" />
+  <br>
+  <em>Figure 2: Walking shed with `shade_weight` as `weight`</em>
+</p>

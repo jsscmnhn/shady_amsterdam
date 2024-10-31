@@ -188,8 +188,9 @@ The configuration file is structured as following:
         "shade_maps_path": "path",           # Path to directory for storing shade maps (str)
         "new_graphml_files_path": "path",    # Path to save new GraphML files with shade attributes (str)
 
-        "cool_places_path": "path",          # Path to file containing polygons of cool places (str)
-        "cool_places_nodes_path": "path"     # Path to file with calculated cool place nodes (str)
+        "cool_places_gpkg_dir": "C:/pedestrian_demo_data/cool_places_gpkg/",    # Directory for GeoPackage files with cool places data (str)
+        "cool_places_shp_dir": "C:/pedestrian_demo_data/cool_places_shp/",      # Directory for shapefiles of cool places (str)
+        "cool_places_nodes_path": "C:/pedestrian_demo_data/cool_place_nodes/"   # Directory for pre-calculated cool place nodes (str)
     },
     "Routing": {
         "graph_dir": "path",                                                    # Directory path containing the main graph (with shade weight attributes) files (str)
