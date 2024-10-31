@@ -119,6 +119,14 @@ The configuration file is structured as following:
 If no `config_file_cool_spaces` argument is given in *main.py*, the code shall default to .\configuration_files\coolspaceConfig.json.
 One can choose to either edit the file in the repository directly, or to download the file, edit it and provide it as argument. 
 
+Note that there are two parameters need to be taken carefully:
+> - `shademaps_path`: the shade maps names should be as: `xxxx_time.TIF` such as `amsterdam_900.TIF`.
+>   The program needs the time to sort the shade maps into correct time order, and the program only 
+>   accept `.TIF` format.
+> - `output_shadeGeometry_gpkg`: the file name of shade geometry Geopackage must be {name}_{date}.gpkg, 
+>    the date must be YYMMDD, such as 20230621. This is because the routing part needs this format to
+>   extract date.
+
 The configuration file is structured as following:
 
 ```yaml
@@ -136,7 +144,8 @@ The configuration file is structured as following:
     "shademaps_path": "G:\\TUD\\Synthesis\\cool_place\\shademaps_20230621\\",  # the folder path that contains all the input shade maps
     "output_identification_file": "coolspace_identification_20230621",         # the layer name of the output identification result
     "output_evaluation_file": "final_cool_space_20230621",                     # the layer name of the output evaluataion result (the final result)
-    "output_shadeGeometry_gpkg": "shadeGeoms_20230621.gpkg"                    # the file name of output shade geometry Geopackage
+    "output_shadeGeometry_gpkg": "shadeGeoms_20230621.gpkg"                    # the file name of output shade geometry Geopackage, note: this file name
+                                                                               # must be {name}_{date}.gpkg, the date must be YYMMDD, such as 20230621.
   },
   "parameters": {
     "hasIdentificationOutput": false,         # if set to true, it will try to read the identification result and skip the identification process
