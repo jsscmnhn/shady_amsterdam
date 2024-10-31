@@ -84,6 +84,7 @@ def identification(coolspace_file: gpd.geodataframe,
     # Read datasets
     shadows = []
     shadow_files = glob.glob(os.path.join(shademaps_path, '*.TIF'))
+    shadow_files.sort(key=lambda x: int(os.path.splitext(os.path.basename(x))[0].split('_')[-1]))
     start_time = single_day_time_range[0]
     end_time = single_day_time_range[1]
     daytime = compute_search_range(start_time, end_time, start_time, end_time, time_interval)
@@ -107,7 +108,7 @@ def identification(coolspace_file: gpd.geodataframe,
         raise ValueError(f"Invalid mode: {mode}, expect 'single-day' or 'multi-days'")
 
     # Create road buffer based on the given buffer attribute name
-    road.create_attribute('typeweg', road_buffer_attri)  # This line should be included in final program
+    road.create_attribute('typeweg', road_buffer_attri)  # This line should not be included in final program
     road.create_buffer(road_buffer_attri)
     road.data.set_geometry("buffered", inplace=True)
 
