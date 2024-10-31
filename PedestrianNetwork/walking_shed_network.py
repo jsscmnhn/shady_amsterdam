@@ -8,11 +8,7 @@ from osmnx.distance import nearest_nodes
 from shapely.geometry import MultiPolygon, Polygon, Point
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from scipy.spatial import KDTree
-from concurrent.futures import ThreadPoolExecutor
 import numpy as np
-from scipy.spatial import KDTree
-from concurrent.futures import ThreadPoolExecutor
-import networkx as nx
 
 
 def load_building_polygons(building_shapefile_path):

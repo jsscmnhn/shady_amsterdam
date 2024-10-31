@@ -231,15 +231,6 @@ def demo_shade_route_calculation(graph_file_path, pre_calculated_nodes_path, use
 
     graph = ox.project_graph(graph, to_crs='EPSG:28992')
 
-    # # Load cool place polygons
-    # cool_place_polygons = load_cool_place_polygons(polygon_path)
-    #
-    # # Find cool place nodes on the fly
-    # cool_place_nodes = find_cool_place_nodes(graph, cool_place_polygons)
-    # if not cool_place_nodes:
-    #     print("No cool place nodes were found. Exiting...")
-    #     return
-
     # Load pre-calculated cool place nodes
     cool_place_nodes = load_cool_place_nodes(pre_calculated_nodes_path)
     if not cool_place_nodes:
@@ -348,10 +339,6 @@ def demo_shade_route_calculation_with_time(graph_dir, nodes_dir, user_input, inp
 
 
 # # Example Usage
-# graph_file_path = 'C:/pedestrian_demo_data/ams_graph_with_shade_900_cropped.graphml'
-# polygon_path = 'C:/pedestrian_demo_data/public_spaces/ams_public_space.shp'
-# pre_calculated_nodes_path = 'C:/pedestrian_demo_data/cool_place_nodes.pkl'
-
 # graph_dir = 'C:/pedestrian_demo_data/graphs_with_shade/'
 # nodes_dir = 'C:/pedestrian_demo_data/cool_place_nodes/'
 
