@@ -111,92 +111,97 @@ def calculate_and_save_cool_place_nodes(graph, cool_place_polygons, output_path,
 
 
 def export_layers_to_shapefiles(geopackage_path, output_directory, date_str):
-    # Ensure the output directory exists
     if not os.path.exists(output_directory):
         os.makedirs(output_directory)
-
-    # Get all layer names from the GeoPackage
     layer_names = fiona.listlayers(geopackage_path)
 
     for layer_name in layer_names:
-        # Match the layer name pattern to extract the time index
         match = re.search(r'sdGeom(\d+)', layer_name)
         if match:
-            # Convert the index to time format (e.g., sdGeom0 -> 900, sdGeom1 -> 930)
             time_index = int(match.group(1))
             time_str = f"{9 + time_index // 2}{30 if time_index % 2 else '00'}"
-
-            # Construct the output shapefile path
             output_path = os.path.join(output_directory, f'cool_places_polygons_{date_str}_{time_str}.shp')
-
-            # Read the layer and save as a shapefile
-            gdf = gpd.read_file(geopackage_path, layer=layer_name)
-            gdf = gdf[['geometry']].to_crs('EPSG:28992')  # Keep only geometry and reproject
+            gdf = gpd.read_file(geopackage_path, layer=layer_name)[['geometry']].to_crs('EPSG:28992')
             gdf.to_file(output_path, driver='ESRI Shapefile')
             print(f"Exported {layer_name} to {output_path}")
 
 
-def process_all_shapefiles(polygon_directory, graph_directory, output_directory):
-    # Ensure the output directory exists
-    if not os.path.exists(output_directory):
-        os.makedirs(output_directory)
-        print(f"Created output directory: {output_directory}")
+import os
+import re
 
-    # Loop through each shapefile in the directory with the specified pattern
-    for filename in os.listdir(polygon_directory):
-        # Check if the filename matches the required pattern
-        if filename.endswith('.shp') and re.match(r'cool_places_polygons_\d{8}_\d{3,4}\.shp', filename):
-            print(f"Processing shapefile: {filename}")  # Debug statement to confirm each file being processed
+def process_all_geopackages_in_directory(gpkg_directory, graph_directory, shapefile_output_directory, output_directory):
+    # List all .gpkg files in the specified directory
+    gpkg_files = [f for f in os.listdir(gpkg_directory) if f.endswith('.gpkg')]
 
-            # Extract date and time from filename
-            date_time_match = re.search(r'cool_places_polygons_(\d{8})_(\d{3,4})', filename)
-            if not date_time_match:
-                print(f"Filename {filename} does not match expected date and time pattern. Skipping...")
-                continue
+    if not gpkg_files:
+        print("No GeoPackage files found in the specified directory.")
+        return
 
-            date, time = date_time_match.groups()
-            print(f"Extracted date: {date}, time: {time}")  # Debug statement for date and time extraction
+    # Ensure the shapefile output directory exists
+    if not os.path.exists(shapefile_output_directory):
+        os.makedirs(shapefile_output_directory)
 
-            # Construct file paths for the polygon and corresponding graph
-            polygon_path = os.path.join(polygon_directory, filename)
-            graph_filename = f'ams_graph_with_shade_{date}_{time}_cropped.graphml'
-            graph_file_path = os.path.join(graph_directory, graph_filename)
-            output_path = os.path.join(output_directory, f'cool_places_nodes_{date}_{time}.pkl')
+    for gpkg_file in gpkg_files:
+        geopackage_path = os.path.join(gpkg_directory, gpkg_file)
 
-            # Check if the corresponding graph file exists
-            if not os.path.exists(graph_file_path):
-                print(f"Graph file {graph_filename} not found for shapefile {filename}. Skipping...")
-                continue
+        # Extract date from GeoPackage filename
+        match = re.search(r'shadeGeoms_(\d{8})', gpkg_file)
+        if not match:
+            print(f"Date not found in filename {gpkg_file}. Skipping this file.")
+            continue
 
-            try:
-                # Load the graph
-                graph = load_graph_from_file(graph_file_path)
-                print(f"Loaded graph from {graph_file_path}")  # Confirm graph loaded
+        date_str = match.group(1)
 
-                # Project graph to correct CRS
-                graph = ox.project_graph(graph, to_crs='EPSG:28992')
+        # Check if all potential .pkl output files for this GeoPackage date already exist
+        all_layers_exported = True
+        for layer_index in range(19):  # Assuming up to 19 layers (0-18)
+            time_suffix = f"{9 + layer_index // 2}{30 if layer_index % 2 else '00'}"
+            output_path = os.path.join(output_directory, f'cool_places_nodes_{date_str}_{time_suffix}.pkl')
+            if not os.path.exists(output_path):
+                all_layers_exported = False
+                break
 
-                # Load polygons
-                cool_place_polygons = load_cool_place_polygons(polygon_path)
-                print(f"Loaded polygons from {polygon_path}")  # Confirm polygons loaded
+        # Skip this GeoPackage if all .pkl files for its layers already exist
+        if all_layers_exported:
+            print(f"All cool places nodes files for date {date_str} already exist. Skipping {gpkg_file}.")
+            continue
 
-                # Calculate and save cool place nodes
-                calculate_and_save_cool_place_nodes(graph, cool_place_polygons, output_path)
-                print(f"Cool place nodes saved to {output_path}")  # Confirm nodes saved
+        # Export layers to shapefiles in the shared shapefile output directory
+        export_layers_to_shapefiles(geopackage_path, shapefile_output_directory, date_str)
 
-            except Exception as e:
-                print(f"An error occurred while processing {filename}: {e}")
+        # Process each shapefile in the shapefile output directory
+        for filename in os.listdir(shapefile_output_directory):
+            # Check if filename matches the required shapefile naming pattern
+            if filename.endswith('.shp') and re.match(r'cool_places_polygons_\d{8}_\d{3,4}\.shp', filename):
+                print(f"Processing shapefile: {filename}")
+                date_time_match = re.search(r'cool_places_polygons_(\d{8})_(\d{3,4})', filename)
+                if not date_time_match:
+                    print(f"Filename {filename} does not match expected date and time pattern. Skipping...")
+                    continue
 
+                date, time = date_time_match.groups()
+                polygon_path = os.path.join(shapefile_output_directory, filename)
+                graph_filename = f'ams_graph_with_shade_{date}_{time}_cropped.graphml'
+                graph_file_path = os.path.join(graph_directory, graph_filename)
+                output_path = os.path.join(output_directory, f'cool_places_nodes_{date}_{time}.pkl')
 
-# # Example use
-# polygon_directory = 'C:/pedestrian_demo_data/cool_places_polygons/'
-# graph_directory = 'C:/pedestrian_demo_data/graphs_with_shade/'
-# output_directory = 'C:/pedestrian_demo_data/cool_place_nodes/'
+                # Skip processing if the .pkl file already exists
+                if os.path.exists(output_path):
+                    print(f"Output file {output_path} already exists. Skipping processing for this file.")
+                    continue
 
-# process_all_shapefiles(polygon_directory,graph_directory,output_directory)
+                if not os.path.exists(graph_file_path):
+                    print(f"Graph file {graph_filename} not found for shapefile {filename}. Skipping...")
+                    continue
 
-# # From gpkg to shapefiles
-# geopackage_path = 'C:/pedestrian_demo_data/shadeGeoms.gpkg'
-# output_directory = 'C:/pedestrian_demo_data/cool_places_polygons/'
-# date_str = '20230816'  # Specify the date string for filenames
-# export_layers_to_shapefiles(geopackage_path, output_directory, date_str)
+                try:
+                    graph = load_graph_from_file(graph_file_path)
+                    print(f"Loaded graph from {graph_file_path}")
+                    graph = ox.project_graph(graph, to_crs='EPSG:28992')
+                    cool_place_polygons = load_cool_place_polygons(polygon_path)
+                    print(f"Loaded polygons from {polygon_path}")
+                    calculate_and_save_cool_place_nodes(graph, cool_place_polygons, output_path)
+                    print(f"Cool place nodes saved to {output_path}")
+
+                except Exception as e:
+                    print(f"An error occurred while processing {filename}: {e}")

@@ -8,7 +8,7 @@ import osmnx as ox
 from datetime import datetime
 
 
-def load_config(config_path="C:/Users/17731/Documents/GitHub/shady_amsterdam/PedestrianNetwork/network_config.json"):
+def load_config(config_path="network_config.json"):
     if os.path.exists(config_path):
         print("Loading combined configuration...")
         with open(config_path, 'r') as file:
@@ -31,39 +31,47 @@ def check_required_inputs(config_section, required_keys):
 
 def dataset_preparation(config):
     dataset_config = config["Dataset_Preparation"]
-    required_inputs = ["graphml_file", "area_name_for_OSM_network", "shade_maps_path", "new_graphml_files_path"]
+    required_inputs = ["graphml_file", "area_name_for_OSM_network", "cool_places_gpkg_dir", "cool_places_shp_dir", "cool_places_nodes_path"]
 
     # Check if dataset preparation is needed based on required inputs
     if not check_required_inputs(dataset_config, required_inputs):
         return
 
     # Extract values
-    graphml_file = dataset_config.get('graphml_file')
-    area_name = dataset_config.get('area_name_for_OSM_network')
-    shade_maps_path = dataset_config.get('shade_maps_path')
-    new_graphml_files_path = dataset_config.get('new_graphml_files_path')
-    cool_places_path = dataset_config.get('cool_places_path')
+    graphml_file = dataset_config.get('graphml_file', None)
+    area_name = dataset_config.get('area_name_for_OSM_network', None)
+    shade_maps_path = dataset_config.get('shade_maps_path', None)
+    new_graphml_files_path = dataset_config.get('new_graphml_files_path', None)
+    cool_places_gpkg_dir = dataset_config.get('cool_places_gpkg_dir')
+    cool_places_shp_dir = dataset_config.get('cool_places_shp_dir')
     cool_places_nodes_path = dataset_config.get('cool_places_nodes_path')
 
     # Determine network configuration
-    if graphml_file == "None":
-        network_WGS84 = ox.graph_from_place(area_name, network_type="walk")
-        network = ox.project_graph(network_WGS84, to_crs='EPSG:28992')
-        print(f"Using OSM network for area: {area_name}")
-    elif area_name == "None":
+    if graphml_file:
         network_WGS84 = ox.load_graphml(graphml_file)
         network = ox.project_graph(network_WGS84, to_crs='EPSG:28992')
         print(f"Using provided GraphML file: {graphml_file}")
+    elif area_name:
+        network_WGS84 = ox.graph_from_place(area_name, network_type="walk")
+        network = ox.project_graph(network_WGS84, to_crs='EPSG:28992')
+        print(f"Using OSM network for area: {area_name}")
     else:
         raise ValueError("Please provide either 'graphml_file' or 'area_name_for_OSM_network'.")
 
-    # Process shade weights and cool places
-    print("Calculating shade weights...")
-    shade_weight_calculation.process_multiple_shade_maps(
-        graph_file=network, raster_dir=shade_maps_path, output_dir=new_graphml_files_path)
+    # Calculate shade weights if paths are provided
+    if shade_maps_path and new_graphml_files_path:
+        print("Calculating shade weights...")
+        shade_weight_calculation.process_multiple_shade_maps(
+            graph_file=network, raster_dir=shade_maps_path, output_dir=new_graphml_files_path)
+    else:
+        print("Skipping shade weight calculation as paths are not provided.")
+
+    # Calculate cool places nodes
     print("Calculating cool places nodes...")
-    cool_places_nodes_calculation.process_all_shapefiles(
-        polygon_directory=cool_places_path, graph_directory=new_graphml_files_path,
+    cool_places_nodes_calculation.process_all_geopackages_in_directory(
+        gpkg_directory=cool_places_gpkg_dir,
+        graph_directory=new_graphml_files_path if new_graphml_files_path else '',
+        shapefile_output_directory=cool_places_shp_dir,
         output_directory=cool_places_nodes_path)
 
 
@@ -158,8 +166,10 @@ def walking_shed(config):
 
 
 if __name__ == "__main__":
+    config_path = "C:/Users/17731/Documents/GitHub/shady_amsterdam/PedestrianNetwork/network_config.json"
+
     # Load the combined configuration
-    config = load_config()
+    config = load_config(config_path)
 
     # Run dataset preparation if necessary
     print("Checking dataset preparation requirements...")

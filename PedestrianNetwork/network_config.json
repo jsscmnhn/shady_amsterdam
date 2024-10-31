@@ -1,12 +1,13 @@
 {
     "Dataset_Preparation": {
-        "graphml_file": "",
+        "graphml_file": "C:/pedestrian_demo_data/StudyArea.graphml",
         "area_name_for_OSM_network": "",
         "shade_maps_path": "",
-        "new_graphml_files_path": "",
+        "new_graphml_files_path": "C:/pedestrian_demo_data/graphs_with_shade/",
 
-        "cool_places_path": "",
-        "cool_places_nodes_path": ""
+        "cool_places_gpkg_dir": "C:/pedestrian_demo_data/cool_places_gpkg/",
+        "cool_places_shp_dir": "C:/pedestrian_demo_data/cool_places_shp/",
+        "cool_places_nodes_path": "C:/pedestrian_demo_data/cool_place_nodes/"
     },
     "Routing": {
         "graph_dir": "",
@@ -24,11 +25,11 @@
         "date_time": ""
     },
     "Walking_Shed": {
-        "graph_file": "C:/pedestrian_demo_data/graphs_with_shade/ams_graph_with_shade_20230816_1000_cropped.graphml",
-        "cool_places_path": "C:/pedestrian_demo_data/cool_places_polygons/cool_places_polygons_20230816_1000.shp",
+        "graph_file": "C:/pedestrian_demo_data/graphs_with_shade/ams_graph_with_shade_20230621_1800_cropped.graphml",
+        "cool_places_path": "C:/pedestrian_demo_data/cool_places_polygons/cool_places_polygons_20230621_1800.shp",
         "building_shapefile_path": "C:/pedestrian_demo_data/merged_buildings/merged_buildings.shp",
         "weight": "shade_weight",
-        "output_building_shapefile": "C:/pedestrian_demo_data/merged_buildings_with_distance_category.shp",
-        "output_cool_place_shapefile": "C:/pedestrian_demo_data/cool_place_nodes.shp"
+        "output_building_shapefile": "C:/pedestrian_demo_data/walking_shed_results/merged_buildings_with_distance_category_20230621_1800.shp",
+        "output_cool_place_shapefile": "C:/pedestrian_demo_data/walking_shed_results/cool_place_nodes_20230621_1800.shp"
     }
 }

@@ -8,7 +8,6 @@ from osmnx.distance import nearest_nodes
 from shapely.geometry import MultiPolygon, Polygon, Point
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from scipy.spatial import KDTree
-import numpy as np
 
 
 def load_building_polygons(building_shapefile_path):
@@ -74,13 +73,9 @@ def find_cool_place_nodes(graph, cool_place_polygons, max_distance=50, known_crs
     return list(set(cool_place_nodes))
 
 
-def process_single_cool_place_node(graph, cool_place_node, nearby_nodes, distances, weight="shade_weight"):
-    # Extract a subgraph of nodes within the maximum distance
-    subgraph = graph.subgraph(nearby_nodes[cool_place_node])
-    max_radius = max(distances)
-
-    # Calculate shortest or shadiest path lengths within this subgraph
-    lengths, paths = nx.single_source_dijkstra(subgraph, cool_place_node, cutoff=max_radius, weight=weight)
+def process_single_cool_place_node(graph, cool_place_node, distances, weight="shade_weight"):
+    # Calculate shortest or shadiest path lengths for a single cool place node
+    lengths, paths = nx.single_source_dijkstra(graph, cool_place_node, cutoff=max(distances), weight=weight)
 
     # Organize nodes by distance thresholds using real length attribute
     node_distances = {distance: set() for distance in distances}
@@ -106,27 +101,16 @@ def process_single_cool_place_node(graph, cool_place_node, nearby_nodes, distanc
 
 
 def find_nodes_within_distances(graph, cool_place_nodes, distances=[200, 300, 400, 500], weight="shade_weight"):
-    print("Starting KDTree-based spatial filtering and parallelized Dijkstra calculation...")
+    print("Starting parallelized multi-source Dijkstra calculation...")
 
-    # Build a KDTree for quick spatial querying of nearby nodes
-    node_positions = np.array([[data['x'], data['y']] for node, data in graph.nodes(data=True)])
-    tree = KDTree(node_positions)
-    max_radius = max(distances)
-
-    # For each cool place node, find nearby nodes within max_radius
-    nearby_nodes = {
-        node: tree.query_ball_point([graph.nodes[node]['x'], graph.nodes[node]['y']], max_radius)
-        for node in cool_place_nodes
-    }
-
-    # Initialize the combined results for all cool place nodes
+    # Dictionary to accumulate results across all cool place nodes
     combined_distance_nodes = {distance: set() for distance in distances}
 
     # Run calculations in parallel for each cool place node
     with ThreadPoolExecutor() as executor:
         # Submit each cool place node to be processed in parallel
-        futures = [executor.submit(process_single_cool_place_node, graph, node, nearby_nodes, distances, weight)
-                   for node in cool_place_nodes]
+        futures = [executor.submit(process_single_cool_place_node, graph, node, distances, weight) for node in
+                   cool_place_nodes]
 
         for i, future in enumerate(futures):
             node_distances = future.result()  # Retrieve result for this cool place node
@@ -136,7 +120,7 @@ def find_nodes_within_distances(graph, cool_place_nodes, distances=[200, 300, 40
                 combined_distance_nodes[distance].update(node_distances[distance])
 
             # Print progress as a percentage
-            if (i + 1) % 10 == 0 or (i + 1) == len(cool_place_nodes):
+            if (i + 1) % 100 == 0 or (i + 1) == len(cool_place_nodes):
                 percent_complete = ((i + 1) / len(cool_place_nodes)) * 100
                 print(
                     f"Processed {i + 1}/{len(cool_place_nodes)} cool place nodes... ({percent_complete:.2f}% complete)")
@@ -241,14 +225,3 @@ def walking_shed_calculation(graph=None, polygon_path=None, building_shapefile_p
     if output_cool_place_shapefile:
         nodes_gdf = ox.graph_to_gdfs(graph, nodes=True, edges=False)
         save_cool_place_nodes_shapefile(cool_place_nodes, nodes_gdf, output_cool_place_shapefile)
-
-
-# if __name__ == "__main__":
-#     walking_shed_calculation(
-#         graph="C:/Github_synthesis/AMS/graphs_with_shade/ams_graph_with_shade_20230816_1000_cropped.graphml",
-#         polygon_path="C:/Github_synthesis/AMS/cool_places_polygons/cool_places_polygons_20230816_1000.shp",
-#         building_shapefile_path="C:/Androniki/pythonProject1/merged_buildings.shp",
-#         weight="length",
-#         output_building_shapefile="C:/Androniki/pythonProject1/merged_buildings_with_distance_category.shp",
-#         output_cool_place_shapefile="C:/Androniki/pythonProject1/cool_place_nodes.shp"
-#     )
