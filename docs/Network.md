@@ -2,8 +2,13 @@
 
 ---
 
-This documentation will guide you through the steps for the creation shortest and shadiest distance datasets to the nearest cool place and their related walking shed maps and the implementation of our routing algorithm.  
+Pedestrian Network Analysis part offers a set of tools designed to identify shaded paths, locate shaded (cool) places, and map proximity to shaded areas around buildings.
 
+Using these tools, users can:
+- **Calculate shaded routes** between two points or to the nearest shaded area, optimizing for either distance or shade.
+- **Generate a walking shed network** that classifies buildings based on their proximity to shaded areas, providing insights into accessible shaded zones within the city.
+
+Each module functions independently, allowing users to perform dataset preparation, routing, or walking shed analysis based on their needs. The configuration for each function is customizable, enabling both time-based and location-based routing, as well as flexible output options. 
 
 ---
 ## Content
