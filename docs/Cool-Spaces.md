@@ -18,9 +18,9 @@ All data used for the cool space process must be specified by the configuration 
   * [1.6. PET data](#heading--1-6)
   * [1.7. shade maps data](#heading--1-7)
 
-**[2. Identification (*identification.py*)](#heading--2)**
+**[2. Identification](#heading--2)**
 
-**[3. Evaluation (*evaluation.py*)](#heading--3)**
+**[3. Evaluation](#heading--3)**
 
 ---
 
@@ -128,7 +128,7 @@ correct list order, take the screenshot as an example:
 > - shademaps[2] will be *amsterdam_20230621_1000*
 > - ...
 
-## 2. Identification (*coolspace_process.py*) <a name="heading--2"/>
+## 2. Identification <a name="heading--2"/>
 For identification, the program runs as:
 > - Read road data, building data, land use data and shade maps in [*main.py of cool space*](../cool_place/main.py)
 > - Call the *identification function* in [*coolspace_process.py*](../cool_place/include/coolspace_process.py)
@@ -162,5 +162,7 @@ For identification, the program runs as:
   <br>
   <em>Figure 10: Identification output, geometry type: land use</em>
 </p>
+
+## 3. Evaluation <a name="heading--3"/>
 
 
