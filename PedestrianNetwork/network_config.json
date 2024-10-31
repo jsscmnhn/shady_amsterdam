@@ -24,11 +24,11 @@
         "date_time": ""
     },
     "Walking_Shed": {
-    "graph_file": "C:/pedestrian_demo_data/graphs_with_shade/ams_graph_with_shade_20230816_1000_cropped.graphml",
-    "cool_places_path": "C:/pedestrian_demo_data/cool_places_polygons/cool_places_polygons_20230816_1000.shp",
-    "building_shapefile_path": "C:/pedestrian_demo_data/merged_buildings/merged_buildings.shp",
-    "weight": "shade_weight",
-    "output_building_shapefile": "C:/pedestrian_demo_data/merged_buildings_with_distance_category.shp",
-    "output_cool_place_shapefile": "C:/pedestrian_demo_data/cool_place_nodes.shp"
-}
+        "graph_file": "C:/pedestrian_demo_data/graphs_with_shade/ams_graph_with_shade_20230816_1000_cropped.graphml",
+        "cool_places_path": "C:/pedestrian_demo_data/cool_places_polygons/cool_places_polygons_20230816_1000.shp",
+        "building_shapefile_path": "C:/pedestrian_demo_data/merged_buildings/merged_buildings.shp",
+        "weight": "shade_weight",
+        "output_building_shapefile": "C:/pedestrian_demo_data/merged_buildings_with_distance_category.shp",
+        "output_cool_place_shapefile": "C:/pedestrian_demo_data/cool_place_nodes.shp"
+    }
 }
