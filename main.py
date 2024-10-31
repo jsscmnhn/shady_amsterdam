@@ -1,8 +1,14 @@
+import argparse
+import sys
+import os
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'shade_calculation')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'cool_place')))
+
 from shade_calculation.main_shade import shade_main
 from cool_place.main import coolspace_main
 
-import argparse
-import os
+
 
 if __name__ == '__main__':
     # TODO: FILL IN DESCRIPTION
