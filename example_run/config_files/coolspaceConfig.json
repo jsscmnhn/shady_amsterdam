@@ -1,6 +1,6 @@
 {
   "files": {
-    "folder_path": "example_run\\output\\coolspaces",
+    "folder_path": "example_run\\outputs\\coolspaces\\",
     "gpkg_file": "example_run\\data\\coolspace.gpkg",
     "landuse_file": "ams_landuse_top10NL",
     "road_file": "ams_roads_top10NL",
@@ -9,7 +9,7 @@
     "street_furniture_file": "ams_bench_osm",
     "heatrisk_file": "ams_heatrisk_2023",
     "pet_file": "example_run\\data\\ams_PET_average.tiff",
-    "shademaps_path": "example_run\\outputs\\shade\\merged_shade_maps",
+    "shademaps_path": "example_run\\outputs\\shade\\merged_shade_maps\\",
     "output_identification_file": "coolspace_identification_20230913",
     "output_evaluation_file": "example_cool_space_20240701",
     "output_shadeGeometry_gpkg": "example_shadeGeoms_20240701.gpkg"
@@ -18,7 +18,7 @@
     "hasIdentificationOutput": false,
     "outputShadeGeometries": true,
     "performEvaluation": true,
-    "useMultiProcessing": true,
+    "useMultiProcessing": true,ssssss
     "road_buffer_attribute": "buffer",
     "building_buffer": 4,
     "shade_calculation_mode": "single-day",
