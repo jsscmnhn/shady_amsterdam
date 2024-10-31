@@ -155,7 +155,7 @@ The configuration file is structured as following:
     "morning_range": [900, 1200],             # specify the morning time range
     "afternoon_range": [1200, 1600],          # specify the afternoon time range
     "late_afternoon_range": [1600, 1800],     # specify the late afternoon time range
-    "search_range": null                      # specify a user-define time range
+    "search_range": null                      # specify a user-define time range such as 9:00 to 14:00 -> [900, 1400]
   },
   "shade_info_multi": {
     "num_days": 2                             # specify the number of days for "multi-days" mode
