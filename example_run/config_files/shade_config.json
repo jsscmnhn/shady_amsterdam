@@ -17,7 +17,7 @@
     "merged_name": "example"
   },
   "Creation_of_first_CHM_file": {
-    "create_chm": true,
+    "create_chm": false,
     "chm_output_folder": "example_run\\outputs\\shade\\chm",
     "ndvi_threshold": 0.0,
     "resolution": 0.5,
@@ -31,7 +31,7 @@
     }
   },
   "Creation_of_final_CHM_and_DSM_with_ground_and_buildings": {
-    "create_final_dsm_chm": true,
+    "create_final_dsm_chm": false,
     "buildings_path": "path",
     "output_dsm_chm": "example_run\\outputs\\shade\\dsmchm",
     "dsm_max_workers": 15,
@@ -43,7 +43,7 @@
     }
   },
   "Creation_of_Shade_maps": {
-    "create_shade": true,
+    "create_shade": false,
     "output_base_shademap": "example_run\\outputs\\shade\\shade_maps",
     "date": "2024-07-01",
     "start_time": 9,
@@ -58,7 +58,7 @@
     }
   },
   "Merging_of_Shade_maps": {
-    "merge_shademaps": true,
+    "merge_shademaps": false,
     "output_folder_merged_shademaps": "example_run\\outputs\\shade\\merged_shade_maps",
     "merged_name": "example",
     "files_start_time": 900,
