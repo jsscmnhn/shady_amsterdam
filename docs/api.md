@@ -98,8 +98,7 @@
      * [create_buffer](#heading--2-5-5)
 
 **[3. Network Functions](#heading--3)**
-
-  * [3.1. Shade Weight Calculation](#heading--3-1)
+* [3.1. Shade Weight Calculation](#heading--3-1)
    * [add_edge_identifiers_to_gdf](#heading--3-1-1)
    * [compute_shade_weights](#heading--3-1-2)
    * [update_graph_with_shade_weight](#heading--3-1-3)
