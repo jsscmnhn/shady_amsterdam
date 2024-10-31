@@ -7,7 +7,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'cool_pl
 
 from shade_calculation.main_shade import shade_main
 from cool_place.main import coolspace_main
-
+from PedestrianNetwork import main_network
 
 
 if __name__ == '__main__':
@@ -58,3 +58,4 @@ if __name__ == '__main__':
     coolspace_main(config_file_cool_spaces)
 
     ########################################### Functions for creating the pedestrian network ##############################
+    main_network(config_file_network)
