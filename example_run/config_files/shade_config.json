@@ -2,7 +2,7 @@
   "Downloading_Las_tiles": {
     "download_las": true,
     "las_output_folder": "example_run\\outputs\\shade\\laz",
-    "subtile_list_file": "example_run\\data\\example_subtiles",
+    "subtile_list_file": "example_run\\data\\example_subtiles.txt",
     "notes": {
       "output": "las_output_folder: Provide path to folder containing subtile LAZ folders if LAS tile download is not needed, but Creation of First CHM file is."
     }
@@ -13,8 +13,8 @@
     "buildings_name": "example_buildings",
     "buildings_output_folder": "example_run\\outputs\\shade\\data",
     "ahn_output_folder": "example_run\\outputs\\shade\\data",
-    "tile_list_file": "example_run\\data\\example_tiles",
-    "merged_name": "example",
+    "tile_list_file": "example_run\\data\\example_tiles.txt",
+    "merged_name": "example"
   },
   "Creation_of_first_CHM_file": {
     "create_chm": true,
@@ -25,7 +25,7 @@
     "smooth_chm": false,
     "filter_size": 3,
     "pre_filter": false,
-    "chm_max_workers":24 ,
+    "chm_max_workers": 24,
     "notes": {
       "output": "chm_output_folder: Provide path if CHM creation is not needed but want to perform Final CHM & DSM Creation"
     }
@@ -46,7 +46,7 @@
     "create_shade": true,
     "output_base_shademap": "example_run\\outputs\\shade\\shade_maps",
     "date": "2024-07-01",
-    "start_time":9,
+    "start_time": 9,
     "end_time": 18,
     "interval": 30,
     "use_chm": true,
