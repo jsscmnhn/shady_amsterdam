@@ -1,0 +1,68 @@
+{
+  "Downloading_Las_tiles": {
+    "download_las": false,
+    "las_output_folder": "example_run\\outputs\\shade\\laz",
+    "subtile_list_file": "example_run\\data\\example_subtiles.txt",
+    "notes": {
+      "output": "las_output_folder: Provide path to folder containing subtile LAZ folders if LAS tile download is not needed, but Creation of First CHM file is."
+    }
+  },
+  "Creation_of_AHN_geotiles_DSM_and_DTM_dataset": {
+    "download_dsm_dtm": false,
+    "download_buildings": false,
+    "buildings_name": "example_buildings",
+    "buildings_output_folder": "example_run\\outputs\\shade\\data",
+    "ahn_output_folder": "example_run\\outputs\\shade\\data",
+    "tile_list_file": "example_run\\data\\example_tiles.txt",
+    "merged_name": "example"
+  },
+  "Creation_of_first_CHM_file": {
+    "create_chm": true,
+    "chm_output_folder": "example_run\\outputs\\shade\\chm",
+    "ndvi_threshold": 0.0,
+    "resolution": 0.5,
+    "remove_las": false,
+    "smooth_chm": false,
+    "filter_size": 3,
+    "pre_filter": false,
+    "chm_max_workers": 15,
+    "notes": {
+      "output": "chm_output_folder: Provide path if CHM creation is not needed but want to perform Final CHM & DSM Creation"
+    }
+  },
+  "Creation_of_final_CHM_and_DSM_with_ground_and_buildings": {
+    "create_final_dsm_chm": true,
+    "buildings_path": "path",
+    "output_dsm_chm": "example_run\\outputs\\shade\\dsmchm",
+    "dsm_max_workers": 15,
+    "speed_up": false,
+    "min_vegetation_height": 2,
+    "max_vegetation_height": 40,
+    "notes": {
+      "output": "output_dsm_chm: Provide path if final CHM and DSM creation is not needed but want to perform Shade Map Creation."
+    }
+  },
+  "Creation_of_Shade_maps": {
+    "create_shade": true,
+    "output_base_shademap": "example_run\\outputs\\shade\\shade_maps",
+    "date": "2024-07-01",
+    "start_time": 9,
+    "end_time": 18,
+    "interval": 30,
+    "use_chm": true,
+    "trans": 10,
+    "trunkheight": 25,
+    "max_shade_workers": 15,
+    "notes": {
+      "output": "output_base_shademap: Provide path if shade map creation is not needed but want to perform Merging of Shade Maps."
+    }
+  },
+  "Merging_of_Shade_maps": {
+    "merge_shademaps": true,
+    "output_folder_merged_shademaps": "example_run\\outputs\\shade\\merged_shade_maps",
+    "merged_name": "example",
+    "files_start_time": 900,
+    "files_end_time": 2000,
+    "delete_input_shade": false
+  }
+}

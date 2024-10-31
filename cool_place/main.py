@@ -1,7 +1,6 @@
 from rich.progress import Progress
 import geopandas as gpd
 import time
-import fiona
 from cool_place.include.coolspace_process import (read_config,
                                        identification,
                                        evaluation,

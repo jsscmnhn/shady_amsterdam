@@ -92,7 +92,7 @@ def read_config(file_path):
 
 def shade_main(configuration_file):
     # Read parameters from the config file
-    params = read_config(config_file)
+    params = read_config(configuration_file)
     for param in params:
         print(param + ' ' + str(params[param]))
 
