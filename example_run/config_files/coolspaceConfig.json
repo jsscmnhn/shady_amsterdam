@@ -18,7 +18,7 @@
     "hasIdentificationOutput": false,
     "outputShadeGeometries": true,
     "performEvaluation": true,
-    "useMultiProcessing": true,ssssss
+    "useMultiProcessing": true,
     "road_buffer_attribute": "buffer",
     "building_buffer": 4,
     "shade_calculation_mode": "single-day",
