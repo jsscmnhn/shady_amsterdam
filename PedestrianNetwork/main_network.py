@@ -6,6 +6,7 @@ import os
 import json
 import osmnx as ox
 from datetime import datetime
+from rich.progress import Progress  # Adding from main.py for progress display
 
 
 def load_config(config_path="network_config.json"):
@@ -165,20 +166,21 @@ def walking_shed(config):
     )
 
 
-if __name__ == "__main__":
-    config_path = "C:/Users/17731/Documents/GitHub/shady_amsterdam/PedestrianNetwork/network_config.json"
-
-    # Load the combined configuration
+def main_network(config_path="network_config.json"):
+    # Load the configuration
     config = load_config(config_path)
 
-    # Run dataset preparation if necessary
+    # Run dataset preparation
     print("Checking dataset preparation requirements...")
     dataset_preparation(config)
 
-    # Run routing if necessary
+    # Run routing
     print("Checking routing requirements...")
     routing(config)
 
-    # Run walking shed calculation if necessary
+    # Run walking shed calculation
     print("Checking walking shed requirements...")
     walking_shed(config)
+
+if __name__ == "__main__":
+    main_network()
