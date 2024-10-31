@@ -1,6 +1,6 @@
 {
   "Downloading_Las_tiles": {
-    "download_las": true,
+    "download_las": false,
     "las_output_folder": "example_run\\outputs\\shade\\laz",
     "subtile_list_file": "example_run\\data\\example_subtiles.txt",
     "notes": {
@@ -8,8 +8,8 @@
     }
   },
   "Creation_of_AHN_geotiles_DSM_and_DTM_dataset": {
-    "download_dsm_dtm": true,
-    "download_buildings": true,
+    "download_dsm_dtm": false,
+    "download_buildings": false,
     "buildings_name": "example_buildings",
     "buildings_output_folder": "example_run\\outputs\\shade\\data",
     "ahn_output_folder": "example_run\\outputs\\shade\\data",
@@ -25,7 +25,7 @@
     "smooth_chm": false,
     "filter_size": 3,
     "pre_filter": false,
-    "chm_max_workers": 24,
+    "chm_max_workers": 15,
     "notes": {
       "output": "chm_output_folder: Provide path if CHM creation is not needed but want to perform Final CHM & DSM Creation"
     }
@@ -34,7 +34,7 @@
     "create_final_dsm_chm": true,
     "buildings_path": "path",
     "output_dsm_chm": "example_run\\outputs\\shade\\dsmchm",
-    "dsm_max_workers": 24,
+    "dsm_max_workers": 15,
     "speed_up": false,
     "min_vegetation_height": 2,
     "max_vegetation_height": 40,
@@ -52,7 +52,7 @@
     "use_chm": true,
     "trans": 10,
     "trunkheight": 25,
-    "max_shade_workers": 24,
+    "max_shade_workers": 15,
     "notes": {
       "output": "output_base_shademap: Provide path if shade map creation is not needed but want to perform Merging of Shade Maps."
     }

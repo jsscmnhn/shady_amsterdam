@@ -14,16 +14,14 @@ if __name__ == '__main__':
     # TODO: FILL IN DESCRIPTION
     parser = argparse.ArgumentParser(description='TO DO FILL IN THIS ')
     parser.add_argument(
-        'config_file_shade',
-        nargs='?',
+        '--config_file_shade',
         # default="configuration_files/shade_config.json",
         default="example_run\config_files\shade_config.json",
         type=str,
         help='Path to the configuration file of the shade maps (default: configuration_files/shade_config.json)'
     )
     parser.add_argument(
-        'config_file_cool_spaces',
-        nargs='?',
+        '--config_file_cool_spaces',
         # default="configuration_files/coolspaceConfig.json",
         default="example_run\config_files\coolspaceConfig.json" ,
         type=str,
@@ -32,8 +30,7 @@ if __name__ == '__main__':
 
     #TODO: FILL IN FOR PEDESTRIAN NETWORK
     parser.add_argument(
-        'config_file_network',
-        nargs='?',
+        '--config_file_network',
         default="configuration_files/coolspaceConfig.json",
         type=str,
         help='Path to the configuration file for the network (default: )'
@@ -54,10 +51,10 @@ if __name__ == '__main__':
     if not os.path.exists(config_file_network):
         raise FileNotFoundError(f"Config file not found: {config_file_network}")
 
-########################################### Functions for creating the shade maps ######################################
-shade_main(str(config_file_shade))
+    ########################################### Functions for creating the shade maps ######################################
+    shade_main(config_file_shade)
 
-########################################### Functions for creating the cool spaces #####################################
-coolspace_main(config_file_cool_spaces)
+    ########################################### Functions for creating the cool spaces #####################################
+    coolspace_main(config_file_cool_spaces)
 
-########################################### Functions for creating the pedestrian network ##############################
+    ########################################### Functions for creating the pedestrian network ##############################
