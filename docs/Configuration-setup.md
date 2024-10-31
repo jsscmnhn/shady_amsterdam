@@ -205,7 +205,7 @@ The configuration file is structured as following:
         "origin_longitude": "4.890660",                                         # Longitude of origin (float)
         "destination_latitude": "52.376522",                                    # Latitude of destination (float)
         "destination_longitude": "4.908490",                                    # Longitude of destination (float)
-        "date_time": "2024-10-31 10:05"                                         # Date and time for route calculations, format "YYYY-MM-DD HH:MM" (str)
+        "date_time": "2024-10-31 10:05:30"                                         # Date and time for route calculations, format "YYYY-MM-DD HH:MM" (str)
     },
     "Walking_Shed": {
         "graph_file": "path",                           # GraphML file path with shade weight attributes (str)
