@@ -57,7 +57,7 @@ The output of this step are LAZ tiles, sorted in different directories by main t
 
 ---
 
-### 1.2The DSM and DTM tiles <a name="heading--1-2"/>
+### 1.2 The DSM and DTM tiles <a name="heading--1-2"/>
 The names of the required GeoTiles Tiles have to be given in a .txt file, with each line containing a tile to be downloaded. The DSM and
 DTM of these tiles are then downloaded, and extracted as they are ZIP files, with `download_and_extract` and `download_raster_tiles`.
 Note: the download url is hard coded. This function might need to be updated in the future to retrieve new data. 
@@ -84,7 +84,7 @@ output directory. This step also outputs a list containing the name of each main
 
 ### 1.3 The Building Geometries <a name="heading--1-3"/>
 For this step, the list of tile name and bounds of the output of `merge_tif_files` is needed. This list is used to get the name for each to be made GeoPackage layer, and the geographical bounds of the buildings to be downloaded for each layer.  The WFS url and layer name are hard coded to connect to the BAG3D dataset.
-
+If you want to create this dataset manually, make sure the building data is saved per GeoTiles main tile in a layer together, named after the main tile. 
 
 ---
 ### <span style="color: blue;">`OUTPUT`</span>
@@ -101,6 +101,8 @@ The output of this step is a GeoPackage, containing the building geometries of e
 
 The LAZ tiles created with step [1.1](#heading--1-1) are transformed to CHM raster files in this step. The main directory with the subdirectories containing the LAZ subtiles is given as input in `process_laz_files`. The subtiles are all processed individually, this can be performed in parallel.
 Vegetation points are extracted from the LAZ tile using AHN classification and the Normalized Difference Vegetation Index (NDVI). Optionally, low vegetation heights can be pre-filtered (`extract_vegetation_points`). The vegetation points are than transformed into a raster by inputing the points into a Delaunay Triangulation and interpolating with Laplace at the output cell raster centers within a threshold distance of a vegetation point (`interpolation_vegetation`). Finally, the output is saved to a .TIF file (`chm_creation`).
+Users can choose to smooth the output chm using a median filter, by setting use_chm to true and optionally choosing a filter size. 
+
 ---
 ### <span style="color: blue;">`OUTPUT`</span>
 The output of this step are CHM files for each input subtile, stored in directories by main tile. The CHM is incomplete,
@@ -160,12 +162,16 @@ The output of this step are normalized CHM files for each input CHM file, stored
 
 ## 4. Calculating the shade maps (*shade_parallel.py*) <a name="heading--4"/>
 
-TODO 
+From the previous step, there is now a main directory, containing subdirectories named after each GeoTile main tile. Each main tile subdirectory contains the CHM and DSM files.
+For this part, both the CHM and DSM have to exist for each subtile. 
+
+In `process_folders` all CHM and DSM files are collected from the subdirectories, sorted and appended to a list. This list is used as input for the shade calculation. Users can choose the trunk height in the CHM,
+the transmissivity of the canopies in the CHM, the start and end time for the calculations and the interval inbetween, the date and if they want to use the CHM (`run_shade_calculation`). The process can be performed in parallel.
 
 ---
 
 ### <span style="color: blue;">`OUTPUT`</span>
-The output of this step is
+The output of this step are shade maps for the input date, for the start and end time, and times inbetween set with the interval.
 
 <p align="center">
   <img src="figs/shade/shadesmall.png" alt="Description of the figure" width="300"/>
@@ -175,13 +181,13 @@ The output of this step is
 
 
 ## 5. Merging the shade maps (*merge_shademaps.py*) <a name="heading--5"/>
-
-TODO 
-
----
+This final step covers the function `merge_tif_files_by_time`. It merges the shade maps from the previous step into single output files based on
+time intervals extracted from their filenames. The function processes each subfolder to collect TIFF files within a specified time range and 
+creates a mosaic by reading and merging the data. On overlapping regions with data values, the lowest value is chosen.
+The original files can optionally be deleted.
 
 ### <span style="color: blue;">`OUTPUT`</span>
-The output of this step is
+The output of this step are merged shade maps of the individual shade maps of the previous step, merged by time.
 
 <p align="center">
   <img src="figs/shade/mergedshademap.png" alt="Description of the figure" width="300"/>
