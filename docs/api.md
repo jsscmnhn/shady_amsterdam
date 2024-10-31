@@ -99,7 +99,49 @@
 
 **[3. Network Functions](#heading--3)**
 
-  * [3.1. TODO](#heading--3-1)
+  * [3.1. Shade Weight Calculation](#heading--3-1)
+   * [add_edge_identifiers_to_gdf](#heading--3-1-1)
+   * [compute_shade_weights](#heading--3-1-2)
+   * [update_graph_with_shade_weight](#heading--3-1-3)
+   * [store_graph_with_shade_weights](#heading--3-1-4)
+   * [precalculate_and_store_shade_weights](#heading--3-1-5)
+   * [generate_graph_name_from_raster](#heading--3-1-6)
+   * [process_multiple_shade_maps](#heading--3-1-7)
+* [3.2. Cool Places Nodes Calculation](#heading--3-2)
+   * [load_graph_from_file](#heading--3-2-1)
+   * [load_cool_place_polygons](#heading--3-2-2)
+   * [calculate_and_save_cool_place_nodes](#heading--3-2-3)
+   * [export_layers_to_shapefiles](#heading--3-2-4)
+   * [process_all_shapefiles](#heading--3-2-5)
+* [3.3. Routes Calculation](#heading--3-3)
+   * [load_graph_from_file](#heading--3-3-1)
+   * [load_cool_place_polygons](#heading--3-3-2)
+   * [find_nearest_node](#heading--3-3-3)
+   * [geocode_location](#heading--3-3-4)
+   * [find_cool_place_nodes](#heading--3-3-5)
+   * [load_cool_place_nodes](#heading--3-3-6)
+   * [find_nearest_cool_place_dijkstra](#heading--3-3-7)
+   * [calculate_routes](#heading--3-3-8)
+   * [calculate_balanced_route](#heading--3-3-9)
+   * [plot_routes](#heading--3-3-10)
+   * [demo_shade_route_calculation](#heading--3-3-11)
+   * [find_nearest_timestamp_files](#heading--3-3-12)
+   * [demo_shade_route_calculation_with_time](#heading--3-3-13)
+* [3.4. Walking Shed Network](#heading--3-4)
+   * [load_building_polygons](#heading--3-4-1)
+   * [load_graph_from_file](#heading--3-4-2)
+   * [process_graph](#heading--3-4-3)
+   * [load_cool_place_polygons](#heading--3-4-4)
+   * [find_cool_place_nodes](#heading--3-4-5)
+   * [process_single_cool_place_node](#heading--3-4-6)
+   * [find_nodes_within_distances](#heading--3-4-7)
+   * [save_cool_place_nodes_shapefile](#heading--3-4-8)
+   * [assign_buildings_to_distance_category_with_precomputed](#heading--3-4-9)
+   * [calculate_walking_shed_with_distance_categories](#heading--3-4-10)
+   * [assign_building_colors](#heading--3-4-11)
+   * [plot_colored_walking_shed](#heading--3-4-12)
+   * [preprocess_graph_weights](#heading--3-4-13)
+   * [walking_shed_calculation](#heading--3-4-14)
 
 
 ----
@@ -960,3 +1002,476 @@
 > - **Parameters**: `buffer_attri` - The column name holding buffer sizes.
 > - **Process**: Buffers each road geometry according to the buffer size in `buffer_attri` and stores the result in `"buffered"`. 
 
+
+
+## Network Functions <a name="heading--3"/>
+
+### Shade Weight Calculation (*shade_weight_calculation.py*) <a name="heading--3-1"/>
+
+#### <span style="color: red;">`add_edge_identifiers_to_gdf`</span><span style="color: gray;">(graph, edges_gdf)</span> <a name="heading--3-1-1"/>
+
+> Adds unique edge identifiers (u, v, key) to a GeoDataFrame representing edges in a graph.
+>
+> **PARAMETERS**  
+> - **`graph`** — *networkx.Graph*: Graph from which edges are derived.
+> - **`edges_gdf`** — *GeoDataFrame*: GeoDataFrame of edges where identifiers are added.
+>
+> **RETURNS**  
+> - *GeoDataFrame*: `edges_gdf` with added columns for `u`, `v`, and `key`.
+
+#### <span style="color: red;">`compute_shade_weights`</span><span style="color: gray;">(edges, raster, affine)</span> <a name="heading--3-1-2"/>
+
+> Computes shade weights for graph edges based on zonal statistics of a raster.
+>
+> **PARAMETERS**  
+> - **`edges`** — *GeoDataFrame*: DataFrame containing edge geometries.
+> - **`raster`** — *rasterio.Dataset*: Raster dataset with shade data.
+> - **`affine`** — *Affine*: Transformation matrix for raster coordinates.
+>
+> **RETURNS**  
+> - *GeoDataFrame*: `edges` with computed `shade_proportion` and `shade_weight` columns.
+
+#### <span style="color: red;">`update_graph_with_shade_weight`</span><span style="color: gray;">(graph, edges_gdf)</span> <a name="heading--3-1-3"/>
+
+> Updates a graph with pre-calculated shade weights for each edge.
+>
+> **PARAMETERS**  
+> - **`graph`** — *networkx.Graph*: The graph to update.
+> - **`edges_gdf`** — *GeoDataFrame*: DataFrame containing edges with `shade_weight` values.
+>
+> **RETURNS**  
+> - *networkx.Graph*: Updated `graph` with shade weights on edges.
+
+#### <span style="color: red;">`store_graph_with_shade_weights`</span><span style="color: gray;">(graph, edges_gdf, output_path)</span> <a name="heading--3-1-4"/>
+
+> Saves a graph with shade weights applied to each edge to a GraphML file.
+>
+> **PARAMETERS**  
+> - **`graph`** — *networkx.Graph*: Graph to save.
+> - **`edges_gdf`** — *GeoDataFrame*: Edge data with shade weights.
+> - **`output_path`** — *str*: Path where the GraphML file will be saved.
+>
+> **RETURNS**  
+> - *(None)*: The function saves the graph directly to the specified path.
+
+#### <span style="color: red;">`precalculate_and_store_shade_weights`</span><span style="color: gray;">(graph, raster_path, output_graph_path)</span> <a name="heading--3-1-5"/>
+
+> Pre-calculates and stores shade weights for a graph using a specified raster.
+>
+> **PARAMETERS**  
+> - **`graph`** — *networkx.Graph*: Input graph to calculate and store weights for.
+> - **`raster_path`** — *str*: Path to the raster file with shade data.
+> - **`output_graph_path`** — *str*: Path where the updated graph will be saved.
+>
+> **RETURNS**  
+> - *(None)*: The function saves the updated graph directly to the specified path.
+
+#### <span style="color: red;">`generate_graph_name_from_raster`</span><span style="color: gray;">(raster_filename)</span> <a name="heading--3-1-6"/>
+
+> Generates a graph filename based on a raster file’s date and time embedded in its name.
+>
+> **PARAMETERS**  
+> - **`raster_filename`** — *str*: Name of the raster file in a specific date/time format.
+>
+> **RETURNS**  
+> - *str*: Filename for the output graph based on raster file attributes.
+
+#### <span style="color: red;">`process_multiple_shade_maps`</span><span style="color: gray;">(graph_file, raster_dir, output_dir)</span> <a name="heading--3-1-7"/>
+
+> Processes multiple raster files, calculating and storing shade weights for each corresponding graph.
+>
+> **PARAMETERS**  
+> - **`graph_file`** — *str*: Path to the base graph file.
+> - **`raster_dir`** — *str*: Directory containing raster files.
+> - **`output_dir`** — *str*: Directory where processed graphs will be saved.
+>
+> **RETURNS**  
+> - *(None)*: The function saves each processed graph directly to the specified directory.
+
+----
+
+### Cool Places Nodes Calculation (*cool_places_nodes_calculation.py*) <a name="heading--3-2"/>
+
+#### <span style="color: red;">`load_graph_from_file`</span><span style="color: gray;">(graph_file_path)</span> <a name="heading--3-2-1"/>
+
+> Loads a graph from a GraphML file and ensures that shade weights are assigned and numeric for calculations.
+>
+> **PARAMETERS**  
+> - **`graph_file_path`** — *str*: Path to the GraphML file to load.
+>
+> **RETURNS**  
+> - *networkx.Graph*: Loaded graph with `shade_weight` values on edges.
+
+#### <span style="color: red;">`load_cool_place_polygons`</span><span style="color: gray;">(polygon_path)</span> <a name="heading--3-2-2"/>
+
+> Loads and validates polygons representing cool places from a shapefile or GeoJSON, fixing any invalid geometries.
+>
+> **PARAMETERS**  
+> - **`polygon_path`** — *str*: Path to the file containing cool place polygons.
+>
+> **RETURNS**  
+> - *GeoDataFrame*: Polygons with any invalid geometries corrected.
+
+#### <span style="color: red;">`calculate_and_save_cool_place_nodes`</span><span style="color: gray;">(graph, cool_place_polygons, output_path, max_distance=50, known_crs="EPSG:28992")</span> <a name="heading--3-2-3"/>
+
+> Identifies nodes near cool place polygons within a specified maximum distance and saves them to a file.
+>
+> **PARAMETERS**  
+> - **`graph`** — *networkx.Graph*: Graph containing nodes for potential cool place association.
+> - **`cool_place_polygons`** — *GeoDataFrame*: GeoDataFrame of cool place polygons.
+> - **`output_path`** — *str*: Path where the cool place nodes will be saved.
+> - **`max_distance`** — *int*: Maximum distance (in meters) from a polygon to consider a node as cool place-associated.
+> - **`known_crs`** — *str*: Coordinate reference system for spatial data consistency.
+>
+> **RETURNS**  
+> - *list*: List of cool place node IDs.
+
+#### <span style="color: red;">`export_layers_to_shapefiles`</span><span style="color: gray;">(geopackage_path, output_directory, date_str)</span> <a name="heading--3-2-4"/>
+
+> Exports each layer from a GeoPackage as individual shapefiles in the specified directory, named by a date string.
+>
+> **PARAMETERS**  
+> - **`geopackage_path`** — *str*: Path to the GeoPackage containing layers.
+> - **`output_directory`** — *str*: Directory where individual shapefiles will be saved.
+> - **`date_str`** — *str*: Date string for naming each exported shapefile.
+>
+> **RETURNS**  
+> - *(None)*: Saves shapefiles directly to the specified output directory.
+
+#### <span style="color: red;">`process_all_shapefiles`</span><span style="color: gray;">(polygon_directory, graph_directory, output_directory)</span> <a name="heading--3-2-5"/>
+
+> Processes all shapefiles in a directory, calculating and saving cool place nodes for each.
+>
+> **PARAMETERS**  
+> - **`polygon_directory`** — *str*: Directory containing cool place polygon shapefiles.
+> - **`graph_directory`** — *str*: Directory containing GraphML files with shade weights.
+> - **`output_directory`** — *str*: Directory where calculated cool place nodes will be saved.
+>
+> **RETURNS**  
+> - *(None)*: Saves the cool place nodes directly to the specified output directory.
+
+----
+
+### Routes Calculation (*routes_calculation.py*) <a name="heading--3-3"/>
+
+#### <span style="color: red;">`load_graph_from_file`</span><span style="color: gray;">(graph_file_path)</span> <a name="heading--3-3-1"/>
+
+> Loads a graph from a GraphML file and ensures shade weights are set for shortest path calculations.
+>
+> **PARAMETERS**  
+> - **`graph_file_path`** — *str*: Path to the GraphML file to load.
+>
+> **RETURNS**  
+> - *networkx.Graph*: Loaded graph with numeric `shade_weight` values on edges.
+
+#### <span style="color: red;">`load_cool_place_polygons`</span><span style="color: gray;">(polygon_path)</span> <a name="heading--3-3-2"/>
+
+> Loads polygons representing cool places from a shapefile or GeoJSON.
+>
+> **PARAMETERS**  
+> - **`polygon_path`** — *str*: Path to the file containing cool place polygons.
+>
+> **RETURNS**  
+> - *GeoDataFrame*: GeoDataFrame containing cool place polygons.
+
+#### <span style="color: red;">`find_nearest_node`</span><span style="color: gray;">(graph, lat, lon)</span> <a name="heading--3-3-3"/>
+
+> Finds the nearest graph node to a given latitude and longitude in EPSG:4326 format.
+>
+> **PARAMETERS**  
+> - **`graph`** — *networkx.Graph*: Graph to search for the nearest node.
+> - **`lat`**, **`lon`** — *float*: Latitude and longitude of the search point.
+>
+> **RETURNS**  
+> - *int*: Nearest node ID.
+
+#### <span style="color: red;">`geocode_location`</span><span style="color: gray;">(location_name)</span> <a name="heading--3-3-4"/>
+
+> Geocodes a location name to its latitude and longitude coordinates.
+>
+> **PARAMETERS**  
+> - **`location_name`** — *str*: Name of the location to geocode.
+>
+> **RETURNS**  
+> - *(float, float)*: Latitude and longitude of the location.
+
+#### <span style="color: red;">`find_cool_place_nodes`</span><span style="color: gray;">(graph, cool_place_polygons)</span> <a name="heading--3-3-5"/>
+
+> Identifies nodes in a graph that are within cool place polygons.
+>
+> **PARAMETERS**  
+> - **`graph`** — *networkx.Graph*: Graph containing nodes for potential cool place association.
+> - **`cool_place_polygons`** — *GeoDataFrame*: Polygons representing cool places.
+>
+> **RETURNS**  
+> - *list*: List of cool place node IDs.
+
+#### <span style="color: red;">`load_cool_place_nodes`</span><span style="color: gray;">(pre_calculated_path)</span> <a name="heading--3-3-6"/>
+
+> Loads a pre-calculated list of cool place nodes from a file.
+>
+> **PARAMETERS**  
+> - **`pre_calculated_path`** — *str*: Path to the file containing cool place nodes.
+>
+> **RETURNS**  
+> - *list*: List of cool place node IDs.
+
+#### <span style="color: red;">`find_nearest_cool_place_dijkstra`</span><span style="color: gray;">(graph, start_node, cool_place_nodes, max_distance)</span> <a name="heading--3-3-7"/>
+
+> Finds the nearest cool place node from a starting node using Dijkstra’s algorithm.
+>
+> **PARAMETERS**  
+> - **`graph`** — *networkx.Graph*: Graph in which to find the nearest cool place node.
+> - **`start_node`** — *int*: Node ID from which to start the search.
+> - **`cool_place_nodes`** — *list*: List of cool place node IDs.
+> - **`max_distance`** — *float*: Maximum search distance.
+>
+> **RETURNS**  
+> - *int*: Nearest cool place node ID or `None` if no path is found.
+
+#### <span style="color: red;">`calculate_routes`</span><span style="color: gray;">(graph, start_node, end_node=None, cool_place_nodes=None, max_distance=5000)</span> <a name="heading--3-3-8"/>
+
+> Calculates multiple routes (shortest, shadiest, and balanced) between two nodes.
+>
+> **PARAMETERS**  
+> - **`graph`** — *networkx.Graph*: Graph containing the nodes and edges.
+> - **`start_node`** — *int*: Starting node ID.
+> - **`end_node`** — *int*: Ending node ID (optional).
+> - **`cool_place_nodes`** — *list*: Cool place node IDs (optional).
+> - **`max_distance`** — *float*: Maximum distance to search for a cool place.
+>
+> **RETURNS**  
+> - *(tuple)*: Routes (shortest, shadiest, and two balanced routes).
+
+#### <span style="color: red;">`calculate_balanced_route`</span><span style="color: gray;">(graph, start_node, destination_node, shade_weight_ratio=70, length_weight_ratio=30)</span> <a name="heading--3-3-9"/>
+
+> Calculates a balanced route between two nodes based on a mix of shade weight and length.
+>
+> **PARAMETERS**  
+> - **`graph`** — *networkx.Graph*: Graph containing the nodes and edges.
+> - **`start_node`** — *int*: Starting node ID.
+> - **`destination_node`** — *int*: Destination node ID.
+> - **`shade_weight_ratio`**, **`length_weight_ratio`** — *int*: Ratios of shade weight and length for balancing.
+>
+> **RETURNS**  
+> - *list*: List of node IDs in the balanced route.
+
+#### <span style="color: red;">`plot_routes`</span><span style="color: gray;">(graph, shortest_route, shadiest_route, balanced_route_1, balanced_route_2)</span> <a name="heading--3-3-10"/>
+
+> Plots the shortest, shadiest, and balanced routes on a map.
+>
+> **PARAMETERS**  
+> - **`graph`** — *networkx.Graph*: Graph containing the routes.
+> - **`shortest_route`**, **`shadiest_route`**, **`balanced_route_1`**, **`balanced_route_2`** — *list*: Routes to plot.
+>
+> **RETURNS**  
+> - *(None)*: Displays the plot with routes and legend.
+
+#### <span style="color: red;">`demo_shade_route_calculation`</span><span style="color: gray;">(graph_file_path, pre_calculated_nodes_path, user_input, input_type, mode="nearest_cool_place")</span> <a name="heading--3-3-11"/>
+
+> Demonstrates route calculation based on user input type and routing mode.
+>
+> **PARAMETERS**  
+> - **`graph_file_path`** — *str*: Path to the precomputed graph file.
+> - **`pre_calculated_nodes_path`** — *str*: Path to the file with cool place nodes.
+> - **`user_input`** — *tuple or str*: Coordinates or location name for route calculation.
+> - **`input_type`** — *str*: Type of user input ('coordinates' or 'location_name').
+> - **`mode`** — *str*: Routing mode ('nearest_cool_place' or 'origin_destination').
+>
+> **RETURNS**  
+> - *(None)*: Executes routing demo and displays routes if found.
+
+#### <span style="color: red;">`find_nearest_timestamp_files`</span><span style="color: gray;">(date_time, graph_dir, nodes_dir)</span> <a name="heading--3-3-12"/>
+
+> Finds the closest timestamped graph and nodes files based on a given date and time.
+>
+> **PARAMETERS**  
+> - **`date_time`** — *datetime*: Target date and time for finding the closest file.
+> - **`graph_dir`** — *str*: Directory containing graph files.
+> - **`nodes_dir`** — *str*: Directory containing nodes files.
+>
+> **RETURNS**  
+> - *(tuple)*: Paths to the selected graph and nodes files, or `None` if not found.
+
+#### <span style="color: red;">`demo_shade_route_calculation_with_time`</span><span style="color: gray;">(graph_dir, nodes_dir, user_input, input_type, mode="nearest_cool_place", date_time=None)</span> <a name="heading--3-3-13"/>
+
+> Demonstrates route calculation using the nearest timestamped files based on a given date and time.
+>
+> **PARAMETERS**  
+> - **`graph_dir`** — *str*: Directory containing timestamped graph files.
+> - **`nodes_dir`** — *str*: Directory containing timestamped nodes files.
+> - **`user_input`** — *tuple or str*: Coordinates or location name for route calculation.
+> - **`input_type`** — *str*: Type of user input ('coordinates' or 'location_name').
+> - **`mode`** — *str*: Routing mode ('nearest_cool_place' or 'origin_destination').
+> - **`date_time`** — *datetime* (optional): Target date and time for file selection.
+>
+> **RETURNS**  
+> - *(None)*: Executes routing demo based on the nearest available timestamp files.
+
+----
+
+### Walking Shed Network (*walking_shed_network.py*) <a name="heading--3-4"/>
+
+#### <span style="color: red;">`load_building_polygons`</span><span style="color: gray;">(building_shapefile_path)</span> <a name="heading--3-4-1"/>
+
+> Loads building polygons from a shapefile.
+>
+> **PARAMETERS**  
+> - **`building_shapefile_path`** — *str*: Path to the building polygons shapefile.
+>
+> **RETURNS**  
+> - *GeoDataFrame*: Loaded building polygons.
+
+#### <span style="color: red;">`load_graph_from_file`</span><span style="color: gray;">(graph_file_path)</span> <a name="heading--3-4-2"/>
+
+> Loads a graph from a GraphML file.
+>
+> **PARAMETERS**  
+> - **`graph_file_path`** — *str*: Path to the GraphML file.
+>
+> **RETURNS**  
+> - *networkx.Graph*: Loaded graph.
+
+#### <span style="color: red;">`process_graph`</span><span style="color: gray;">(graph)</span> <a name="heading--3-4-3"/>
+
+> Ensures the graph is projected to EPSG:28992.
+>
+> **PARAMETERS**  
+> - **`graph`** — *networkx.Graph*: Graph to process.
+>
+> **RETURNS**  
+> - *networkx.Graph*: Graph projected to EPSG:28992.
+
+#### <span style="color: red;">`load_cool_place_polygons`</span><span style="color: gray;">(polygon_path)</span> <a name="heading--3-4-4"/>
+
+> Loads cool place polygons from a shapefile or GeoJSON.
+>
+> **PARAMETERS**  
+> - **`polygon_path`** — *str*: Path to the cool place polygons file.
+>
+> **RETURNS**  
+> - *GeoDataFrame*: Loaded cool place polygons.
+
+#### <span style="color: red;">`find_cool_place_nodes`</span><span style="color: gray;">(graph, cool_place_polygons, max_distance=50, known_crs="EPSG:28992")</span> <a name="heading--3-4-5"/>
+
+> Finds nodes within a specified distance of cool place polygons.
+>
+> **PARAMETERS**  
+> - **`graph`** — *networkx.Graph*: Graph containing the nodes.
+> - **`cool_place_polygons`** — *GeoDataFrame*: Cool place polygons.
+> - **`max_distance`** — *int*: Maximum search distance for nearby nodes.
+> - **`known_crs`** — *str*: CRS for the spatial data.
+>
+> **RETURNS**  
+> - *list*: List of node IDs identified as cool place nodes.
+
+#### <span style="color: red;">`process_single_cool_place_node`</span><span style="color: gray;">(graph, cool_place_node, nearby_nodes, distances, weight="shade_weight")</span> <a name="heading--3-4-6"/>
+
+> Processes distances for a single cool place node within nearby nodes.
+>
+> **PARAMETERS**  
+> - **`graph`** — *networkx.Graph*: Graph containing nodes.
+> - **`cool_place_node`** — *int*: ID of the cool place node.
+> - **`nearby_nodes`** — *dict*: Nearby nodes within distance range.
+> - **`distances`** — *list*: List of distance thresholds.
+> - **`weight`** — *str*: Edge weight attribute to use for calculations.
+>
+> **RETURNS**  
+> - *dict*: Distance thresholds mapped to sets of node IDs.
+
+#### <span style="color: red;">`find_nodes_within_distances`</span><span style="color: gray;">(graph, cool_place_nodes, distances=[200, 300, 400, 500], weight="shade_weight")</span> <a name="heading--3-4-7"/>
+
+> Finds nodes within specified distances of each cool place node.
+>
+> **PARAMETERS**  
+> - **`graph`** — *networkx.Graph*: Graph containing nodes.
+> - **`cool_place_nodes`** — *list*: Cool place node IDs.
+> - **`distances`** — *list*: List of distance thresholds.
+> - **`weight`** — *str*: Edge weight attribute to use for calculations.
+>
+> **RETURNS**  
+> - *dict*: Combined sets of nodes for each distance threshold.
+
+#### <span style="color: red;">`save_cool_place_nodes_shapefile`</span><span style="color: gray;">(cool_place_nodes, nodes_gdf, output_shapefile_path)</span> <a name="heading--3-4-8"/>
+
+> Saves cool place nodes to a shapefile.
+>
+> **PARAMETERS**  
+> - **`cool_place_nodes`** — *list*: IDs of cool place nodes.
+> - **`nodes_gdf`** — *GeoDataFrame*: GeoDataFrame containing graph nodes.
+> - **`output_shapefile_path`** — *str*: Path to the output shapefile.
+>
+> **RETURNS**  
+> - *(None)*: Saves the cool place nodes directly to the specified path.
+
+#### <span style="color: red;">`assign_buildings_to_distance_category_with_precomputed`</span><span style="color: gray;">(buildings, graph, distance_nodes)</span> <a name="heading--3-4-9"/>
+
+> Assigns distance categories to buildings based on proximity to cool places.
+>
+> **PARAMETERS**  
+> - **`buildings`** — *GeoDataFrame*: Building polygons.
+> - **`graph`** — *networkx.Graph*: Graph containing nodes.
+> - **`distance_nodes`** — *dict*: Nodes grouped by distance thresholds.
+>
+> **RETURNS**  
+> - *GeoDataFrame*: Buildings with distance categories.
+
+#### <span style="color: red;">`calculate_walking_shed_with_distance_categories`</span><span style="color: gray;">(buildings, cool_place_nodes, graph, distances=[200, 300, 400, 500], weight="length")</span> <a name="heading--3-4-10"/>
+
+> Calculates the walking shed for buildings, classifying them by distance categories.
+>
+> **PARAMETERS**  
+> - **`buildings`** — *GeoDataFrame*: Building polygons.
+> - **`cool_place_nodes`** — *list*: Cool place node IDs.
+> - **`graph`** — *networkx.Graph*: Graph with edge weights.
+> - **`distances`** — *list*: Distance thresholds for categories.
+> - **`weight`** — *str*: Weight attribute to use.
+>
+> **RETURNS**  
+> - *GeoDataFrame*: Buildings with assigned distance categories.
+
+#### <span style="color: red;">`assign_building_colors`</span><span style="color: gray;">(buildings)</span> <a name="heading--3-4-11"/>
+
+> Assigns color codes to buildings based on their distance categories.
+>
+> **PARAMETERS**  
+> - **`buildings`** — *GeoDataFrame*: Buildings with distance categories.
+>
+> **RETURNS**  
+> - *GeoDataFrame*: Buildings with color codes based on distance.
+
+#### <span style="color: red;">`plot_colored_walking_shed`</span><span style="color: gray;">(buildings)</span> <a name="heading--3-4-12"/>
+
+> Plots the walking shed, coloring buildings by their distance to cool places.
+>
+> **PARAMETERS**  
+> - **`buildings`** — *GeoDataFrame*: Buildings with color codes.
+>
+> **RETURNS**  
+> - *(None)*: Displays a plot of the walking shed.
+
+#### <span style="color: red;">`preprocess_graph_weights`</span><span style="color: gray;">(graph, weight)</span> <a name="heading--3-4-13"/>
+
+> Preprocesses graph edge weights, ensuring they are numeric.
+>
+> **PARAMETERS**  
+> - **`graph`** — *networkx.Graph*: Graph with edges.
+> - **`weight`** — *str*: Edge weight attribute to check and preprocess.
+>
+> **RETURNS**  
+> - *(None)*: Modifies the graph in place.
+
+#### <span style="color: red;">`walking_shed_calculation`</span><span style="color: gray;">(graph=None, polygon_path=None, building_shapefile_path=None, weight="length", output_building_shapefile=None, output_cool_place_shapefile=None)</span> <a name="heading--3-4-14"/>
+
+> Performs the full walking shed calculation, classifying buildings by distance to cool places and saving results.
+>
+> **PARAMETERS**  
+> - **`graph`** — *str*: Path to the input graph file.
+> - **`polygon_path`** — *str*: Path to cool place polygons.
+> - **`building_shapefile_path`** — *str*: Path to building polygons shapefile.
+> - **`weight`** — *str*: Weight attribute for edge calculations.
+> - **`output_building_shapefile`** — *str*: Path to save the buildings shapefile.
+> - **`output_cool_place_shapefile`** — *str*: Path to save the cool place nodes shapefile.
+>
+> **RETURNS**  
+> - *(None)*: Saves the walking shed results to the specified output paths.
