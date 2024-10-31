@@ -1,0 +1,9 @@
+geopandas
+pandas
+shapely
+rasterio
+matplotlib
+jupyter
+jenkspy
+rasterstats
+rich
