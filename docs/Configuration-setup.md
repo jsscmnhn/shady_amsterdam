@@ -119,6 +119,14 @@ The configuration file is structured as following:
 If no `config_file_cool_spaces` argument is given in *main.py*, the code shall default to .\configuration_files\coolspaceConfig.json.
 One can choose to either edit the file in the repository directly, or to download the file, edit it and provide it as argument. 
 
+Note that there are two parameters need to be taken carefully:
+> - `shademaps_path`: the shade maps names should be as: `xxxx_time.TIF` such as `amsterdam_900.TIF`.
+>   The program needs the time to sort the shade maps into correct time order, and the program only 
+>   accept `.TIF` format.
+> - `output_shadeGeometry_gpkg`: the file name of shade geometry Geopackage must be {name}_{date}.gpkg, 
+>    the date must be YYMMDD, such as 20230621. This is because the routing part needs this format to
+>   extract date.
+
 The configuration file is structured as following:
 
 ```yaml
@@ -136,7 +144,8 @@ The configuration file is structured as following:
     "shademaps_path": "G:\\TUD\\Synthesis\\cool_place\\shademaps_20230621\\",  # the folder path that contains all the input shade maps
     "output_identification_file": "coolspace_identification_20230621",         # the layer name of the output identification result
     "output_evaluation_file": "final_cool_space_20230621",                     # the layer name of the output evaluataion result (the final result)
-    "output_shadeGeometry_gpkg": "shadeGeoms_20230621.gpkg"                    # the file name of output shade geometry Geopackage
+    "output_shadeGeometry_gpkg": "shadeGeoms_20230621.gpkg"                    # the file name of output shade geometry Geopackage, note: this file name
+                                                                               # must be {name}_{date}.gpkg, the date must be YYMMDD, such as 20230621.
   },
   "parameters": {
     "hasIdentificationOutput": false,         # if set to true, it will try to read the identification result and skip the identification process
@@ -174,36 +183,45 @@ The configuration file is structured as following:
 ```yaml
 {
     "Dataset_Preparation": {
-        "graphml_file": "path",              # Path to GraphML file for the network graph (str)
-        "area_name_for_OSM_network": "Amsterdam, Netherlands", # Name of the OSM area for network extraction (str)
-        "shade_maps_path": "path",           # Path to directory for storing shade maps (str)
-        "new_graphml_files_path": "path",    # Path to save new GraphML files with shade attributes (str)
+        "graphml_file": "file_path_of_graph",                                   # File path to GraphML file for the network graph (if this is set then leave "area_name_for_OSM_network" empty)
+        "area_name_for_OSM_network": "Amsterdam, Netherlands",                  # Name of the OSM area for network extraction (if this is set then leave "graphml_file" empty)
+        "shade_maps_path": "directory_path_to_shade_maps",                      # Directory path to save shade maps
+        "new_graphml_files_path": "directory_path_to_new_graphs",               # Directory path to save new GraphML files with shade attributes
 
-        "cool_places_path": "path",          # Path to file containing polygons of cool places (str)
-        "cool_places_nodes_path": "path"     # Path to file with calculated cool place nodes (str)
+        "cool_places_gpkg_dir": "directory_path_to_gpkg",                       # Directory path to GeoPackage files with cool places geometry data
+        "cool_places_shp_dir": "directory_path_to_save_shp",                    # Directory path to save shapefiles of cool places geometry
+        "cool_places_nodes_path": "directory_path_to_save_nodes"                # Directory path to save calculated cool place nodes
     },
     "Routing": {
-        "graph_dir": "path",                                                    # Directory path containing the main graph (with shade weight attributes) files (str)
-        "nodes_dir": "path",                                                    # Directory path containing the cool places nodes data files (str)
-        "graph_file": "path",                                                   # Filename for the main routing graph (str)
-        "nodes_file": "path",                                                   # Filename for the cool places nodes data (str)
-        "route_option": "nearest_cool_place/origin_destination",                # Option for selecting the type of route calculation: nearest_cool_place/origin_destination (str)
-        "location_indication_option": "location_name/coordinates",              # Option for specifying start and end location format: location_name/coordinates (str)
-        "origin_name": "Amsterdam Central Station",                             # Name of the origin location (str)
-        "destination_name": "Dam Square",                                       # Name of the destination location (str)
-        "origin_latitude": "52.373169",                                         # Latitude of origin (float)
-        "origin_longitude": "4.890660",                                         # Longitude of origin (float)
-        "destination_latitude": "52.376522",                                    # Latitude of destination (float)
-        "destination_longitude": "4.908490",                                    # Longitude of destination (float)
-        "date_time": "2024-10-31 10:05"                                         # Date and time for route calculations, format "YYYY-MM-DD HH:MM" (str)
+        "graph_dir": "directory_path_to_graghs",                                # Directory path containing the main graph (with shade weight attributes) files (if "graph_dir" and "nodes_dir" are set, leave "graph_file" and "nodes_file" empty)
+        "nodes_dir": "directory_path_to_nodes",                                 # Directory path containing the cool places nodes data files (if "graph_dir" and "nodes_dir" are set, leave "graph_file" and "nodes_file" empty)
+        "graph_file": "file_path_of_graph",                                     # File path for the main routing graph (if "graph_file" and "nodes_file" are set, leave "graph_dir" and "nodes_dir" empty)
+        "nodes_file": "file_path_of_nodes",                                     # File path for the cool places nodes data (if "graph_file" and "nodes_file" are set, leave "graph_dir" and "nodes_dir" empty)
+        "route_option": "nearest_cool_place/origin_destination",                # Option for selecting the type of route calculation: nearest_cool_place/origin_destination
+        "location_indication_option": "location_name/coordinates",              # Option for specifying start and end location format: location_name/coordinates
+        "origin_name": "Amsterdam Central Station",                             # Name of the origin location 
+                                                                                # (required if "location_indication_option" is "location_name")
+        "destination_name": "Dam Square",                                       # Name of the destination location 
+                                                                                # (required if "route_option" is "origin_destination" and "location_indication_option" is "location_name")
+        "origin_latitude": "52.373169",                                         # Latitude of origin 
+                                                                                # (required if "location_indication_option" is "coordinates")
+        "origin_longitude": "4.890660",                                         # Longitude of origin
+                                                                                # (required if "location_indication_option" is "coordinates")
+        "destination_latitude": "52.376522",                                    # Latitude of destination 
+                                                                                # (required if "route_option" is "origin_destination" and "location_indication_option" is "coordinates")
+        "destination_longitude": "4.908490",                                    # Longitude of destination
+                                                                                # (required if "route_option" is "origin_destination" and "location_indication_option" is "coordinates")
+        "date_time": "2024-10-31 10:05:30"                                      # Date and time for route calculations, format "YYYY-MM-DD HH:MM:SS"
+                                                                                # If not set, current time will be used by default
     },
     "Walking_Shed": {
-        "graph_file": "path",                           # GraphML file path with shade weight attributes (str)
-        "cool_places_path": "path",                     # Path to shapefile with cool places polygons (str)
-        "building_shapefile_path": "path",              # Path to building shapefile (str)
-        "weight": "length/shade_weight",                # Attribute name for calculations: length/shade_weight (str)
-        "output_building_shapefile": "path",            # Output path for buildings with distance categories (str)
-        "output_cool_place_shapefile": "path"           # Output path for cool place nodes shapefile (str)
+        "graph_file": "file_path_of_graph",                                     # File path to GraphML with shade weight attributes
+        "cool_places_path": "file_path_of_cool_places_polygons",                # File path to shapefile with cool places polygons
+                                                                                # (which could be obtained from "Dataset_Preparation" -> "cool_places_shp_dir" if previous step is followed)
+        "building_shapefile_path": "file_path_of_buildings",                    # File path to building shapefile
+        "weight": "length/shade_weight",                                        # Attribute name for calculations: length/shade_weight
+        "output_building_shapefile": "file_path_of_buildings_output",           # Output file path for buildings with distance categories
+        "output_cool_place_shapefile": "file_path_of_cool_places_nodes"         # Output file path for cool place nodes shapefile
     }
 }
 ```
