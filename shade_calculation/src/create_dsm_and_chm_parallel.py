@@ -454,3 +454,12 @@ def process_folders(base_chm_folder, dtm_path, dsm_path, buildings_path, output_
             print(f"Processing folder: {chm_folder}")
             process_files(chm_folder, dtm_path, dsm_path, buildings_path, output_base_folder,
                           max_workers=max_workers, speed_up=speed_up, min_height=min_height, max_height=max_height)
+
+if __name__ == '__main__':
+    chm_folder = "D:\Geomatics\___extrareportfiles/smoothed/25GN2"
+    dsm_path = "D:\Geomatics\data\DSM_ams.TIF"
+    dtm_path = "D:\Geomatics\data\DTM_ams.TIF"
+    buildings_path = "D:\Geomatics\data/ams_buildings.gpkg"
+
+    output_base_folder =  "D:\Geomatics\___extrareportfiles/smoothedresult"
+    process_files(chm_folder, dtm_path, dsm_path, buildings_path, output_base_folder)

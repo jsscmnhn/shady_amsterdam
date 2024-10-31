@@ -171,7 +171,7 @@ def fill_raster(cropped_data, nodata_value, transform, speed_up=False):
         # Find connected nodata regions
         labeled_array, num_features = ndimage.label(nodata_mask)
 
-        # Check if any region meets the minimum size criteria (1100x600 or 600x1100)
+        # Check if any region meets the minimum size criteria (800x400m or 400x800m)
         for region_idx in range(1, num_features + 1):
             region_slice = ndimage.find_objects(labeled_array == region_idx)[0]
             region_height = region_slice[1].stop - region_slice[1].start

@@ -3,7 +3,7 @@ them. The process can run in parallel."""
 from turtledemo.penrose import start
 
 from shade_calculation.extra import shade_setup as shade
-from datetime import datetime as date
+import datetime
 import os
 import concurrent.futures
 import tqdm
@@ -162,7 +162,7 @@ def process_folders(base_folder, output_base_folder, date, start_time=9, end_tim
         print("No CHM/DSM file pairs found.")
 
 if __name__ == '__main__':
-    base_folder = "C:\Geomatics\shady_amsterdam\shade_calculation/test\dsmchm"
-    output_base_folder ="C:\Geomatics\shady_amsterdam\shade_calculation/test/test2"
-    date = date(2023, 4, 26)
-    process_folders(base_folder, output_base_folder, date, max_workers=2)
+    base_folder = "D:\Geomatics\___extrareportfiles/smoothedresult"
+    output_base_folder ="D:\Geomatics\___extrareportfiles\SMOOTHEDRESULTSHADE"
+    date = datetime.date(2015, 7, 1)
+    process_folders(base_folder, output_base_folder, date, max_workers=2, start_time=9, end_time=10, interval=60)
