@@ -1,6 +1,7 @@
 from rich.progress import Progress
 import geopandas as gpd
 import time
+import os
 from cool_place.include.coolspace_process import (read_config,
                                        identification,
                                        evaluation,
@@ -48,6 +49,10 @@ def coolspace_main(config_file: str):
         capacity_search_buffer  = config['parameters']['capacity_search_buffer']
         progress.advance(task)
     # ======================================================================================================================
+
+    # ======== Create the folder path if not exists ========================================================================
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
 
     # ======== Identification Process ======================================================================================
     if not hasIdentificationOutput:
