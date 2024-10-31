@@ -47,6 +47,7 @@ Example:
 process_multiple_shade_maps(graph_file="path/to/network.graphml", raster_dir="path/to/shade_maps", output_dir="path/to/output")
 ```
 
+
 ### 1.2 Cool Places Nodes Calculation (*cool_places_nodes_calculation.py*) <a name="heading--1-2"></a>
 
 This module identifies and saves nodes in the pedestrian network that are closest to the bounding boxes of shaded areas, referred to as "cool places", for use in route calculations.
@@ -123,6 +124,14 @@ routing_config = {
 }
 ```
 
+#### Output Example
+One possible routing example:
+<p align="center">
+  <img src="figs/network/routing.png" alt="routing" width="500"/>
+  <br>
+  <em>Figure 1: Routing between two locations: Amsterdam Central Station, Dam Square</em>
+</p>
+
 ---
 
 ## 3. Walking Shed Network (*walking_shed_network.py*) <a name="heading--3"></a>
@@ -155,3 +164,11 @@ walking_shed_calculation(
     output_cool_place_shapefile="path/to/output_cool_places.shp"
 )
 ```
+
+#### Output Example
+One possible walking shed example with `shade_weight` as `weight`:
+<p align="center">
+  <img src="figs/network/walkingshed_shade_weight.png" alt="Walking shed with `shade_weight` as `weight`" width="500"/>
+  <br>
+  <em>Figure 2: Walking shed with `shade_weight` as `weight`</em>
+</p>
