@@ -509,6 +509,16 @@ class CoolEval:
             else:
                 return 0
 
+        def classify_hrisk(hr):
+            if hr > 4:
+                return 0.2
+            elif 3 < hr <= 4:
+                return 0.5
+            elif 2 < hr <= 3:
+                return 0.8
+            else:
+                return 1
+
         def min_max_normalize(column):
             if column.max() == column.min():
                 return np.zeros_like(column)
@@ -517,6 +527,8 @@ class CoolEval:
         self.cool_places['capst_norm'] = min_max_normalize(self.cool_places['cap_status_avg']).round(2)
         self.cool_places['hrs_norm'] = min_max_normalize(self.cool_places['heat_rs_avg']).round(2)
         self.cool_places['bc_norm'] = min_max_normalize(self.cool_places['benches_count_avg']).round(2)
+
+        self.cool_places['hrs_norm'] = self.cool_places['heat_rs_avg'].apply(classify_hrisk).round(2)
 
         self.cool_places['PET_cl'] = self.cool_places['PET_avg'].apply(classify_pet).round(2)
         self.cool_places['scDay_cl'] = self.cool_places['scDay'].apply(classify_shade).round(2)
