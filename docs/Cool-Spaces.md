@@ -105,7 +105,7 @@ Physiological Equivalent Temperature.
 <p align="center">
   <img src="figs/coolspace/pet.png" alt="Description of the figure" width="500"/>
   <br>
-  <em>Figure 6: Heat risk data</em>
+  <em>Figure 7: Heat risk data</em>
 </p>
 
 ### 1.7 Shade maps data <a name="heading--1-7"/>
@@ -116,7 +116,7 @@ telling the program to read shade maps from that folder.
 <p align="center">
   <img src="figs/coolspace/shademaps.png" alt="Description of the figure" width="500"/>
   <br>
-  <em>Figure 6: Shade maps</em>
+  <em>Figure 8: Shade maps</em>
 </p>
 
 Note that in the screenshot, the file order is not from 900 to 2000, therefore in 
@@ -130,5 +130,40 @@ correct list order, take the screenshot as an example:
 > - shademaps[1] will be *amsterdam_20230621_930*
 > - shademaps[2] will be *amsterdam_20230621_1000*
 > - ...
+
+## 2. Identification (*coolspace_process.py*) <a name="heading--2"/>
+For identification, the program runs as:
+> - Read road data, building data, land use data and shade maps in [*main.py of cool space*](../cool_place/main.py)
+> - Call the *identification function* in [*coolspace_process.py*](../cool_place/include/coolspace_process.py)
+> - The public space polygons will be created as a *GeoDataFrame* from road data, building data and land use data.
+> - For each shade map, corresponding shaded area within public spaces will be extracted and evaluated, resulting in
+    several new attributes stored back into the public space geodataframe, which are:
+>   - `sdAvg{index}`: the average shade value of all shaded areas within a public space
+>   - `sdArea{index}`: a list contains the areas of every shaded area within a public space
+>   - `sdGeom{index}`: the geometry of shaded areas within a public space, either a polygon or a multi-polygon
+> - After all shade maps have been processed, the shade coverage indicator will be evaluated, resulting in:
+>   - `scDay` and `spDay`: daytime range shade coverage score
+>   - `scMorn` and `spMorn`: morning time range shade coverage score
+>   - `scAftrn` and `spAftrn`: afternoon time range shade coverage score
+>   - `scLtAftrn` and `spLtAftrn` late afternoon time range shade coverage score
+>   - `sc` is the score in terms of time, and `sp` is the score in terms of area ratio
+> - Finally, the public space data will be output to the **INPUT** Geopackage as a new layer, which then be used as input of 
+    evaluation part. By default, the public space polygons will be set as active geometry, as shown in figure 9. The user can
+    change the geometry type to land use, which will result in output shown in figure 10.
+
+---
+### <span style="color: blue;">`OUTPUT`</span>
+
+<p align="center">
+  <img src="figs/coolspace/identification_public_space.png" alt="Description of the figure" width="500"/>
+  <br>
+  <em>Figure 9: Identification output, geometry type: public space</em>
+</p>
+
+<p align="center">
+  <img src="figs/coolspace/identification_land_use.png" alt="Description of the figure" width="500"/>
+  <br>
+  <em>Figure 10: Identification output, geometry type: land use</em>
+</p>
 
 
