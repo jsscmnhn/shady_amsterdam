@@ -70,8 +70,6 @@ process_all_shapefiles(
 
 ## 2. Routing (*routes_calculation.py*) <a name="heading--2"></a>
 
-## 2. Routing (*routes_calculation.py*) <a name="heading--2"></a>
-
 The routing module provides options for calculating the shortest, shadiest, or balanced routes between two locations or to the nearest shaded (cool) place. This section supports flexible routing configurations based on parameters set in the configuration.
 
 #### Entry Function Options
