@@ -166,3 +166,44 @@ The configuration file is structured as following:
 
 
 ## Network Configuration file <a name="heading--3"/>
+If no `config_file_network` argument is given in *main.py*, the code shall default to .\configuration_files\network_config.json. 
+One can choose to either edit the file in the repository directly, or to download the file, edit it and provide it as argument. 
+
+The configuration file is structured as following:
+
+```yaml
+{
+    "Dataset_Preparation": {
+        "graphml_file": "",              # Path to GraphML file for the network graph (str)
+        "area_name_for_OSM_network": "", # Name of the OSM area for network extraction (str)
+        "shade_maps_path": "",           # Path to directory for storing shade maps (str)
+        "new_graphml_files_path": "",    # Path to save new GraphML files with shade attributes (str)
+
+        "cool_places_path": "",          # Path to file containing polygons of cool places (str)
+        "cool_places_nodes_path": ""     # Path to file with calculated cool place nodes (str)
+    },
+    "Routing": {
+        "graph_dir": "",                  # Directory path containing the main graph (with shade weight attributes) files (str)
+        "nodes_dir": "",                  # Directory path containing the cool places nodes data files (str)
+        "graph_file": "",                 # Filename for the main routing graph (str)
+        "nodes_file": "",                 # Filename for the cool places nodes data (str)
+        "route_option": "",               # Option for selecting the type of route calculation: nearest_cool_place/origin_destination (str)
+        "location_indication_option": "", # Option for specifying start and end location format: location_name/coordinates (str)
+        "origin_name": "",                # Name of the origin location (str)
+        "destination_name": "",           # Name of the destination location (str)
+        "origin_latitude": "",            # Latitude of origin (float)
+        "origin_longitude": "",           # Longitude of origin (float)
+        "destination_latitude": "",       # Latitude of destination (float)
+        "destination_longitude": "",      # Longitude of destination (float)
+        "date_time": ""                   # Date and time for route calculations, format "YYYY-MM-DD HH:MM" (str)
+    },
+    "Walking_Shed": {
+        "graph_file": "C:/pedestrian_demo_data/graphs_with_shade/ams_graph_with_shade_20230816_1000_cropped.graphml",   # GraphML file path with shade weight attributes (str)
+        "cool_places_path": "C:/pedestrian_demo_data/cool_places_polygons/cool_places_polygons_20230816_1000.shp",      # Path to shapefile with cool places polygons (str)
+        "building_shapefile_path": "C:/pedestrian_demo_data/merged_buildings/merged_buildings.shp",                     # Path to building shapefile (str)
+        "weight": "shade_weight",                                                                                       # Attribute name for calculations: length/shade_weight (str)
+        "output_building_shapefile": "C:/pedestrian_demo_data/merged_buildings_with_distance_category.shp",             # Output path for buildings with distance categories (str)
+        "output_cool_place_shapefile": "C:/pedestrian_demo_data/cool_place_nodes.shp"                                   # Output path for cool place nodes shapefile (str)
+    }
+}
+```
