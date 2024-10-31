@@ -165,4 +165,43 @@ For identification, the program runs as:
 
 ## 3. Evaluation <a name="heading--3"/>
 
+After acquiring the shade geometries from cool spaces candidates, this module evaluate the cool spaces based on the following
+indicators: shading, usability, capacity, heat risk, and Physiological Equivalent Temperature (PET). The output will be
+cool spaces polygon with their evaluation attributes for their each shade geometries index. The average of overall scores
+of shade geometries are calculated in order to make final recommendations , which divided into three categories: 
+*Highly Recommended*, *Recommended*, and *Not Recommended*.
 
+The program will run as:
+1. Read the input dataset from [*main.py of cool space*](../cool_place/main.py) along user parameters from [*coolspaceConfig.json*](../configuration_files/coolspaceConfig.json)
+2. Call the evaluation function in [*coolspace_process.py*](../cool_place/include/coolspace_process.py) that will be connected to [*CoolEval.py*](../configuration_files/CoolEval.py)
+3. The following process will be executed:
+    - open the data set, read the shade geometries in WKT format and convert it into shape geometries
+    - calculate_walkingshed: assigning nearest cool space id for each building -> 'c_id'
+    - evaluate_resident: calculating resident for each cool spaces -> 'resident' for number of resident, 
+   along with vulnerable group: 'elder_resi' for elders, and 'kid' for children
+    - for each shade geometry, iteratively processing:
+      - evaluate_capacity: calculate capacity per area 'cap_area' and service capacity 'cap_status'
+      - evaluate_sfurniture: count number of benches 'Benches' 
+      - evaluate_heatrisk: average heat risk 'heat_rs' and classified heat risk 'heat_rlv' from dataset
+      - eval_pet: average PET value from raster dataset 'PET'
+4. Aggregate all those evaluation attributes back to cool spaces and average them
+5. Make final recommendation for cool spaces with three different shade coverage indicator:
+    - 'final_recom' : combining 'sc' and 'sp' as shade indicator
+    - 'final_recom_sc' : using 'sc' as shade indicator
+    - 'final_recom_sp': using 'sp' as shade indicator
+6. The output will be exported into a geopackage file.
+
+---
+### <span style="color: blue;">`OUTPUT`</span>
+
+<p align="center">
+  <img src="figs/coolspace/ev1.png" alt="Description of the figure" width="500"/>
+  <br>
+  <em>Figure 11: Evaluation output: Attribute table</em>
+</p>
+
+<p align="center">
+  <img src="figs/coolspace/ev2.png" alt="Description of the figure" width="500"/>
+  <br>
+  <em>Figure 12: Evaluation output: Recommendation map</em>
+</p>
