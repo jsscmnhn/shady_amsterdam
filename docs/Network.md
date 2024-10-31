@@ -127,7 +127,7 @@ routing_config = {
 #### Output Example
 One possible routing example:
 <p align="center">
-  <img src="figs/network/routing.png" alt="routing" width="500"/>
+  <img src="figs/network/routing.png" alt="routing"/>
   <br>
   <em>Figure 1: Routing between two locations: Amsterdam Central Station, Dam Square</em>
 </p>
@@ -168,7 +168,7 @@ walking_shed_calculation(
 #### Output Example
 One possible walking shed example with `shade_weight` as `weight`:
 <p align="center">
-  <img src="figs/network/walkingshed_shade_weight.png" alt="Walking shed with `shade_weight` as `weight`" width="500"/>
+  <img src="figs/network/walkingshed_shade_weight.png" alt="Walking shed with `shade_weight` as `weight`" />
   <br>
   <em>Figure 2: Walking shed with `shade_weight` as `weight`</em>
 </p>
