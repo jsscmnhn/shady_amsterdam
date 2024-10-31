@@ -1,5 +1,4 @@
-#from shade_calculation.main_shade import shade_main
-
+from shade_calculation.main_shade import shade_main
 from cool_place.main import coolspace_main
 
 import argparse
@@ -11,14 +10,16 @@ if __name__ == '__main__':
     parser.add_argument(
         'config_file_shade',
         nargs='?',
-        default="configuration_files/shade_config.json",
+        # default="configuration_files/shade_config.json",
+        default="example_run\config_files\shade_config.json",
         type=str,
         help='Path to the configuration file of the shade maps (default: configuration_files/shade_config.json)'
     )
     parser.add_argument(
         'config_file_cool_spaces',
         nargs='?',
-        default="configuration_files/coolspaceConfig.json",
+        # default="configuration_files/coolspaceConfig.json",
+        default="example_run\config_files\coolspaceConfig.json" ,
         type=str,
         help='Path to the configuration file for cool spaces (default: configuration_files/coolspaceConfig.json)'
     )
@@ -48,7 +49,7 @@ if __name__ == '__main__':
         raise FileNotFoundError(f"Config file not found: {config_file_network}")
 
 ########################################### Functions for creating the shade maps ######################################
-    #shade_main(config_file_shade)
+    shade_main(config_file_shade)
 
 ########################################### Functions for creating the cool spaces #####################################
     coolspace_main(config_file_cool_spaces)
