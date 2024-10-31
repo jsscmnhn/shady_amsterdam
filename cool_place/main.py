@@ -2,7 +2,7 @@ from rich.progress import Progress
 import geopandas as gpd
 import time
 import fiona
-from include.coolspace_process import (read_config,
+from cool_place.include.coolspace_process import (read_config,
                                        identification,
                                        evaluation,
                                        list_to_string,
@@ -10,8 +10,8 @@ from include.coolspace_process import (read_config,
                                        output_all_shade_geoms)
 
 def coolspace_main(config_file: str):
-    # ======== Read config =================================================================================================
     config = read_config(config_file)
+    # ======== Read config =================================================================================================
     with Progress() as progress:
         task = progress.add_task("Reading config parameters...", total=1)
         # read GeoPackage and layers
@@ -152,4 +152,5 @@ def coolspace_main(config_file: str):
 
 # entry
 if __name__ == '__main__':
+    config = read_config("coolspaceConfig.json")
     coolspace_main("coolspaceConfig.json")

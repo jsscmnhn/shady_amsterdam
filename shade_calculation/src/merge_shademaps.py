@@ -70,7 +70,7 @@ def merge_tif_files_by_time(main_folder, output_folder, merged_name, start_time=
             src = rasterio.open(file)
             src_files_to_mosaic.append(src)
             bounds.append(src.bounds)
-            resolutions.append(src.res[0])  # pixels should be square
+            resolutions.append(src.res[0])
 
         # Calculating merged bounds
         min_x = min(b[0] for b in bounds)
@@ -149,7 +149,7 @@ def merge_tif_files_by_time(main_folder, output_folder, merged_name, start_time=
             # Get all .TIF files in the current tile folder
             tif_files_to_delete = glob.glob(os.path.join(tile_path, '*.TIF'))
             for tif_file in tif_files_to_delete:
-                if os.path.basename(tif_file) not in merged_files:  # Only delete if not merged
+                if os.path.basename(tif_file) not in merged_files:
                     os.remove(tif_file)
 
 if __name__ == '__main__':

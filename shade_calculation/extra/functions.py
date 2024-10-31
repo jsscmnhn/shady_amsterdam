@@ -13,12 +13,9 @@ Script containing some functions necessary for creating the rasters.
   For writing the grid to an output .tiff file, original data can be either from a LAZ file or from a TIF.
 """
 
-import laspy
 import numpy as np
 import rasterio
-from matplotlib import pyplot as plt
 from rasterio.transform import Affine
-from scipy.spatial import cKDTree
 
 
 def raster_center_coords(min_x, max_x, min_y, max_y, resolution):
@@ -50,7 +47,7 @@ def create_affine_transform(top_left_x, top_left_y, res):
     transform = Affine.translation(top_left_x, top_left_y) * Affine.scale(res, -res)
     return transform
 
-def write_output(dataset, output, transform, name, nodata_value=False):
+def write_output(dataset, output, transform, name, change_nodata=False):
     """
     Write grid to .tiff file.
     ----
@@ -61,7 +58,7 @@ def write_output(dataset, output, transform, name, nodata_value=False):
     - transform:
       a user defined rasterio Affine object, used for the transforming the pixel coordinates
       to spatial coordinates.
-    - nodata_value (Boolean): true: use a no data value of -9999, false: use the datasets no data value
+    - change_nodata (Boolean): true: use a no data value of -9999, false: use the datasets no data value
     """
     output_file = name
 
@@ -74,7 +71,7 @@ def write_output(dataset, output, transform, name, nodata_value=False):
     output = np.squeeze(output)
 
     # Set the nodata value: use -9999 if nodata_value is True or dataset does not have nodata.
-    if nodata_value:
+    if change_nodata:
         nodata_value = -9999
     else:
         try:

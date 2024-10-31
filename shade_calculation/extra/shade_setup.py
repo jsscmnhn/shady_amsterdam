@@ -2,7 +2,6 @@
 This script contains code of the UMEP tool, used to setup the shade calculations. A few changes have been made
 to allow for a user-given timeframe. Thereby, some unused code has been removed.
 """
-import os
 import datetime as dt
 from . import sun_position as sp
 from . import shadowingfunctions as shadow

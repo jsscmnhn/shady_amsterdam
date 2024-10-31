@@ -1,7 +1,7 @@
-from include.road_process import Road
-from include.identification import CoolSpace
-from include.building import Building
-from include.evaluation import CoolEval
+from cool_place.include.road_process import Road
+from cool_place.include.identification import CoolSpace
+from cool_place.include.building import Building
+from cool_place.include.evaluation import CoolEval
 from datetime import datetime, timedelta
 from shapely.geometry import base
 from shapely import wkt
