@@ -19,9 +19,6 @@ All data used for the cool space process must be specified by the configuration 
   * [1.7. shade maps data](#heading--1-7)
 
 **[2. Identification (*identification.py*)](#heading--2)**
-  * [2.1. xxx](#heading--2-1)
-  * [2.2. xxx](#heading--2-2)
-  * [2.3. xxx](#heading--2-3)
 
 **[3. Evaluation (*evaluation.py*)](#heading--3)**
 
