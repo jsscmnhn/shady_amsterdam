@@ -6,7 +6,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'shade_c
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'cool_place')))
 
 from shade_calculation.main_shade import shade_main
-# from cool_place.main import coolspace_main
+from cool_place.main import coolspace_main
 
 
 
@@ -55,9 +55,9 @@ if __name__ == '__main__':
         raise FileNotFoundError(f"Config file not found: {config_file_network}")
 
 ########################################### Functions for creating the shade maps ######################################
-    shade_main(str(config_file_shade))
+shade_main(str(config_file_shade))
 
 ########################################### Functions for creating the cool spaces #####################################
-   # coolspace_main(config_file_cool_spaces)
+coolspace_main(config_file_cool_spaces)
 
 ########################################### Functions for creating the pedestrian network ##############################

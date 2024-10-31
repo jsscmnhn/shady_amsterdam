@@ -35,3 +35,4 @@ docs/figs/shade/amsterdam_DTM.TIF
 docs/figs/shade/amsterdam_DSM.TIF.aux.xml
 example_run/data/ams_PET_average.tiff
 example_run/data/coolspace.gpkg
+/example_run/outputs/shade/laz/25DN2
