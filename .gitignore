@@ -37,3 +37,4 @@ example_run/data/ams_PET_average.tiff
 example_run/data/coolspace.gpkg
 /example_run/outputs/shade/laz/25DN2
 /example_run/outputs/shade/laz/25GN1
+example_run/data/ped/merged_buildings.dbf

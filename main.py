@@ -4,10 +4,11 @@ import os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'shade_calculation')))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'cool_place')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'PedestrianNetwork')))
 
 from shade_calculation.main_shade import shade_main
 from cool_place.main import coolspace_main
-from PedestrianNetwork import main_network
+from PedestrianNetwork.main_network import main_network
 
 
 if __name__ == '__main__':
@@ -28,13 +29,35 @@ if __name__ == '__main__':
         help='Path to the configuration file for cool spaces (default: configuration_files/coolspaceConfig.json)'
     )
 
-    #TODO: FILL IN FOR PEDESTRIAN NETWORK
     parser.add_argument(
         '--config_file_network',
-        default="configuration_files/coolspaceConfig.json",
+        # default="configuration_files/network_config.json",
+        default="example_run\config_files/network_config.json",
         type=str,
-        help='Path to the configuration file for the network (default: )'
+        help='Path to the configuration file for the network (default: configuration_files/network_config.json)'
     )
+
+
+    parser.add_argument(
+        '--run_shade',
+        type=bool,
+        default=False,
+        help='Set to True to run shade calculation, False to skip (default: True)'
+    )
+    parser.add_argument(
+        '--run_cool_spaces',
+        type=bool,
+        default=False,
+        help='Set to True to run cool spaces calculation, False to skip (default: True)'
+    )
+    parser.add_argument(
+        '--run_network',
+        type=bool,
+        default=True,
+        help='Set to True to run pedestrian network creation, False to skip (default: True)'
+    )
+
+
     args = parser.parse_args()
 
     config_file_shade = args.config_file_shade
@@ -51,11 +74,15 @@ if __name__ == '__main__':
     if not os.path.exists(config_file_network):
         raise FileNotFoundError(f"Config file not found: {config_file_network}")
 
-    ########################################### Functions for creating the shade maps ######################################
-    shade_main(config_file_shade)
+    ########################################### Run selected functions ######################################
+    if args.run_shade:
+        print("Running shade calculation...")
+        shade_main(config_file_shade)
 
-    ########################################### Functions for creating the cool spaces #####################################
-    coolspace_main(config_file_cool_spaces)
+    if args.run_cool_spaces:
+        print("Running cool spaces calculation...")
+        coolspace_main(config_file_cool_spaces)
 
-    ########################################### Functions for creating the pedestrian network ##############################
-    main_network(config_file_network)
+    if args.run_network:
+        print("Running pedestrian network creation...")
+        main_network(config_file_network)
