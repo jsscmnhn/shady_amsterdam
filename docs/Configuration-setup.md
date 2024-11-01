@@ -199,8 +199,8 @@ The configuration file is structured as following:
         "nodes_dir": "directory_path_to_nodes",                                 # Directory path containing the cool places nodes data files (if "graph_dir" and "nodes_dir" are set, leave "graph_file" and "nodes_file" empty)
         "graph_file": "file_path_of_graph",                                     # File path for the main routing graph (if "graph_file" and "nodes_file" are set, leave "graph_dir" and "nodes_dir" empty)
         "nodes_file": "file_path_of_nodes",                                     # File path for the cool places nodes data (if "graph_file" and "nodes_file" are set, leave "graph_dir" and "nodes_dir" empty)
-        "route_option": "nearest_cool_place/origin_destination",                # Option for selecting the type of route calculation: nearest_cool_place/origin_destination
-        "location_indication_option": "location_name/coordinates",              # Option for specifying start and end location format: location_name/coordinates
+        "route_option": "nearest_cool_place or origin_destination",             # Option for selecting the type of route calculation: "nearest_cool_place" or "origin_destination"
+        "location_indication_option": "location_name or coordinates",           # Option for specifying start and end location format: "location_name" or "coordinates"
         "origin_name": "Amsterdam Central Station",                             # Name of the origin location 
                                                                                 # (required if "location_indication_option" is "location_name")
         "destination_name": "Dam Square",                                       # Name of the destination location 
@@ -221,7 +221,7 @@ The configuration file is structured as following:
         "cool_places_path": "file_path_of_cool_places_polygons",                # File path to shapefile with cool places polygons
                                                                                 # (which could be obtained from "Dataset_Preparation" -> "cool_places_shp_dir" if previous step is followed)
         "building_shapefile_path": "file_path_of_buildings",                    # File path to building shapefile
-        "weight": "length/shade_weight",                                        # Attribute name for calculations: length/shade_weight
+        "weight": "length or shade_weight",                                     # Attribute name for calculations: "length" or "shade_weight"
         "output_building_shapefile": "file_path_of_buildings_output",           # Output file path for buildings with distance categories
         "output_cool_place_shapefile": "file_path_of_cool_places_nodes"         # Output file path for cool place nodes shapefile
     }
