@@ -551,40 +551,26 @@ class CoolEval:
                                       (self.cool_places['PET_cl'] * w_pet) +
                                       (self.cool_places['spDay_cl'] * w_shade)).round(2)
 
-        def classify(row):
-            if row['scDay_cl'] == 0:
+        def classify_recommendation(row, score_col, day_cl_col):
+            if row[day_cl_col] == 0:
                 return 'Not recommended'
-            elif row['score'] <= 0.4:
+            elif row[score_col] <= 0.3:
                 return 'Not recommended'
-            elif 0.4 < row['score'] <= 0.6:
+            elif 0.3 < row[score_col] <= 0.5:
                 return 'Recommended'
             else:
                 return 'Highly Recommended'
 
-        self.cool_places['final_recom'] = self.cool_places.apply(classify, axis=1)
-        def classify2(row):
-            if row['scDay_cl'] == 0:
-                return 'Not recommended'
-            elif row['score2'] <= 0.4:
-                return 'Not recommended'
-            elif 0.4 < row['score2'] <= 0.6:
-                return 'Recommended'
-            else:
-                return 'Highly Recommended'
-
-        self.cool_places['final_recom_sc'] = self.cool_places.apply(classify2, axis=1)
-
-        def classify3(row):
-            if row['spDay_cl']:
-                return 'Not recommended'
-            elif row['score3'] <= 0.4:
-                return 'Not recommended'
-            elif 0.4 < row['score3'] <= 0.6:
-                return 'Recommended'
-            else:
-                return 'Highly Recommended'
-
-        self.cool_places['final_recom_sp'] = self.cool_places.apply(classify3, axis=1)
+        # Apply the function for each column set using lambda for readability
+        self.cool_places['final_recom'] = self.cool_places.apply(
+            lambda row: classify_recommendation(row, 'score', 'scDay_cl'), axis=1
+        )
+        self.cool_places['final_recom_sc'] = self.cool_places.apply(
+            lambda row: classify_recommendation(row, 'score2', 'scDay_cl'), axis=1
+        )
+        self.cool_places['final_recom_sp'] = self.cool_places.apply(
+            lambda row: classify_recommendation(row, 'score3', 'spDay_cl'), axis=1
+        )
 
     def export_eval_gpkg(self, output_gpkg_path: str, layer_name: str) -> None:
         """
