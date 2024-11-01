@@ -178,6 +178,8 @@ The configuration file is structured as following:
 If no `config_file_network` argument is given in *main.py*, the code shall default to .\configuration_files\network_config.json. 
 One can choose to either edit the file in the repository directly, or to download the file, edit it and provide it as argument. 
 
+Note that if you want to skip certain parts, **all** values of that part should be set to empty("").
+
 The configuration file is structured as following:
 
 ```yaml
