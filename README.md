@@ -43,11 +43,12 @@ Find here the [API](docs/api.md)
 To run the code, configuration files have to be given as input. Find out how to do this at  [Setting up the Configuration File](docs/Configuration-setup.md)
 
 ## Requirements
-The file containing the required packages for this repository can be found at ...
+We provide a requirement file for both pip install and setting up a conda environment. They pip install can be found at `/requirements.txt`,
+the conda environment at `/conda_environment.yml`
+We recommend using a Conda environment as this simplifies installing GDAL. 
 
-for a conda environment and for ... pip install. We recommend using a Conda environment as this simplifies installing GDAL. 
-
-The required datasets for running Analysis Amsterdam region can be found here [Datasets](https://drive.google.com/drive/folders/1LsNp03WkUEMMzGZZci4n8d7l7EE5ZUVt)
+The required datasets for running the Analysis for the Amsterdam region can be found here [Datasets](https://drive.google.com/drive/folders/1LsNp03WkUEMMzGZZci4n8d7l7EE5ZUVt)
 
 ## Example run (`/example_run`)
-The input, outputs and configuration file settings of an example run of a small region in Amsterdam can be found at  the directory `/example_run`
+The input, outputs and configuration file settings of an example run of a small region in Amsterdam can be found at  the directory `/example_run`.
+For this, the Cool Spaces datsasets are required, found at: [Datasets](https://drive.google.com/drive/folders/1LsNp03WkUEMMzGZZci4n8d7l7EE5ZUVt)
