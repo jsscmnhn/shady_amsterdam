@@ -47,25 +47,28 @@ def dataset_preparation(config):
     cool_places_shp_dir = dataset_config.get('cool_places_shp_dir')
     cool_places_nodes_path = dataset_config.get('cool_places_nodes_path')
 
-    # Determine network configuration
-    if graphml_file:
-        network_WGS84 = ox.load_graphml(graphml_file)
-        network = ox.project_graph(network_WGS84, to_crs='EPSG:28992')
-        print(f"Using provided GraphML file: {graphml_file}")
-    elif area_name:
-        network_WGS84 = ox.graph_from_place(area_name, network_type="walk")
-        network = ox.project_graph(network_WGS84, to_crs='EPSG:28992')
-        print(f"Using OSM network for area: {area_name}")
-    else:
-        raise ValueError("Please provide either 'graphml_file' or 'area_name_for_OSM_network'.")
-
-    # Calculate shade weights if paths are provided
+    # Shade weight calculation and network configuration (optional)
     if shade_maps_path and new_graphml_files_path:
+        # Network configuration is required for shade weight calculation
+        if graphml_file:
+            network_WGS84 = ox.load_graphml(graphml_file)
+            network = ox.project_graph(network_WGS84, to_crs='EPSG:28992')
+            print(f"Using provided GraphML file: {graphml_file}")
+        elif area_name:
+            network_WGS84 = ox.graph_from_place(area_name, network_type="walk")
+            network = ox.project_graph(network_WGS84, to_crs='EPSG:28992')
+            print(f"Using OSM network for area: {area_name}")
+        else:
+            raise ValueError(
+                "To calculate shade weights, either 'graphml_file' or 'area_name_for_OSM_network' must be provided.")
+
+        # Proceed with shade weight calculation
         print("Calculating shade weights...")
         shade_weight_calculation.process_multiple_shade_maps(
-            graph_file=network, raster_dir=shade_maps_path, output_dir=new_graphml_files_path)
+            graph_file=network, raster_dir=shade_maps_path, output_dir=new_graphml_files_path
+        )
     else:
-        print("Skipping shade weight calculation as paths are not provided.")
+        print("Skipping shade weight calculation as 'shade_maps_path' or 'new_graphml_files_path' is not provided.")
 
     # Calculate cool places nodes
     print("Calculating cool places nodes...")

@@ -9,6 +9,7 @@ import pickle
 from datetime import datetime, timedelta
 import os
 import walking_shed_network
+from matplotlib.lines import Line2D
 
 
 def load_graph_from_file(graph_file_path):
@@ -167,7 +168,34 @@ def calculate_balanced_route(graph, start_node, destination_node, shade_weight_r
     return balanced_route
 
 
+def calculate_route_length(graph, route):
+    edge_lengths = []
+    for u, v in zip(route[:-1], route[1:]):
+        data = graph.get_edge_data(u, v)
+        # If multiple edges exist between two nodes, choose the first one
+        if isinstance(data, dict):
+            # For MultiDiGraph, data is a dict with keys being edge keys
+            # We need to iterate through them
+            for key in data:
+                edge_data = data[key]
+                length = edge_data.get('length', 0)
+                edge_lengths.append(length)
+                break  # Use the first edge
+        else:
+            # For DiGraph, data is the edge data
+            length = data.get('length', 0)
+            edge_lengths.append(length)
+    total_length = sum(edge_lengths)
+    return total_length
+
+
 def plot_routes(graph, shortest_route, shadiest_route, balanced_route_1, balanced_route_2):
+    # Calculate the length of each route
+    shortest_length = calculate_route_length(graph, shortest_route)
+    shadiest_length = calculate_route_length(graph, shadiest_route)
+    balanced1_length = calculate_route_length(graph, balanced_route_1)
+    balanced2_length = calculate_route_length(graph, balanced_route_2)
+
     # Extract the coordinates of all nodes involved in the routes
     route_nodes = set(shortest_route + shadiest_route + balanced_route_1 + balanced_route_2)
 
@@ -181,46 +209,55 @@ def plot_routes(graph, shortest_route, shadiest_route, balanced_route_1, balance
     y_min, y_max = min(ys) - margin, max(ys) + margin
 
     # Plot all routes on the same graph
-    fig, ax = plt.subplots(figsize=(10, 10))
+    fig, ax = plt.subplots(figsize=(12, 12))
 
     # Plot the full graph in the background
     ox.plot_graph(graph, ax=ax, show=False, close=False, node_color='none', edge_color='gray')
 
     # Plot the shortest route
     ox.plot_graph_route(graph, shortest_route, ax=ax, route_color='blue', route_linewidth=2,
-                        orig_dest_node_color='red', alpha=0.7, show=False, close=False)
+                        orig_dest_node_color='red', orig_dest_node_size=50, alpha=0.7, show=False, close=False)
 
     # Plot the shadiest route
     ox.plot_graph_route(graph, shadiest_route, ax=ax, route_color='green', route_linewidth=3,
-                        orig_dest_node_color='yellow', alpha=0.7, show=False, close=False)
+                        orig_dest_node_color='yellow', orig_dest_node_size=50, alpha=0.7, show=False, close=False)
 
-    # Plot the combined (balanced) route 1: 70/30 shade/length
+    # Plot the combined (balanced) route 1: 70% Shade, 30% Length
     ox.plot_graph_route(graph, balanced_route_1, ax=ax, route_color='purple', route_linewidth=6,
-                        orig_dest_node_color='orange', alpha=0.7, show=False, close=False)
+                        orig_dest_node_color='orange', orig_dest_node_size=50, alpha=0.7, show=False, close=False)
 
-    # Plot the combined (balanced) route 2: 30/70 shade/length
+    # Plot the combined (balanced) route 2: 30% Shade, 70% Length
     ox.plot_graph_route(graph, balanced_route_2, ax=ax, route_color='pink', route_linewidth=4,
-                        orig_dest_node_color='cyan', alpha=0.7, show=False, close=False)
+                        orig_dest_node_color='cyan', orig_dest_node_size=50, alpha=0.7, show=False, close=False)
 
     # Set the plot limits to zoom in on the routes
     ax.set_xlim([x_min, x_max])
     ax.set_ylim([y_min, y_max])
 
     # Create proxy artists for the legend
-    from matplotlib.lines import Line2D
-    legend_lines = [Line2D([0], [0], color='blue', lw=2),
-                    Line2D([0], [0], color='green', lw=3),
-                    Line2D([0], [0], color='purple', lw=6),
-                    Line2D([0], [0], color='pink', lw=4)]
+    legend_lines = [
+        Line2D([0], [0], color='blue', lw=2),
+        Line2D([0], [0], color='green', lw=3),
+        Line2D([0], [0], color='purple', lw=6),
+        Line2D([0], [0], color='pink', lw=4)
+    ]
 
-    # Add a legend
-    legend_labels = ['Shortest Route (blue)', 'Shadiest Route (green)',
-                     'Combined1 Route (70% Shade, 30% Length) (purple)',
-                     'Combined2 Route (30% Shade, 70% Length) (pink)']
+    # Update the legend labels to include route lengths
+    legend_labels = [
+        f'Shortest Route (blue) - Length: {shortest_length:.1f} m',
+        f'Shadiest Route (green) - Length: {shadiest_length:.1f} m',
+        f'Combined1 Route (70% Shade, 30% Length) (purple) - Length: {balanced1_length:.1f} m',
+        f'Combined2 Route (30% Shade, 70% Length) (pink) - Length: {balanced2_length:.1f} m'
+    ]
 
-    ax.legend(legend_lines, legend_labels, loc='upper left')
+    # Add the legend below the plot
+    ax.legend(legend_lines, legend_labels, loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=1, frameon=False)
 
-    plt.title(f"Shortest (blue), Shadiest (green), Combined1 (purple), Combined2 (pink) Routes")
+    plt.title("Routes with Lengths")
+
+    # Adjust layout to make space for the legend below the map
+    plt.subplots_adjust(bottom=0.3)
+
     plt.show()
 
 
@@ -282,35 +319,58 @@ def demo_shade_route_calculation(graph_file_path, pre_calculated_nodes_path, use
         print("Could not find any route.")
 
 
+def min_day_difference(month1, day1, month2, day2):
+    # Adjust years to a placeholder year for comparison
+    date1 = datetime(2000, month1, day1)
+    date2 = datetime(2000, month2, day2)
+    delta = abs((date1 - date2).days)
+    return min(delta, 365 - delta)
+
+
 def find_nearest_timestamp_files(date_time, graph_dir, nodes_dir):
     # Parse available files in the directories
-    graph_files = [f for f in os.listdir(graph_dir) if f.startswith("ams_graph_with_shade")]
-    nodes_files = [f for f in os.listdir(nodes_dir) if f.startswith("cool_places_nodes")]
+    graph_files = [f for f in os.listdir(graph_dir) if f.endswith("_cropped.graphml")]
+    nodes_files = [f for f in os.listdir(nodes_dir) if f.startswith("cool_places_nodes_") and f.endswith(".pkl")]
 
     # Extract dates and times, ensuring they are zero-padded and parsed as datetime objects
     graph_timestamps = []
     for f in graph_files:
         parts = f.split('_')
-        date_str = parts[4]
-        time_str = parts[5].split('.')[0].zfill(4)  # Zero-pad time to ensure HHMM format
+        # Date and time are in the last parts before '_cropped.graphml'
+        date_str = parts[-3]
+        time_str = parts[-2].zfill(4)  # Zero-pad time to ensure HHMM format
+        # Create timestamp with the actual date and time from the filename
         timestamp = datetime.strptime(date_str + time_str, "%Y%m%d%H%M")
         graph_timestamps.append((timestamp, f))  # Store both the datetime and filename
 
-    # Find closest date to user input
-    closest_date = min(graph_timestamps, key=lambda x: abs(x[0].date() - date_time.date()))[0].date()
+    # Extract input month and day for comparison
+    input_month = date_time.month
+    input_day = date_time.day
 
-    # Filter files to keep only those with the closest date
-    closest_date_files = [t for t in graph_timestamps if t[0].date() == closest_date]
+    # Find the graph files with the closest month and day to the input date
+    min_day_diff = None
+    closest_date_files = []
+    for ts, f in graph_timestamps:
+        file_month = ts.month
+        file_day = ts.day
+        # Calculate day difference using months and days only
+        day_diff = min_day_difference(input_month, input_day, file_month, file_day)
+        if min_day_diff is None or day_diff < min_day_diff:
+            min_day_diff = day_diff
+            closest_date_files = [(ts, f)]
+        elif day_diff == min_day_diff:
+            closest_date_files.append((ts, f))
 
-    # From files with closest date, find the closest time
+    # Now, from files with the closest date, find the one with the closest time
+    input_minutes = date_time.hour * 60 + date_time.minute
     nearest_timestamp, nearest_graph_file = min(
         closest_date_files,
-        key=lambda x: abs(
-            x[0].time().hour * 60 + x[0].time().minute - (date_time.time().hour * 60 + date_time.time().minute))
+        key=lambda x: abs(x[0].hour * 60 + x[0].minute - input_minutes)
     )
+
     print(f"Nearest Timestamp: {nearest_timestamp} for Graph File: {nearest_graph_file}")
 
-    # Generate the expected nodes filename for the nearest timestamp
+    # Generate the expected nodes filename using the original date and time from the filename
     nearest_date = nearest_timestamp.strftime("%Y%m%d")
     nearest_time = nearest_timestamp.strftime("%H%M")
     nodes_file = f"cool_places_nodes_{nearest_date}_{nearest_time}.pkl"
@@ -341,7 +401,7 @@ def demo_shade_route_calculation_with_time(graph_dir, nodes_dir, user_input, inp
 # # Example Usage
 # graph_dir = 'C:/pedestrian_demo_data/graphs_with_shade/'
 # nodes_dir = 'C:/pedestrian_demo_data/cool_place_nodes/'
-
+#
 # demo_shade_route_calculation_with_time(graph_dir, nodes_dir, user_input=("Amsterdam Central Station", "Dam Square"),
 #                                        input_type="location_name", mode="origin_destination")
 

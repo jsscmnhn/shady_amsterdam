@@ -3,5 +3,5 @@
   <component name="Black">
     <option name="sdkName" value="synthesis" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="synthesis" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="synthesis_clean" project-jdk-type="Python SDK" />
 </project>

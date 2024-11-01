@@ -107,14 +107,16 @@ def precalculate_and_store_shade_weights(graph, raster_path, output_graph_path):
 
 
 def generate_graph_name_from_raster(raster_filename):
-    # Extract date and time from raster filename using regular expression
-    match = re.search(r'amsterdam_(\d{8})_(\d{3,4})', raster_filename)
+    # Modify the regex to capture any prefix before the date and time
+    match = re.search(r'(.+?)_(\d{8})_(\d{3,4})', raster_filename)
     if match:
-        date_str = match.group(1)
-        time_str = match.group(2)
-        return f'ams_graph_with_shade_{date_str}_{time_str}_cropped.graphml'
+        prefix = match.group(1)  # Capture any prefix before the date
+        date_str = match.group(2)
+        time_str = match.group(3)
+        # Use the extracted prefix, date, and time in the output filename
+        return f'{prefix}_graph_with_shade_{date_str}_{time_str}_cropped.graphml'
     else:
-        raise ValueError(f"Filename {raster_filename} does not match expected pattern.")
+        raise ValueError(f"Filename {raster_filename} does not match the expected pattern.")
 
 
 def process_multiple_shade_maps(graph_file, raster_dir, output_dir):

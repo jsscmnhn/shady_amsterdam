@@ -126,9 +126,6 @@ def export_layers_to_shapefiles(geopackage_path, output_directory, date_str):
             print(f"Exported {layer_name} to {output_path}")
 
 
-import os
-import re
-
 def process_all_geopackages_in_directory(gpkg_directory, graph_directory, shapefile_output_directory, output_directory):
     # List all .gpkg files in the specified directory
     gpkg_files = [f for f in os.listdir(gpkg_directory) if f.endswith('.gpkg')]
@@ -145,29 +142,19 @@ def process_all_geopackages_in_directory(gpkg_directory, graph_directory, shapef
         geopackage_path = os.path.join(gpkg_directory, gpkg_file)
 
         # Extract date from GeoPackage filename
-        match = re.search(r'shadeGeoms_(\d{8})', gpkg_file)
+        match = re.search(r'(.+?)_(\d{8})', gpkg_file)
         if not match:
             print(f"Date not found in filename {gpkg_file}. Skipping this file.")
             continue
 
-        date_str = match.group(1)
-
-        # Check if all potential .pkl output files for this GeoPackage date already exist
-        all_layers_exported = True
-        for layer_index in range(19):  # Assuming up to 19 layers (0-18)
-            time_suffix = f"{9 + layer_index // 2}{30 if layer_index % 2 else '00'}"
-            output_path = os.path.join(output_directory, f'cool_places_nodes_{date_str}_{time_suffix}.pkl')
-            if not os.path.exists(output_path):
-                all_layers_exported = False
-                break
-
-        # Skip this GeoPackage if all .pkl files for its layers already exist
-        if all_layers_exported:
-            print(f"All cool places nodes files for date {date_str} already exist. Skipping {gpkg_file}.")
-            continue
+        date_str = match.group(2)
 
         # Export layers to shapefiles in the shared shapefile output directory
         export_layers_to_shapefiles(geopackage_path, shapefile_output_directory, date_str)
+
+        # Ensure the cool place nodes output directory exists
+        if not os.path.exists(output_directory):
+            os.makedirs(output_directory)
 
         # Process each shapefile in the shapefile output directory
         for filename in os.listdir(shapefile_output_directory):
@@ -181,17 +168,22 @@ def process_all_geopackages_in_directory(gpkg_directory, graph_directory, shapef
 
                 date, time = date_time_match.groups()
                 polygon_path = os.path.join(shapefile_output_directory, filename)
-                graph_filename = f'ams_graph_with_shade_{date}_{time}_cropped.graphml'
-                graph_file_path = os.path.join(graph_directory, graph_filename)
+
+                # Search for a matching graph file by date and time (ignoring prefix)
+                graph_pattern = re.compile(f'.*_{date}_{time}_cropped.graphml')
+                matching_graph_files = [f for f in os.listdir(graph_directory) if graph_pattern.match(f)]
+
+                if not matching_graph_files:
+                    print(f"No matching graph file found for date {date} and time {time}. Skipping {filename}.")
+                    continue
+
+                # Assume the first matching file is the desired one
+                graph_file_path = os.path.join(graph_directory, matching_graph_files[0])
                 output_path = os.path.join(output_directory, f'cool_places_nodes_{date}_{time}.pkl')
 
                 # Skip processing if the .pkl file already exists
                 if os.path.exists(output_path):
                     print(f"Output file {output_path} already exists. Skipping processing for this file.")
-                    continue
-
-                if not os.path.exists(graph_file_path):
-                    print(f"Graph file {graph_filename} not found for shapefile {filename}. Skipping...")
                     continue
 
                 try:

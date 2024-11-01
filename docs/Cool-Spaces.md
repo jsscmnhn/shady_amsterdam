@@ -1,6 +1,6 @@
 # Cool Space Process 
 
-This documentation will explain each step involved in the cool space process, separated in two parts: identificationand evaluation.
+This documentation will explain each step involved in the cool space process, separated in two parts: identification and evaluation.
 All steps can be performed automatically by running *./cool_place/main.py* or *main.py* with a configuration
 file containing the required parameters. Information about this configuration file can be found at [setting up the Configuration File](docs/Configuration-setup.md)
 
