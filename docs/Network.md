@@ -41,18 +41,14 @@ The dataset preparation phase includes calculating shade weights for pedestrian 
      - **Count of Pixels**: The total number of pixels in the edge’s area, representing its overall size.
 
 3. **Calculating Shade Proportion**:
-   - The **shade proportion** is computed as:
-     \[
-     \text{shade\_proportion} = \frac{\text{count of pixels} - \text{sum of pixel values}}{\text{count of pixels}}
-     \]
+   - The **shade proportion** for each edge is calculated as:
+     shade proportion = (count of pixels - sum of pixel values) / count of pixels
    - A higher shade proportion means more of the edge is shaded, while a lower proportion indicates less shade.
 
 4. **Converting Shade Proportion to Shade Weight**:
    - To prioritize shaded paths, the **shade weight** is calculated as the inverse of the shade proportion:
-     \[
-     \text{shade\_weight} = \frac{1}{\text{shade\_proportion} + 1 \times 10^{-5}}
-     \]
-   - This formula gives shadier edges a lower shade weight, making them more favorable in shaded route calculations. A small constant \(1 \times 10^{-5}\) is added to avoid division by zero.
+     shade weight = 1 / (shade proportion + 1e-5)
+   - This formula gives shadier edges a lower shade weight, making them more favorable in shaded route calculations. A small constant (1e-5) is added to avoid division by zero.
 
 5. **Default Weight**:
    - If no shading information is available for an edge, a high default weight (e.g., 1000) is assigned, making it less likely to be selected in shaded routing.
