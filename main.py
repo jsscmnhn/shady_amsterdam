@@ -41,13 +41,13 @@ if __name__ == '__main__':
     parser.add_argument(
         '--run_shade',
         type=bool,
-        default=False,
+        default=True,
         help='Set to True to run shade calculation, False to skip (default: True)'
     )
     parser.add_argument(
         '--run_cool_spaces',
         type=bool,
-        default=False,
+        default=True,
         help='Set to True to run cool spaces calculation, False to skip (default: True)'
     )
     parser.add_argument(

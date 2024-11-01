@@ -1,13 +1,14 @@
 {
     "Dataset_Preparation": {
         "graphml_file": "",
-        "area_name_for_OSM_network": "",
-        "shade_maps_path": "",
+        "area_name_for_OSM_network": "Amsterdam, Netherlands",
+        "shade_maps_path": "example_run/outputs/shade/merged_shade_maps/",
         "new_graphml_files_path": "example_run/outputs/ped/graphs_with_shade/",
 
         "cool_places_gpkg_dir": "example_run/outputs/coolspaces/",
         "cool_places_shp_dir": "example_run/outputs/ped/coolspaces_shp/",
         "cool_places_nodes_path": "example_run/outputs/ped/coolspaces_nodes/"
+
     },
     "Routing": {
         "graph_dir": "example_run/outputs/ped/graphs_with_shade/",
@@ -28,8 +29,8 @@
         "graph_file": "example_run/outputs/ped/graphs_with_shade/example_graph_with_shade_20240701_1400_cropped.graphml",
         "cool_places_path": "example_run/outputs/ped/coolspaces_shp/cool_places_polygons_20240701_1400.shp",
         "building_shapefile_path": "example_run/data/ped/merged_buildings.shp",
-        "weight": "shade_weight",
-        "output_building_shapefile": "example_run/outputs/ped/merged_buildings_with_distance_category_20240701_1400.shp",
-        "output_cool_place_shapefile": "example_run/outputs/ped/cool_place_nodes_20240701_1400.shp"
+        "weight": "length",
+        "output_building_shapefile": "example_run/outputs/ped/merged_buildings_with_distance_category_length_20240701_1400.shp",
+        "output_cool_place_shapefile": "example_run/outputs/ped/cool_place_nodes_length_20240701_1400.shp"
     }
 }
