@@ -478,9 +478,9 @@ class CoolEval:
         to create a final recommendation ("Not recommended", "Recommended", "Highly Recommended") for each cool place.
         """
         w_capacity = 0.2
-        w_bench = 0.1
-        w_hr = 0.2
-        w_pet = 0.2
+        w_bench = 0.2
+        w_hr = 0.3
+        w_pet = 0
         w_shade = 0.3
         w_sc = 0.15
 
