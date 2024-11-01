@@ -493,7 +493,7 @@ class CoolEval:
 
         def classify_pet(pet):
             if pet > 35:
-                return 0  # Lowest class
+                return 0.6  # Lowest class
             elif 30 < pet <= 35:
                 return 0.8
             else:
@@ -552,7 +552,7 @@ class CoolEval:
                                       (self.cool_places['spDay_cl'] * w_shade)).round(2)
 
         def classify(row):
-            if row['scDay_cl'] == 0 or row['PET_cl'] == 0:
+            if row['scDay_cl'] == 0:
                 return 'Not recommended'
             elif row['score'] <= 0.4:
                 return 'Not recommended'
@@ -563,7 +563,7 @@ class CoolEval:
 
         self.cool_places['final_recom'] = self.cool_places.apply(classify, axis=1)
         def classify2(row):
-            if row['scDay_cl'] == 0 or row['PET_cl'] == 0:
+            if row['scDay_cl'] == 0:
                 return 'Not recommended'
             elif row['score2'] <= 0.4:
                 return 'Not recommended'
@@ -575,7 +575,7 @@ class CoolEval:
         self.cool_places['final_recom_sc'] = self.cool_places.apply(classify2, axis=1)
 
         def classify3(row):
-            if row['spDay_cl'] == 0 or row['PET_cl'] == 0:
+            if row['spDay_cl']:
                 return 'Not recommended'
             elif row['score3'] <= 0.4:
                 return 'Not recommended'
