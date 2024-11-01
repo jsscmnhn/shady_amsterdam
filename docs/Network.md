@@ -41,18 +41,14 @@ The dataset preparation phase includes calculating shade weights for pedestrian 
      - **Count of Pixels**: The total number of pixels in the edge’s area, representing its overall size.
 
 3. **Calculating Shade Proportion**:
-   - The **shade proportion** is computed as:
-     \[
-     \text{shade\_proportion} = \frac{\text{count of pixels} - \text{sum of pixel values}}{\text{count of pixels}}
-     \]
+   - The **shade proportion** for each edge is calculated as:
+     shade proportion = (count of pixels - sum of pixel values) / count of pixels
    - A higher shade proportion means more of the edge is shaded, while a lower proportion indicates less shade.
 
 4. **Converting Shade Proportion to Shade Weight**:
    - To prioritize shaded paths, the **shade weight** is calculated as the inverse of the shade proportion:
-     \[
-     \text{shade\_weight} = \frac{1}{\text{shade\_proportion} + 1 \times 10^{-5}}
-     \]
-   - This formula gives shadier edges a lower shade weight, making them more favorable in shaded route calculations. A small constant \(1 \times 10^{-5}\) is added to avoid division by zero.
+     shade weight = 1 / (shade proportion + 1e-5)
+   - This formula gives shadier edges a lower shade weight, making them more favorable in shaded route calculations. A small constant (1e-5) is added to avoid division by zero.
 
 5. **Default Weight**:
    - If no shading information is available for an edge, a high default weight (e.g., 1000) is assigned, making it less likely to be selected in shaded routing.
@@ -60,11 +56,6 @@ The dataset preparation phase includes calculating shade weights for pedestrian 
 #### Entry Function: `process_multiple_shade_maps(graph_file, raster_dir, output_dir)`
 
 The entry function `process_multiple_shade_maps` calculates shade weights for all edges in a network based on raster shade maps.
-
-- **Parameters:**
-  - `graph_file`: Path to the base network GraphML file (OSM network or pre-processed graph).
-  - `raster_dir`: Directory containing raster shade maps for calculating shade weights.
-  - `output_dir`: Directory where the processed GraphML files (with shade weights) will be saved.
 
 #### How to Use:
 1. Set the `graph_file` to specify the pedestrian network.
@@ -104,11 +95,6 @@ process_multiple_shade_maps(graph_file="path/to/network.graphml", raster_dir="pa
 This module identifies and saves nodes in the pedestrian network that are closest to the bounding boxes of shaded areas, referred to as "cool places", for further use in route calculations.
 
 #### Entry Function: `process_all_geopackages_in_directory(gpkg_directory, graph_directory, shapefile_output_directory, output_directory)`
-- **Parameters:**
-  - `gpkg_directory`: Directory containing GeoPackage files, each with layers representing shaded areas at specific times.
-  - `graph_directory`: Directory where GraphML files with shade weights are stored.
-  - `shapefile_output_directory`: Directory to export individual layers from each GeoPackage file as shapefiles.
-  - `output_directory`: Directory to save files with calculated cool place nodes for each time layer.
 
 #### How to Use:
 1. Set `gpkg_directory` to the directory containing the GeoPackage files, each named to include a date, such as `shadeGeoms_YYYYMMDD.gpkg`.
@@ -164,21 +150,6 @@ The routing module provides options for calculating the shortest, shadiest, or b
 The routing process determines which function to call based on the provided configuration:
 - **`demo_shade_route_calculation`**: Uses specific GraphML and nodes files for direct routing.
 - **`demo_shade_route_calculation_with_time`**: Searches directories to find the nearest timestamped files for time-based routing.
-
-#### Configuration Parameters
-The routing configuration parameters are as follows:
-
-- **`graph_dir`**: Directory containing the GraphML files with shade weights (required if `graph_file` is not provided).
-- **`nodes_dir`**: Directory containing files with pre-calculated cool place nodes (required if `nodes_file` is not provided).
-- **`graph_file`**: Specific GraphML file with shade weights (optional).
-- **`nodes_file`**: Specific file with pre-calculated cool place nodes (optional).
-- **`route_option`**: Specifies routing mode, `nearest_cool_place` for routing to the nearest shaded area or `origin_destination` for routing between two points.
-- **`location_indication_option`**: Specifies the type of location input, either `location_name` or `coordinates`.
-- **`origin_name`**: Name of the origin location (required if `location_indication_option` is `location_name`).
-- **`destination_name`**: Name of the destination location (required if `route_option` is `origin_destination` and `location_indication_option` is `location_name`).
-- **`origin_latitude`** and **`origin_longitude`**: Latitude and longitude for the origin location (required if `location_indication_option` is `coordinates`).
-- **`destination_latitude`** and **`destination_longitude`**: Latitude and longitude for the destination location (required if `route_option` is `origin_destination` and `location_indication_option` is `coordinates`).
-- **`date_time`**: (Optional) Timestamp (`"YYYY-MM-DD HH:MM:SS"`) to select the nearest time-based files if using `demo_shade_route_calculation_with_time`.
 
 #### How to Use:
 1. Configure either `graph_file` and `nodes_file` for direct routing, or `graph_dir` and `nodes_dir` to use directory search for timestamped files.
@@ -249,13 +220,6 @@ The walking shed network analysis categorizes buildings based on their shortest/
    - Optionally, the processed buildings and cool place nodes can be saved as shapefiles, enabling further analysis or visualization in GIS software.
 
 #### Entry Function: `walking_shed_calculation(graph, polygon_path, building_shapefile_path, weight="shade_weight", output_building_shapefile=None, output_cool_place_shapefile=None)`
-- **Parameters:**
-  - `graph`: Path to the GraphML file with shade weights (preprocessed network).
-  - `polygon_path`: Path to polygons representing cool places (shapefile).
-  - `building_shapefile_path`: Path to the shapefile containing building polygons for analysis.
-  - `weight`: The edge attribute used for walking shed calculations, could be either `length` or `shade_weight`.
-  - `output_building_shapefile`: (Optional) Path to save the output shapefile for buildings with assigned distance categories.
-  - `output_cool_place_shapefile`: (Optional) Path to save the output shapefile for cool place nodes.
 
 #### How to Use:
 1. Set `graph` to the path of the GraphML file that has been preprocessed with shade weights.
