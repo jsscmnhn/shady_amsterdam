@@ -12,27 +12,23 @@ from PedestrianNetwork.main_network import main_network
 
 
 if __name__ == '__main__':
-    # TODO: FILL IN DESCRIPTION
-    parser = argparse.ArgumentParser(description='TO DO FILL IN THIS ')
+    parser = argparse.ArgumentParser(description='This script calculates shade maps, identifies cool spaces, and creates walksheds and pedestrian routing based on provided configuration files. Customize the behavior with command line arguments.')
     parser.add_argument(
         '--config_file_shade',
-        # default="configuration_files/shade_config.json",
-        default="example_run\config_files\shade_config.json",
+        default="configuration_files/shade_config.json",
         type=str,
         help='Path to the configuration file of the shade maps (default: configuration_files/shade_config.json)'
     )
     parser.add_argument(
         '--config_file_cool_spaces',
-        # default="configuration_files/coolspaceConfig.json",
-        default="example_run\config_files\coolspaceConfig.json" ,
+        default="configuration_files/coolspaceConfig.json",
         type=str,
         help='Path to the configuration file for cool spaces (default: configuration_files/coolspaceConfig.json)'
     )
 
     parser.add_argument(
         '--config_file_network',
-        # default="configuration_files/network_config.json",
-        default="example_run\config_files/network_config.json",
+        default="configuration_files/network_config.json",
         type=str,
         help='Path to the configuration file for the network (default: configuration_files/network_config.json)'
     )
