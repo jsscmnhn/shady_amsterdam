@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="figs/githubcover.jpg" alt="Description of the figure" width="800"/>
+  <img src="docs/figs/githubcover.jpg" alt="Description of the figure" width="800"/>
   <br>
 </p>
 
