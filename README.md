@@ -1,3 +1,8 @@
+<p align="center">
+  <img src="figs/githubcover.jpg" alt="Description of the figure" width="800"/>
+  <br>
+</p>
+
 # Shady Amsterdam
 This repository is created for the Synthesis course of the MSc Geomatics at TU Delft, on behalf of the clients Gemeente Amsterdam and MIT Senseable City Lab
 
