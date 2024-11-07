@@ -1,3 +1,8 @@
+<p align="center">
+  <img src="docs/figs/githubcover.jpg" alt="Description of the figure" width="800"/>
+  <br>
+</p>
+
 # Shady Amsterdam
 This repository is created for the Synthesis course of the MSc Geomatics at TU Delft, on behalf of the clients Gemeente Amsterdam and MIT Senseable City Lab
 
@@ -34,7 +39,39 @@ For more information about the workings of this code, look at the page:  [Networ
 The code can be run separately at `/PedestrianNetwork/main_network.py`
 
 # Running the code 
-The code can be run for all steps simultaneously. For this use `main.py`, and set up the configuration files.
+The code can be run for all steps simultaneously. For this use `main.py`, and set up the configuration files and command line arguments.
+
+## Command Line Arguments
+
+### --config_file_shade
+- **Type**: String
+- **Description**: Path to the configuration file of the shade maps. 
+- **Default**: `example_run/config_files/shade_config.json`
+
+### --config_file_cool_spaces
+- **Type**: String
+- **Description**: Path to the configuration file for cool spaces.
+- **Default**: `example_run/config_files/coolspaceConfig.json`
+
+### --config_file_network
+- **Type**: String
+- **Description**: Path to the configuration file for the pedestrian network.
+- **Default**: `example_run/config_files/network_config.json`
+
+### --run_shade
+- **Type**: Boolean
+- **Description**: Set to `True` to execute shade calculation; set to `False` to skip this step.
+- **Default**: `True`
+
+### --run_cool_spaces
+- **Type**: Boolean
+- **Description**: Set to `True` to execute cool spaces calculation; set to `False` to skip this step.
+- **Default**: `True`
+
+### --run_network
+- **Type**: Boolean
+- **Description**: Set to `True` to create the pedestrian network; set to `False` to skip this step.
+- **Default**: `True`
 
 ## API
 Find here the [API](docs/api.md)
