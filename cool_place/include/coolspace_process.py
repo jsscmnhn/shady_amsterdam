@@ -200,6 +200,7 @@ def evaluation(coolspace: gpd.geodataframe,
                gpkg_file: str,
                output_layer: str,
                search_buffer: int = 700,
+               pet_weight: float = 0,
                single_day_time_range: list = None,
                time_interval: int = None,
                search_range: list = None,
@@ -229,7 +230,8 @@ def evaluation(coolspace: gpd.geodataframe,
                          bench=bench_file,
                          heatrisk=heatrisk_file,
                          pet=pet_file,
-                         search_buffer=search_buffer)
+                         search_buffer=search_buffer,
+                         pet_weight=pet_weight)
     if not useMultiProcessing:
         cool_eval.calculate_walking_shed()
     else:

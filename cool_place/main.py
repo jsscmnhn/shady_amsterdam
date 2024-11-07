@@ -47,6 +47,7 @@ def coolspace_main(config_file: str):
         output_coolspace_type   = config['parameters']['output_coolspace_type']
         building_buffer         = config['parameters']['building_buffer']
         capacity_search_buffer  = config['parameters']['capacity_search_buffer']
+        pet_weight              = config['parameters']['pet_weight']
         progress.advance(task)
     # ======================================================================================================================
 
@@ -138,6 +139,7 @@ def coolspace_main(config_file: str):
                                       gpkg_file=gpkg_file,
                                       output_layer=output_evaluation_layer,
                                       search_buffer=capacity_search_buffer,
+                                      pet_weight=pet_weight,
                                       single_day_time_range=single_day_time_range,
                                       time_interval=time_interval,
                                       morning_range=morning_range,

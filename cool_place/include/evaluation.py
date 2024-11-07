@@ -33,7 +33,7 @@ def calculate_distances(buildings_within_data, cool_places_data):
 
 class CoolEval:
     def __init__(self, cool_places: gpd.GeoDataFrame, buildings: gpd.GeoDataFrame, bench: gpd.GeoDataFrame,
-                 heatrisk: gpd.GeoDataFrame, pet, search_buffer: float) -> None:
+                 heatrisk: gpd.GeoDataFrame, pet, search_buffer: float, pet_weight:float) -> None:
         """
         Initialize the CoolEval object with the input datasets.
 
@@ -52,8 +52,9 @@ class CoolEval:
         self.pet = pet
         self.search_buffer = search_buffer
         self.eval_shades = []
+        self.pet_weight = pet_weight
 
-    def calculate_walking_shed_origin(self):
+    def calculate_walking_shed(self):
         """
         Assign each building to the nearest cool place within a specified buffer distance.
 
@@ -100,130 +101,6 @@ class CoolEval:
 
             return self.buildings
 
-    def calculate_walking_shed(self, batch_size=100):
-        """
-        Assign each building to the nearest cool place within a specified buffer distance.
-
-        The function computes the walking shed by creating a buffer around each cool place,
-        finding the buildings within that buffer, and assigning the nearest cool place ID to each building.
-
-        Returns:
-        GeoDataFrame: Updated buildings dataset with the assigned cool place ID.
-        """
-        with Progress() as progress:
-            task = progress.add_task("Calculate walking shed...", total=len(self.cool_places))
-            start_time = time.time()
-
-            if self.buildings.crs.is_geographic:
-                self.buildings = self.buildings.to_crs(epsg=28992)
-            if self.cool_places.crs.is_geographic:
-                self.cool_places = self.cool_places.to_crs(epsg=28992)
-
-            self.buildings['c_id'] = None
-            self.buildings['dist'] = float('inf')
-
-            cool_places_geom = self.cool_places[['geometry']].copy()
-
-            min_distances = {}
-            num_batches = (len(cool_places_geom) // batch_size) + 1
-
-            for i in range(num_batches):
-                cool_places_batch = cool_places_geom.iloc[i * batch_size:(i + 1) * batch_size].copy()
-                cool_places_batch['buffered'] = cool_places_batch.geometry.buffer(self.search_buffer)
-
-                buildings_within = gpd.sjoin(self.buildings, cool_places_batch.set_geometry('buffered'),
-                                             predicate='intersects', how='inner')
-
-                for _, row in buildings_within.iterrows():
-                    building_idx = row.name
-                    cool_place_idx = row['index_right']
-                    distance = row['geometry'].distance(row['geometry_right'])
-
-                    if building_idx not in min_distances or distance < min_distances[building_idx][0]:
-                        min_distances[building_idx] = (distance, self.cool_places.loc[cool_place_idx].id)
-
-                progress.advance(task, advance=batch_size)
-
-            self.buildings['c_id'] = self.buildings.index.map(
-                lambda idx: min_distances[idx][1] if idx in min_distances else None)
-            self.buildings['dist'] = self.buildings.index.map(
-                lambda idx: min_distances[idx][0] if idx in min_distances else float('inf'))
-
-            missing_cool_place = self.buildings['c_id'].isna().sum()
-            if missing_cool_place > 0:
-                print(f"Warning: {missing_cool_place} buildings were not assigned to any cool place.")
-
-            end_time = time.time()
-            duration = end_time - start_time
-            print(f"Calculating walking shed took {duration:.2f} seconds")
-
-            return self.buildings
-
-    def calculate_walking_shed_multi(self, batch_size=100):
-        """
-        This is the multi-processing version of "calculate_walking_shed" method.
-        """
-        with Progress() as progress:
-            task = progress.add_task("Calculate walking shed...", total=len(self.cool_places))
-            start_time = time.time()
-
-            if self.buildings.crs.is_geographic:
-                self.buildings = self.buildings.to_crs(epsg=28992)
-            if self.cool_places.crs.is_geographic:
-                self.cool_places = self.cool_places.to_crs(epsg=28992)
-
-            self.buildings['c_id'] = None
-            self.buildings['dist'] = float('inf')
-
-            # get necessary data for executor
-            cool_places_geom = self.cool_places[['id', 'geometry']].copy()
-            cool_places_data = {i: (row['id'], row['geometry']) for i, row in cool_places_geom.iterrows()}
-            num_batches = (len(cool_places_geom) // batch_size) + 1
-
-            cpu_count = max(1, multiprocessing.cpu_count() - 2)
-            min_distances = {}
-
-            with ProcessPoolExecutor(max_workers=cpu_count) as executor:
-                futures = []
-                for i in range(num_batches):
-                    cool_places_batch = cool_places_geom.iloc[i * batch_size:(i + 1) * batch_size].copy()
-                    cool_places_batch['buffered'] = cool_places_batch.geometry.buffer(self.search_buffer)
-
-                    buildings_within = gpd.sjoin(
-                        self.buildings[['geometry']].copy(),
-                        cool_places_batch.set_geometry('buffered'),
-                        predicate='intersects',
-                        how='inner'
-                    )
-                    # get necessary data for executor
-                    buildings_within_data = [(row.name, row['geometry'], row['index_right']) for _, row in
-                                             buildings_within.iterrows()]
-
-                    futures.append(
-                        executor.submit(calculate_distances, buildings_within_data, cool_places_data)
-                    )
-                    progress.advance(task, advance=batch_size)
-
-                for future in as_completed(futures):
-                    result = future.result()
-                    min_distances.update(result)
-
-            self.buildings['c_id'] = self.buildings.index.map(
-                lambda idx: min_distances[idx][1] if idx in min_distances else None
-            )
-            self.buildings['dist'] = self.buildings.index.map(
-                lambda idx: min_distances[idx][0] if idx in min_distances else float('inf')
-            )
-
-            missing_cool_place = self.buildings['c_id'].isna().sum()
-            if missing_cool_place > 0:
-                print(f"Warning: {missing_cool_place} buildings were not assigned to any cool place.")
-
-            end_time = time.time()
-            duration = end_time - start_time
-            print(f"Calculating walking shed took {duration:.2f} seconds")
-
-        return self.buildings
 
     def evaluate_resident(self) -> gpd.GeoDataFrame:
         """
@@ -267,7 +144,6 @@ class CoolEval:
         Evaluate the capacity of shaded areas based on their size and nearby residents.
 
         The function calculates the area of each shade polygon and determines how many people it can accommodate.
-        It then compares this capacity with the number of nearby residents and assigns a capacity status.
 
         Parameters:
         shade (GeoDataFrame): The shade dataset to evaluate.
@@ -283,22 +159,8 @@ class CoolEval:
             axis=1
         )
 
-        shade = gpd.sjoin(shade, self.cool_places[['geometry', 'resident']], how='left', predicate='intersects')
-        shade['resident'] = shade['resident'].fillna(0)
-        shade['cap_status'] = shade.apply(
-            lambda row: int(row['cap_area'] - row['resident']) if pd.notnull(row['cap_area']) and pd.notnull(
-                row['resident']) else 0,
-            axis=1
-        )
-        # shade['Cap_status'] = shade.apply(
-        #     lambda row: (
-        #         (lambda x: f"More capacity for {x:.0f} person(s) available" if x > 0
-        #         else f"Require more space for {abs(x):.0f} person(s)")(
-        #             row['Cap_area'] - row['resident'])
-        #     ) if row['resident'] and row['Area'] > 0 else "No data",
-        #     axis=1
-        # )
         return shade
+    
     def evaluate_sfurniture(self, shade: gpd.GeoDataFrame, layer_name: str) -> gpd.GeoDataFrame:
         """
         Evaluate the availability of benches within shaded areas.
@@ -458,7 +320,7 @@ class CoolEval:
             self.cool_places = self.cool_places.join(eval_shade_renamed[columns_to_add], how='left')
             print(f"Processed layer {i + 1} and added columns: {columns_to_add}")
 
-        columns_to_average = ['cap_area', 'cap_status', 'benches_count', 'heat_rs', 'PET']
+        columns_to_average = ['cap_area', 'benches_count', 'heat_rs', 'PET']
 
         for feature in columns_to_average:
             feature_columns = [col for col in self.cool_places.columns if re.match(f'{feature}_\d+$', col)]
@@ -477,23 +339,27 @@ class CoolEval:
         The function combines weighted scores from capacity, benches, heat risk, PET, and shade availability
         to create a final recommendation ("Not recommended", "Recommended", "Highly Recommended") for each cool place.
         """
-        w_capacity = 0.2
-        w_bench = 0.2
-        w_hr = 0.3
-        w_pet = 0
-        w_shade = 0.3
-        w_sc = 0.15
+        w_capacity = 0.15
+        w_bench = 0.15
+        w_hr = 0.3 - self.pet_weight
+        w_pet = self.pet_weight
+        w_shade = 0.4
+        w_sc = 0.2
 
-
-        columns_to_fill = ['cap_status_avg', 'benches_count_avg', 'heat_rs_avg', 'PET_avg', 'spDay', 'scDay']
+        columns_to_fill = ['resident', 'cap_area_avg', 'benches_count_avg', 'heat_rs_avg', 'PET_avg',
+                           'spDay', 'scDay']
 
         for col in columns_to_fill:
             if col in self.cool_places.columns:
                 self.cool_places[col].fillna(0, inplace=True)
 
+        self.cool_places['cap_status_avg'] = self.cool_places['cap_area_avg'].astype(int) - self.cool_places[
+            'resident'].astype(int)
+        self.cool_places['cap_status_avg'].fillna(0, inplace=True)
+
         def classify_pet(pet):
             if pet > 35:
-                return 0.6  # Lowest class
+                return 0  # Lowest class
             elif 30 < pet <= 35:
                 return 0.8
             else:
@@ -556,7 +422,7 @@ class CoolEval:
                 return 'Not recommended'
             elif row[score_col] <= 0.3:
                 return 'Not recommended'
-            elif 0.3 < row[score_col] <= 0.5:
+            elif 0.3 < row[score_col] <= 0.6:
                 return 'Recommended'
             else:
                 return 'Highly Recommended'

@@ -184,6 +184,10 @@ The program will run as:
       - evaluate_sfurniture: count number of benches `Benches` 
       - evaluate_heatrisk: average heat risk `heat_rs` and classified heat risk `heat_rlv` from dataset
       - eval_pet: average PET value from raster dataset `PET`
+      **note: for PET evaluation, since the current PET dataset in this project was made in July 1st, thus it is recommended 
+      to use PET only for June or July, since it will not be reliable for  the other month. thus,
+      the weight of PET for evaluation can be changed accordingly as user parameter, where user can put the parameter with no more than 0.15
+      and the default parameter is 0.
 4. Aggregate all those evaluation attributes back to cool spaces and average them
 5. Make final recommendation for cool spaces with three different shade coverage indicator:
     - `final_recom` : combining `sc` and `sp` as shade indicator
