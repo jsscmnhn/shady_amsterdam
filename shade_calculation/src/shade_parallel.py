@@ -160,9 +160,3 @@ def process_folders(base_folder, output_base_folder, date, start_time=9, end_tim
                                        use_chm, trans, trunkheight, max_workers)
     else:
         print("No CHM/DSM file pairs found.")
-
-if __name__ == '__main__':
-    base_folder = "D:\Geomatics\___extrareportfiles/smoothedresult"
-    output_base_folder ="D:\Geomatics\___extrareportfiles\SMOOTHEDRESULTSHADE"
-    date = datetime.date(2015, 7, 1)
-    process_folders(base_folder, output_base_folder, date, max_workers=2, start_time=9, end_time=10, interval=60)
