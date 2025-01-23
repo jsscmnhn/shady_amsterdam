@@ -5,7 +5,7 @@
 
 # Shady Amsterdam
 This repository is created for the Synthesis course of the MSc Geomatics at TU Delft, on behalf of the clients Gemeente Amsterdam and MIT Senseable City Lab.
-The datasets produced for this research can be found at: [webpage](https://doi.org/10.4121/8b65d25b-c68f-4e88-b239-27ea90eaf149.v1), the report at [webpage](https://resolver.tudelft.nl/uuid:1878b296-b888-4043-a9a6-9050ab3e5723)
+The datasets produced for this research can be found at [4TU](https://doi.org/10.4121/8b65d25b-c68f-4e88-b239-27ea90eaf149.v1), the report at the [TU Delft repository](https://resolver.tudelft.nl/uuid:1878b296-b888-4043-a9a6-9050ab3e5723).
 
 The documentation can best be viewed on the [webpage](https://jsscmnhn.github.io/shady_amsterdam/).
 
