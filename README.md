@@ -10,9 +10,6 @@ The datasets produced for this research can be found at [4TU](https://doi.org/10
 The documentation can best be viewed on the [webpage](https://jsscmnhn.github.io/shady_amsterdam/).
 
 \
-The code in this repository makes it possible to create shade maps of any area in the Netherlands for any date and time,
-use these shade maps and other datasets to identify and score cool spaces in the region, and to create a walkshed and
-routing shady and fast routes. The repository includes three steps: calculating and creating the shade maps, identifying and scoring the cool spaces and routing. 
 
 This repository enables the creation of shade maps for any desired region in the Netherlands at any specified date and time.
 Using these shade maps alongside additional datasets, it can identify and qualify cool spaces within this region. Finally,
