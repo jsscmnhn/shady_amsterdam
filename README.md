@@ -9,8 +9,6 @@ The datasets produced for this research can be found at [4TU](https://doi.org/10
 
 The documentation can best be viewed on the [webpage](https://jsscmnhn.github.io/shady_amsterdam/).
 
-\
-
 This repository enables the creation of shade maps for any desired region in the Netherlands at any specified date and time.
 Using these shade maps alongside additional datasets, it can identify and qualify cool spaces within this region. Finally,
 it can create walksheds from these cool spaces to show the shortest and the shadiest distances to these cool spaces. It
@@ -20,6 +18,7 @@ The repository is organized into three primary steps:
 
 ## 1.  Shade Map Creation (`/shade_calculation`)
 This step covers the creation of the shade maps. For this, CHM and DTM files are created for the desired region. For more information about the workings of the code, look at the page:  [Shade Map Calculation](docs/Shade-Map-Calculation.md)
+Further research has updated the shade function with GPU acceleration, and has automated the data collection further with removal of the tiling system. If interested, please take a look at [the repository of SOLFD](https://github.com/jsscmnhn/SOLWEIG_SOLFD)
 
 The code can be run separately at `/shade_calculation/main_shade.py`
 
